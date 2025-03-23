@@ -1,0 +1,11 @@
+.git
+.gitignore
+.dockerignore
+DockerFile*
+.env*
+dist
+node_modules
+data
+# mysqldata
+# redisdata
+README.md

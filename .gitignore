@@ -1,3 +1,9 @@
+# vscode 환경값
+.vscode
+data
+# mysqldata
+# redisdata
+
 # Logs
 logs
 *.log
