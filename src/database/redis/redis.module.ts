@@ -38,12 +38,11 @@
 // export class RedisModule {}
 
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 import { RedisService } from './redis.service';
 
 @Module({
-  imports: [ConfigModule], // ConfigModule을 임포트하여 설정 정보를 가져옵니다.
   providers: [
     RedisService,
     {

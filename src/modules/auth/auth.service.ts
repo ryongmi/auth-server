@@ -8,6 +8,7 @@ import { GoogleOAuthService } from './google-oauth.service';
 import { NaverOAuthService } from './naver-oauth.service';
 import { UserException } from 'src/exception';
 import { RedisService } from 'src/database/redis/redis.service';
+import { JwtTokenService } from './jwt/jwt-token.service';
 
 const scrypt = promisify(_scrypt);
 
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
+    private readonly jwtService: JwtTokenService,
   ) {}
 
   // state 값 생성
