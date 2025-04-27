@@ -29,7 +29,7 @@ import {
 } from '../../common/decorators/swagger-api.decorator';
 
 @SwaagerApiTags({ tags: ['auth'] })
-@Controller('auth')
+@Controller()
 @Serialize(UserDto)
 export class AuthController {
   constructor(

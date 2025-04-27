@@ -6,7 +6,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsUUID } from 'class-validator';
 import { Expose } from 'class-transformer';
 
-@Entity()
+@Entity('oauth_account')
 export class OAuthAccount extends BaseEntityUUID {
   @ApiProperty({
     example: '0ba9965b-afaf-4771-bc59-7d697b3aa4b2',

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { scrypt as _scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
-import { User } from './entities';
+import { User } from '../user/entities';
 import { EntityManager } from 'typeorm';
 import { GoogleOAuthService } from './google-oauth.service';
 import { NaverOAuthService } from './naver-oauth.service';
@@ -49,30 +49,30 @@ export class AuthService {
       await this.naverOAuthService.getNaverUserInfo(code, state);
 
     let user = await this.userService.findByEmail(naverUserInfo.email);
-    if (user) {
-      // 이메일이 이미 존재하는 경우 계정 병합
-      if (!user.oauthId) {
-        // 처음 병합할 경우 필요한 정보 업데이트
-        user.oauthId = naverUserInfo.id;
-        user.name ||= naverUserInfo.name;
-        user.nickname ||= naverUserInfo.nickname;
-        user.profileImage ||= naverUserInfo.profile_image;
-      }
+    // if (user) {
+    //   // 이메일이 이미 존재하는 경우 계정 병합
+    //   if (!user.oauthId) {
+    //     // 처음 병합할 경우 필요한 정보 업데이트
+    //     user.oauthId = naverUserInfo.id;
+    //     user.name ||= naverUserInfo.name;
+    //     user.nickname ||= naverUserInfo.nickname;
+    //     user.profileImage ||= naverUserInfo.profile_image;
+    //   }
 
-      // 마지막 접속일 업데이트
-      // user.lastLogin = new Date();
+    //   // 마지막 접속일 업데이트
+    //   // user.lastLogin = new Date();
 
-      user = await this.userService.updateUser(user);
-    } else {
-      // 이메일이 존재하지 않는 경우 새 사용자 생성
-      user = await this.userService.createUser(transactionManager, {
-        oauthId: naverUserInfo.id,
-        name: naverUserInfo.name,
-        nickname: naverUserInfo.nickname,
-        email: naverUserInfo.email,
-        profileImage: naverUserInfo.profile_image,
-      });
-    }
+    //   user = await this.userService.updateUser(user);
+    // } else {
+    //   // 이메일이 존재하지 않는 경우 새 사용자 생성
+    //   user = await this.userService.createUser(transactionManager, {
+    //     oauthId: naverUserInfo.id,
+    //     name: naverUserInfo.name,
+    //     nickname: naverUserInfo.nickname,
+    //     email: naverUserInfo.email,
+    //     profileImage: naverUserInfo.profile_image,
+    //   });
+    // }
 
     return { user, tokenData };
   }
@@ -83,30 +83,31 @@ export class AuthService {
 
     let user = await this.userService.findByEmail(googleUserInfo.email);
 
-    if (user) {
-      // 이메일이 이미 존재하는 경우 계정 병합
-      if (!user.oauthId) {
-        // 처음 병합할 경우 필요한 정보 업데이트
-        user.oauthId = googleUserInfo.id;
-        user.name ||= googleUserInfo.name;
-        user.nickname ||= googleUserInfo.name;
-        user.profileImage ||= googleUserInfo.picture;
-      }
+    // if (user) {
+    //   // 이메일이 이미 존재하는 경우 계정 병합
+    //   //user.oauthAccount?.id
+    //   if (!user.oauthId) {
+    //     // 처음 병합할 경우 필요한 정보 업데이트
+    //     user.oauthId = googleUserInfo.id;
+    //     user.name ||= googleUserInfo.name;
+    //     user.nickname ||= googleUserInfo.name;
+    //     user.profileImage ||= googleUserInfo.picture;
+    //   }
 
-      // 마지막 접속일 업데이트
-      // user.lastLogin = new Date();
+    //   // 마지막 접속일 업데이트
+    //   // user.lastLogin = new Date();
 
-      user = await this.userService.updateUser(user);
-    } else {
-      // 이메일이 존재하지 않는 경우 새 사용자 생성
-      user = await this.userService.createUser(transactionManager, {
-        oauthId: googleUserInfo.id,
-        name: googleUserInfo.name,
-        nickname: googleUserInfo.name,
-        email: googleUserInfo.email,
-        profileImage: googleUserInfo.picture,
-      });
-    }
+    //   user = await this.userService.updateUser(user);
+    // } else {
+    //   // 이메일이 존재하지 않는 경우 새 사용자 생성
+    //   user = await this.userService.createUser(transactionManager, {
+    //     oauthId: googleUserInfo.id,
+    //     name: googleUserInfo.name,
+    //     nickname: googleUserInfo.name,
+    //     email: googleUserInfo.email,
+    //     profileImage: googleUserInfo.picture,
+    //   });
+    // }
 
     return { user, tokenData };
   }
