@@ -30,7 +30,7 @@ export async function setNestApp(
   }); // cors 활성화
 
   // 모든 엔드포인트에 api 추가
-  // app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api');
 
   // 글로벌 Log 설정
   app.useGlobalInterceptors(new LoggingInterceptor());
