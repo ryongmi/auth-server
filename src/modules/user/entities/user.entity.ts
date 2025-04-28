@@ -1,4 +1,4 @@
-import { Entity, Column, OneToOne } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { BaseEntityUUID } from '../../../common/entities/base.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import {
@@ -78,10 +78,10 @@ export class User extends BaseEntityUUID {
   @IsBoolean()
   isEmailVerified: boolean; // 이메일 인증 여부
 
-  // @OneToMany(() => OAuthAccount, (oauthAccount) => oauthAccount.user, {
-  //   cascade: true,
-  // })
-  // oauthAccounts: OAuthAccount[];
-  @OneToOne(() => OAuthAccount, (oauthAccount) => oauthAccount.user)
+  @OneToOne(() => OAuthAccount, (oauthAccount) => oauthAccount.user, {
+    cascade: true,
+    nullable: true,
+  })
+  @JoinColumn()
   oauthAccount: OAuthAccount;
 }

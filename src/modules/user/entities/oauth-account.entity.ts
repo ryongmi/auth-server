@@ -1,7 +1,7 @@
 import { User } from './user.entity';
 import { BaseEntityUUID } from '../../../common/entities/base.entity';
 import { UserType, USER_TYPE_VALUES } from '../../../common/enum';
-import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, OneToOne } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsUUID } from 'class-validator';
 import { Expose } from 'class-transformer';
@@ -27,7 +27,6 @@ export class OAuthAccount extends BaseEntityUUID {
 
   //   @ManyToOne(() => User, (user) => user.oauthAccounts, { onDelete: 'CASCADE' })
   //   user: User;
-  @OneToOne(() => User, (user) => user.oauthAccount, { onDelete: 'CASCADE' })
-  @JoinColumn() // 연결된 테이블에서 외래키를 관리하도록 지정
+  @OneToOne(() => User, (user) => user.oauthAccount)
   user: User;
 }
