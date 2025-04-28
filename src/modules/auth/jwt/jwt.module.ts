@@ -1,17 +1,9 @@
-// src/auth/jwt/jwt.module.ts
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { JwtConfigService } from './jwt-config.service';
+import { JwtService } from '@nestjs/jwt';
 import { JwtTokenService } from './jwt-token.service';
 
 @Module({
-  imports: [
-    JwtModule.registerAsync({
-      // global: true,
-      useClass: JwtConfigService,
-    }),
-  ],
-  providers: [JwtConfigService, JwtTokenService],
-  exports: [JwtTokenService],
+  providers: [JwtService, JwtTokenService],
+  exports: [JwtTokenService], // JwtTokenService를 다른 모듈에서 사용 가능하도록 export
 })
-export class JwtConfigModule {}
+export class JwtModule {}
