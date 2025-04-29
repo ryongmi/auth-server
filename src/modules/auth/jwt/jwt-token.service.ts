@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Response } from 'express';
 
 @Injectable()
 export class JwtTokenService {
@@ -43,9 +44,11 @@ export class JwtTokenService {
   // Access Token 복호화
   async decodeAccessToken(token: string): Promise<any> {
     try {
-      return this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       });
+
+      return payload;
     } catch (error) {
       throw new Error('Invalid Access Token');
     }
@@ -54,11 +57,32 @@ export class JwtTokenService {
   // Refresh Token 복호화
   async decodeRefreshToken(token: string): Promise<any> {
     try {
-      return this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
+
+      return payload;
     } catch (error) {
       throw new Error('Invalid Refresh Token');
     }
+  }
+
+  setRefreshTokenToCookie(res: Response, refreshToken: string) {
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: this.configService.get<string>('mode') === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 예: 7일
+    });
+  }
+
+  clearRefreshTokenCookie(res: Response) {
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: this.configService.get<string>('mode') === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
   }
 }
