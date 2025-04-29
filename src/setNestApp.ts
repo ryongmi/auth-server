@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors';
 import { ConfigService } from '@nestjs/config';
@@ -28,6 +29,8 @@ export async function setNestApp(
     // origin: allowedOrigins, // 허용할 도메인
     credentials: true, // 쿠키를 포함한 요청 허용
   }); // cors 활성화
+
+  app.use(cookieParser());
 
   // 모든 엔드포인트에 api 추가
   app.setGlobalPrefix('api');

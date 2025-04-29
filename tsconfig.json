@@ -17,7 +17,8 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true
   },
   // docker에서 nestjs 파일 수정사항 반영을 위한 구문, 핫리로드
   "watchOptions": {

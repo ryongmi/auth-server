@@ -68,3 +68,4 @@ networks:
   network-auth:
     driver: bridge
 # docker-compose --env-file .env.local up
+# docker-compose --env-file .env.local up --build
