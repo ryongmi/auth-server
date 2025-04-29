@@ -18,7 +18,12 @@ import { AuthService } from '../auth/auth.service';
 import { Serialize, TransactionInterceptor } from '../../common/interceptors';
 import { TransactionManager } from '../../common/decorators/transaction-manager.decorator';
 import { OAuthStateGuard } from './guards/oauth-state.guard';
-import { UserDto, CreateUserDto, LoginUserDto } from './dtos';
+import {
+  UserDto,
+  CreateUserDto,
+  UserLoginDto,
+  LoginResponseDto,
+} from '../user/dtos';
 import {
   SwaagerApiTags,
   SwaagerApiBody,
@@ -37,7 +42,7 @@ export class AuthController {
     private config: ConfigService,
   ) {}
 
-  @Get('/login-google')
+  @Get('login-google')
   @SwaagerApiOperation({ summary: '구글 로그인' })
   @SwaagerApiOkResponse({
     status: 200,
@@ -54,7 +59,7 @@ export class AuthController {
     return res.redirect(url);
   }
 
-  @Get('/login-google/callback')
+  @Get('login-google/callback')
   @SwaagerApiOperation({ summary: '구글 OAuth 정보 가져오기' })
   @SwaagerApiQuery({
     name: 'code',
@@ -64,36 +69,28 @@ export class AuthController {
   @SwaagerApiOkResponse({
     status: 200,
     description: '구글 로그인 성공',
-    dto: UserDto,
+    dto: LoginResponseDto,
   })
   @SwaagerApiErrorResponse({
     status: 500,
     description: '로그인중 서버에서 에러가 발생',
   })
   @UseInterceptors(TransactionInterceptor)
+  @Serialize(LoginResponseDto)
   async getLoginGoogleCallback(
+    // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
+    // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
+    @Res({ passthrough: true }) res: Response,
     @Query('code') code: string,
-    @Session() session: Record<string, any>,
     @TransactionManager() transactionManager: EntityManager,
   ) {
-    return await this.authService
-      .loginGoogle(transactionManager, code)
-      .then(({ user, tokenData }) => {
-        session.user = {
-          id: user.id,
-          // user_id: user.user_id,
-          name: user.name,
-          nickname: user.nickname,
-          email: user.email,
-          profileImage: user.profileImage,
-        };
-        session.oauth = {
-          id_token: tokenData.id_token,
-          access_token: tokenData.access_token,
-        };
+    const data = await this.authService.loginGoogle(
+      res,
+      transactionManager,
+      code,
+    );
 
-        return user;
-      });
+    return data;
   }
 
   @Get('/login-naver')
@@ -193,7 +190,7 @@ export class AuthController {
   @HttpCode(200)
   @SwaagerApiOperation({ summary: '로그인' })
   @SwaagerApiBody({
-    dto: LoginUserDto,
+    dto: UserLoginDto,
     description: '사이트 로그인시 필요한 BODY값',
   })
   @SwaagerApiOkResponse({
@@ -206,7 +203,7 @@ export class AuthController {
     description: '로그인중 서버에서 에러가 발생',
   })
   async postLogin(
-    @Body() body: LoginUserDto,
+    @Body() body: UserLoginDto,
     @Session() session: Record<string, any>,
   ) {
     return await this.authService

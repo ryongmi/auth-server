@@ -2,13 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { scrypt as _scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
-import { User } from '../user/entities';
+import { User, OAuthAccount } from '../user/entities';
 import { EntityManager } from 'typeorm';
 import { GoogleOAuthService } from './google-oauth.service';
 import { NaverOAuthService } from './naver-oauth.service';
 import { UserException } from 'src/exception';
 import { RedisService } from 'src/database/redis/redis.service';
 import { JwtTokenService } from './jwt/jwt-token.service';
+import { UserType } from '../../common/enum';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 const scrypt = promisify(_scrypt);
 
@@ -20,6 +23,7 @@ export class AuthService {
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly jwtService: JwtTokenService,
+    private config: ConfigService,
   ) {}
 
   // state 값 생성
@@ -79,39 +83,58 @@ export class AuthService {
     return { user, tokenData };
   }
 
-  async loginGoogle(transactionManager: EntityManager, code: string) {
+  async loginGoogle(
+    res: Response,
+    transactionManager: EntityManager,
+    code: string,
+  ) {
     const { tokenData, googleUserInfo } =
       await this.googleOAuthService.getGoogleUserInfo(code);
 
     let user = await this.userService.findByEmail(googleUserInfo.email);
+    let oauthAccount = new OAuthAccount();
+    oauthAccount.providerId = googleUserInfo.id;
+    oauthAccount.provider = UserType.GOOGLE;
 
-    // if (user) {
-    //   // 이메일이 이미 존재하는 경우 계정 병합
-    //   //user.oauthAccount?.id
-    //   if (!user.oauthId) {
-    //     // 처음 병합할 경우 필요한 정보 업데이트
-    //     user.oauthId = googleUserInfo.id;
-    //     user.name ||= googleUserInfo.name;
-    //     user.nickname ||= googleUserInfo.name;
-    //     user.profileImage ||= googleUserInfo.picture;
-    //   }
+    if (user) {
+      // 이메일이 이미 존재하는 경우 계정 병합
+      if (!user.oauthAccount?.providerId) {
+        // 처음 병합할 경우 필요한 정보 업데이트
+        user.name ||= googleUserInfo.name;
+        user.nickname ||= googleUserInfo.name;
+        user.profileImage ||= googleUserInfo.picture;
+        user.oauthAccount = { ...oauthAccount, provider: UserType.INTEGRATE };
+      }
 
-    //   // 마지막 접속일 업데이트
-    //   // user.lastLogin = new Date();
+      // 마지막 접속일 업데이트
+      // user.lastLogin = new Date();
 
-    //   user = await this.userService.updateUser(user);
-    // } else {
-    //   // 이메일이 존재하지 않는 경우 새 사용자 생성
-    //   user = await this.userService.createUser(transactionManager, {
-    //     oauthId: googleUserInfo.id,
-    //     name: googleUserInfo.name,
-    //     nickname: googleUserInfo.name,
-    //     email: googleUserInfo.email,
-    //     profileImage: googleUserInfo.picture,
-    //   });
-    // }
+      user = await this.userService.updateUser(user);
+    } else {
+      // 이메일이 존재하지 않는 경우 새 사용자 생성
+      user = await this.userService.createUser(transactionManager, {
+        // oauthId: googleUserInfo.id,
+        email: googleUserInfo.email,
+        name: googleUserInfo.name,
+        nickname: googleUserInfo.name,
+        profileImage: googleUserInfo.picture,
+        oauthAccount,
+      });
+    }
 
-    return { user, tokenData };
+    // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
+    const payload = {
+      id: user.id,
+      tokenData,
+    };
+
+    const accessToken = await this.jwtService.signAccessToken(payload);
+    const refreshToken = await this.jwtService.signRefreshToken(payload);
+
+    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+    return { user, accessToken };
+    // return { user, tokenData, accessToken };
   }
 
   async login(userId: string, password: string) {
@@ -150,6 +173,8 @@ export class AuthService {
     const hash = (await scrypt(attrs.password, salt, 32)) as Buffer;
 
     const result = salt + ';' + hash.toString('hex');
+
+    // attrs.password = result;
 
     return await this.userService.createUser(transactionManager, attrs, result);
   }
