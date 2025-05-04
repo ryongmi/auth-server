@@ -14,8 +14,8 @@ export class JwtTokenService {
   async signAccessToken(payload: any): Promise<string> {
     try {
       const token = await this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRES_IN'), // AccessToken은 짧게
+        secret: this.configService.get<string>('jwt.accessSecret'),
+        expiresIn: this.configService.get<string>('jwt.accessExpiresIn'), // AccessToken은 짧게
       });
 
       return token;
@@ -29,8 +29,8 @@ export class JwtTokenService {
   async signRefreshToken(payload: any): Promise<string> {
     try {
       const token = await this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'), // RefreshToken은 길게
+        secret: this.configService.get<string>('jwt.refreshSecret'),
+        expiresIn: this.configService.get<string>('jwt.refreshExpiresIn'), // RefreshToken은 길게
       });
 
       return token;
@@ -45,7 +45,7 @@ export class JwtTokenService {
   async decodeAccessToken(token: string): Promise<any> {
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+        secret: this.configService.get<string>('jwt.accessSecret'),
       });
 
       return payload;
@@ -58,7 +58,7 @@ export class JwtTokenService {
   async decodeRefreshToken(token: string): Promise<any> {
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: this.configService.get<string>('jwt.refreshSecret'),
       });
 
       return payload;
@@ -69,20 +69,22 @@ export class JwtTokenService {
 
   setRefreshTokenToCookie(res: Response, refreshToken: string) {
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
+      // httpOnly: true,
+      httpOnly: this.configService.get<string>('mode') === 'production',
       secure: this.configService.get<string>('mode') === 'production',
       sameSite: 'strict',
-      path: '/',
+      path: this.configService.get<string>('jwt.sessionCookiePath'),
       maxAge: 7 * 24 * 60 * 60 * 1000, // 예: 7일
     });
   }
 
   clearRefreshTokenCookie(res: Response) {
     res.clearCookie('refreshToken', {
-      httpOnly: true,
+      // httpOnly: true,
+      httpOnly: this.configService.get<string>('mode') === 'production',
       secure: this.configService.get<string>('mode') === 'production',
       sameSite: 'strict',
-      path: '/',
+      path: this.configService.get<string>('jwt.sessionCookiePath'),
     });
   }
 }
