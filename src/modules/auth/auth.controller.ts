@@ -99,14 +99,8 @@ export class AuthController {
     status: 200,
     description: '네이버 로그인 OAuth로 redirect 성공',
   })
-  getLoginNaver(@Res() res: Response, @Session() session: Record<string, any>) {
-    // const state = randomBytes(16).toString('hex');
-    // session.stateCheck = {
-    //   state,
-    //   createAt: new Date(),
-    // };
-
-    const state = this.authService.generateState();
+  async getLoginNaver(@Res() res: Response) {
+    const state = await this.authService.generateState();
 
     const url =
       'https://nid.naver.com/oauth2.0/authorize' +
@@ -141,30 +135,23 @@ export class AuthController {
   })
   @UseGuards(OAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
+  @Serialize(LoginResponseDto)
   async getLoginNaverCallback(
+    // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
+    // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
+    @Res({ passthrough: true }) res: Response,
     @Query('code') code: string,
     @Query('state') state: string,
-    @Session() session: Record<string, any>,
     @TransactionManager() transactionManager: EntityManager,
   ) {
-    return await this.authService
-      .loginNaver(transactionManager, code, state)
-      .then(({ user, tokenData }) => {
-        session.user = {
-          id: user.id,
-          // user_id: user.user_id,
-          name: user.name,
-          nickname: user.nickname,
-          email: user.email,
-          profileImage: user.profileImage,
-        };
-        session.oauth = {
-          refresh_token: tokenData.refresh_token,
-          access_token: tokenData.access_token,
-        };
+    const data = await this.authService.loginNaver(
+      res,
+      transactionManager,
+      code,
+      state,
+    );
 
-        return user;
-      });
+    return data;
   }
 
   @Post('/logout')
@@ -175,13 +162,8 @@ export class AuthController {
     status: 500,
     description: '로그아웃중 서버에서 에러가 발생',
   })
-  postLogout(@Session() session: Record<string, any>) {
-    if (session.hasOwnProperty('user')) {
-      delete session['user'];
-    }
-    if (session.hasOwnProperty('oauth')) {
-      delete session['oauth'];
-    }
+  postLogout(@Res({ passthrough: true }) res: Response) {
+    this.authService.logout(res);
 
     return null;
   }

@@ -30,14 +30,24 @@ export class AuthService {
   async generateState(): Promise<string> {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    await this.redisService.setExValue(state, 'pending'); // Redis에 상태값 저장 (5분 동안 유지)
+    const naverStateStore = this.config.get<string>('jwt.accessSecret');
+
+    await this.redisService.setExValue(
+      `${naverStateStore}${state}`,
+      300,
+      'pending',
+    ); // Redis에 상태값 저장 (5분 동안 유지)
 
     return state; // 생성된 state 반환
   }
 
   // state 값 검증
   async validateState(state: string): Promise<boolean> {
-    const value = await this.redisService.getValue(state);
+    const naverStateStore = this.config.get<string>('jwt.accessSecret');
+
+    const value = await this.redisService.getValue(
+      `${naverStateStore}${state}`,
+    );
     return value === 'pending'; // 'pending' 상태이면 유효한 state
   }
 
@@ -47,6 +57,7 @@ export class AuthService {
   }
 
   async loginNaver(
+    res: Response,
     transactionManager: EntityManager,
     code: string,
     state: string,
@@ -55,32 +66,48 @@ export class AuthService {
       await this.naverOAuthService.getNaverUserInfo(code, state);
 
     let user = await this.userService.findByEmail(naverUserInfo.email);
-    // if (user) {
-    //   // 이메일이 이미 존재하는 경우 계정 병합
-    //   if (!user.oauthId) {
-    //     // 처음 병합할 경우 필요한 정보 업데이트
-    //     user.oauthId = naverUserInfo.id;
-    //     user.name ||= naverUserInfo.name;
-    //     user.nickname ||= naverUserInfo.nickname;
-    //     user.profileImage ||= naverUserInfo.profile_image;
-    //   }
+    let oauthAccount = new OAuthAccount();
+    oauthAccount.providerId = naverUserInfo.id;
+    oauthAccount.provider = UserType.NAVER;
 
-    //   // 마지막 접속일 업데이트
-    //   // user.lastLogin = new Date();
+    if (user) {
+      // 이메일이 이미 존재하는 경우 계정 병합
+      if (!user.oauthAccount?.providerId) {
+        // 처음 병합할 경우 필요한 정보 업데이트
+        user.name ||= naverUserInfo.name;
+        user.nickname ||= naverUserInfo.nickname;
+        user.profileImage ||= naverUserInfo.profile_image;
+        user.oauthAccount = { ...oauthAccount, provider: UserType.INTEGRATE };
+      }
 
-    //   user = await this.userService.updateUser(user);
-    // } else {
-    //   // 이메일이 존재하지 않는 경우 새 사용자 생성
-    //   user = await this.userService.createUser(transactionManager, {
-    //     oauthId: naverUserInfo.id,
-    //     name: naverUserInfo.name,
-    //     nickname: naverUserInfo.nickname,
-    //     email: naverUserInfo.email,
-    //     profileImage: naverUserInfo.profile_image,
-    //   });
-    // }
+      // 마지막 접속일 업데이트
+      // user.lastLogin = new Date();
 
-    return { user, tokenData };
+      user = await this.userService.updateUser(user);
+    } else {
+      // 이메일이 존재하지 않는 경우 새 사용자 생성
+      user = await this.userService.createUser(transactionManager, {
+        // oauthId: googleUserInfo.id,
+        email: naverUserInfo.email,
+        name: naverUserInfo.name,
+        nickname: naverUserInfo.nickname,
+        profileImage: naverUserInfo.profile_image,
+        oauthAccount,
+      });
+    }
+
+    // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
+    const payload = {
+      id: user.id,
+      tokenData,
+    };
+
+    const accessToken = await this.jwtService.signAccessToken(payload);
+    const refreshToken = await this.jwtService.signRefreshToken(payload);
+
+    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+    return { user, accessToken };
   }
 
   async loginGoogle(
@@ -135,6 +162,10 @@ export class AuthService {
 
     return { user, accessToken };
     // return { user, tokenData, accessToken };
+  }
+
+  async logout(res: Response) {
+    this.jwtService.clearRefreshTokenCookie(res);
   }
 
   async login(userId: string, password: string) {
