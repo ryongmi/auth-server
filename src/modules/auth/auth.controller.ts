@@ -5,13 +5,14 @@ import {
   HttpCode,
   Post,
   Query,
+  Req,
   Res,
   Session,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 import { AuthService } from '../auth/auth.service';
@@ -162,8 +163,11 @@ export class AuthController {
     status: 500,
     description: '로그아웃중 서버에서 에러가 발생',
   })
-  postLogout(@Res({ passthrough: true }) res: Response) {
-    this.authService.logout(res);
+  async postLogout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(req, res);
 
     return null;
   }

@@ -10,7 +10,7 @@ import { UserException } from 'src/exception';
 import { RedisService } from 'src/database/redis/redis.service';
 import { JwtTokenService } from './jwt/jwt-token.service';
 import { UserType } from '../../common/enum';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 
 const scrypt = promisify(_scrypt);
@@ -30,7 +30,7 @@ export class AuthService {
   async generateState(): Promise<string> {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    const naverStateStore = this.config.get<string>('jwt.accessSecret');
+    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
 
     await this.redisService.setExValue(
       `${naverStateStore}${state}`,
@@ -43,7 +43,7 @@ export class AuthService {
 
   // state 값 검증
   async validateState(state: string): Promise<boolean> {
-    const naverStateStore = this.config.get<string>('jwt.accessSecret');
+    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
 
     const value = await this.redisService.getValue(
       `${naverStateStore}${state}`,
@@ -53,7 +53,9 @@ export class AuthService {
 
   // 인증 후 state 삭제
   async deleteState(state: string): Promise<void> {
-    await this.redisService.deleteValue(state); // 인증 완료 후 state 삭제
+    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
+
+    await this.redisService.deleteValue(`${naverStateStore}${state}`); // 인증 완료 후 state 삭제
   }
 
   async loginNaver(
@@ -164,7 +166,18 @@ export class AuthService {
     // return { user, tokenData, accessToken };
   }
 
-  async logout(res: Response) {
+  async logout(req: Request, res: Response) {
+    const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
+
+    const blackListStore = this.config.get<string>('jwt.blackListStore');
+    const refreshMaxAge = this.config.get<number>('jwt.refreshMaxAge');
+
+    await this.redisService.setExValue(
+      `${blackListStore}${refreshToken}`,
+      refreshMaxAge,
+      '1',
+    ); // Redis에 블랙리스트 지정
+
     this.jwtService.clearRefreshTokenCookie(res);
   }
 
