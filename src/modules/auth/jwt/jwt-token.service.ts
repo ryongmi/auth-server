@@ -2,7 +2,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { JwtException } from '../../../exception';
 
 @Injectable()
 export class JwtTokenService {
@@ -67,19 +68,38 @@ export class JwtTokenService {
     }
   }
 
+  getRefreshTokenToCookie(req: Request): string {
+    const refreshTokenStore =
+      this.configService.get<string>('jwt.refreshStore');
+    const refreshToken = req.cookies[refreshTokenStore];
+
+    if (!refreshToken) {
+      throw JwtException.refreshTokenNotFound();
+    }
+
+    return refreshToken;
+  }
+
   setRefreshTokenToCookie(res: Response, refreshToken: string) {
-    res.cookie('refreshToken', refreshToken, {
+    const refreshTokenStore =
+      this.configService.get<string>('jwt.refreshStore');
+    const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge');
+
+    res.cookie(refreshTokenStore, refreshToken, {
       // httpOnly: true,
       httpOnly: this.configService.get<string>('mode') === 'production',
       secure: this.configService.get<string>('mode') === 'production',
       sameSite: 'strict',
       path: this.configService.get<string>('jwt.sessionCookiePath'),
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 예: 7일
+      maxAge: refreshMaxAge, // 예: 7일
     });
   }
 
   clearRefreshTokenCookie(res: Response) {
-    res.clearCookie('refreshToken', {
+    const refreshTokenStore =
+      this.configService.get<string>('jwt.refreshStore');
+
+    res.clearCookie(refreshTokenStore, {
       // httpOnly: true,
       httpOnly: this.configService.get<string>('mode') === 'production',
       secure: this.configService.get<string>('mode') === 'production',
