@@ -1,10 +1,10 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { AuthException } from 'src/exception';
-import { RedisService } from 'src/database/redis/redis.service';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class OAuthStateGuard implements CanActivate {
-  constructor(private readonly redisService: RedisService) {} // RedisService 주입
+  constructor(private readonly authService: AuthService) {} // RedisService 주입
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -16,14 +16,14 @@ export class OAuthStateGuard implements CanActivate {
     }
 
     // state 값이 유효한지 Redis에서 확인
-    const isValidState = await this.redisService.getValue(state);
+    const isValidState = await this.authService.validateState(state);
 
     if (!isValidState) {
       throw AuthException.authStateExpired();
     }
 
     // 유효성 검사 끝난 state 레디스에서 삭제
-    await this.redisService.deleteValue(state);
+    await this.authService.deleteState(state);
 
     return true;
   }
