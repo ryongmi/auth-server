@@ -8,5 +8,8 @@ export const jwtConfig = registerAs('jwt', () => ({
   refreshSecret: process.env.JWT_REFRESH_SECRET,
   refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   sessionCookiePath: process.env.JWT_SESSION_COOKIE_PATH,
+  refreshMaxAge: process.env.JWT_REFRESH_MAX_AGE,
+  refreshStore: process.env.JWT_REFRESH_STORE_NAME,
+  blackListStore: process.env.JWT_BLACKLIST_STORE_NAME,
   naverStateStore: process.env.JWT_NAVER_STATE_STORE_NAME,
 }));
