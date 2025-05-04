@@ -4,6 +4,7 @@ import { default as defaultConfig } from './default';
 import { mysqlConfig, redisConfig } from './database';
 import { naverConfig } from './naver';
 import { googleConfig } from './google';
+import { jwtConfig } from './jwt';
 import { validationSchema } from './validation.schema';
 
 @Module({
@@ -17,6 +18,7 @@ import { validationSchema } from './validation.schema';
         redisConfig,
         googleConfig,
         naverConfig,
+        jwtConfig,
       ],
       validationSchema,
     }),

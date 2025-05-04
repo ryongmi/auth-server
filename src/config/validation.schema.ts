@@ -38,10 +38,22 @@ const naverConfigSchema = {
   NAVER_USERINFO_URL: Joi.string().required(),
 };
 
+const jwtConfigSchema = {
+  JWT_SECRET: Joi.string().required(),
+  JWT_EXPIRES_IN: Joi.string().required(),
+  JWT_ACCESS_SECRET: Joi.string().required(),
+  JWT_ACCESS_EXPIRES_IN: Joi.string().required(),
+  JWT_REFRESH_SECRET: Joi.string().required(),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
+  JWT_SESSION_COOKIE_PATH: Joi.string().required(),
+  JWT_NAVER_STATE_STORE_NAME: Joi.string().required(),
+};
+
 export const validationSchema = Joi.object({
   ...defaultConfigSchema,
   ...mysqlConfigSchema,
   ...redisConfigSchema,
   ...googleConfigSchema,
   ...naverConfigSchema,
+  ...jwtConfigSchema,
 });
