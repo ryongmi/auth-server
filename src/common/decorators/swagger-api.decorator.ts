@@ -8,15 +8,15 @@ import {
   ApiResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { ResponseFormatDto } from '../dtos/response-format.dto';
-import { ErrorFormatDto } from '../dtos/error-format.dto';
 import {
+  ResponseFormatDto,
+  ErrorFormatDto,
   SwaagerApiBodyDto,
   SwaagerApiOperationDto,
   SwaagerApiQueryDto,
   SwaagerApiResponseDto,
   SwaagerApiTagsDto,
-} from '../dtos/swagger.dto';
+} from '../dtos';
 
 /**
  *

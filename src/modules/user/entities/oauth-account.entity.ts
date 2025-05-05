@@ -1,5 +1,5 @@
 import { User } from './user.entity';
-import { BaseEntityUUID } from '../../../common/entities/base.entity';
+import { BaseEntityUUID } from '../../../common/entities';
 import { UserType, USER_TYPE_VALUES } from '../../../common/enum';
 import { Entity, Column, OneToOne } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';

@@ -1,5 +1,5 @@
 import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
-import { BaseEntityUUID } from '../../../common/entities/base.entity';
+import { BaseEntityUUID } from '../../../common/entities';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
