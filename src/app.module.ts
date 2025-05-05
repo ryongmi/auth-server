@@ -4,6 +4,7 @@ import { RedisModule, DatabaseModule } from './database';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SeederModule } from './seeder/seeder.module';
+import { SerializerInterceptor } from './common/interceptors';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SeederModule } from './seeder/seeder.module';
     //   },
     // ]),
   ],
+  providers: [SerializerInterceptor], // Reflector는 자동 주입됨
 })
 export class AppModule {
   // 모든 컨트롤러에 들어오는 요청을 미들웨어에 통과시킴
