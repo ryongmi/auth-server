@@ -12,6 +12,13 @@ export class JwtTokenService {
     private readonly configService: ConfigService,
   ) {}
 
+  async signAccessTokenAndRefreshToken(payload: any) {
+    const accessToken = await this.signAccessToken(payload);
+    const refreshToken = await this.signRefreshToken(payload);
+
+    return { accessToken, refreshToken };
+  }
+
   async signAccessToken(payload: any): Promise<string> {
     try {
       const token = await this.jwtService.signAsync(payload, {
