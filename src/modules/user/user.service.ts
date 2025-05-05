@@ -1,64 +1,63 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager } from 'typeorm';
+import { UserRepository } from './user.repositoty';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectRepository(User) private repo: Repository<User>) {}
-  // constructor(private userRepo: UserRepository) {}
+  constructor(private readonly userRepo: UserRepository) {}
 
-  async findById(id: string): Promise<User> {
-    if (!id) return null;
-
-    return await this.repo.findOneBy({ id });
+  async findAll(): Promise<User[]> {
+    return this.userRepo.findAll();
   }
 
-  async findByEmail(email: string): Promise<User> {
-    return await this.repo.findOneBy({ email });
+  async findById(id: number): Promise<User> {
+    return this.userRepo.findOneByIdOrFail(id);
   }
 
-  async findByUserId(id: string): Promise<User> {
-    return await this.repo.findOneBy({ id });
+  async findByEmail(email: string): Promise<User | undefined> {
+    return this.userRepo.findOne({ where: { email } });
   }
 
-  async findByUserIdOREmail(id: string, email: string): Promise<User[]> {
-    return await this.repo.findBy([{ id }, { email }]);
+  async findByUsername(name: string): Promise<User[] | undefined> {
+    return this.userRepo.find({ where: { name } });
   }
 
-  async lastLoginUpdate(id: string) {
-    // return await this.repo.save(attrs);
-    // await this.repo
-    //   .createQueryBuilder()
-    //   .update(User)
-    //   .set({ lastLogin: new Date() })
-    //   .where('id = :id', { id })
-    //   .execute();
+  async findByUserIdOREmail(
+    id: string,
+    email: string,
+  ): Promise<User[] | undefined> {
+    return this.userRepo.find({ where: [{ id }, { email }] });
   }
 
-  async updateUser(attrs: Partial<User>): Promise<User> {
-    return await this.repo.save(attrs);
-
-    // if (!attrs.id) {
-    //   await transactionManager
-    //     .getRepository(User_Role)
-    //     .save({ user_id: user.id });
-    // }
-  }
+  // async lastLoginUpdate(id: string) {
+  //   // return await this.repo.save(attrs);
+  //   // await this.repo
+  //   //   .createQueryBuilder()
+  //   //   .update(User)
+  //   //   .set({ lastLogin: new Date() })
+  //   //   .where('id = :id', { id })
+  //   //   .execute();
+  // }
 
   async createUser(
     transactionManager: EntityManager,
     attrs: Partial<User>,
-    hashPassword: string | null = null,
   ): Promise<User> {
-    const userInfo =
-      hashPassword !== null
-        ? { ...attrs, password: hashPassword }
-        : { ...attrs };
+    const user = await transactionManager.getRepository(User).create(attrs);
+    return this.userRepo.save(user);
+  }
 
-    const user = await transactionManager.getRepository(User).save(userInfo);
-    // await transactionManager.getRepository(UserRole).save({ userId: user.id });
+  async updateUser(id: string, attrs: Partial<User>): Promise<User> {
+    const user = await this.userRepo.findOneByIdOrFail(id);
+    const updatedUser = this.userRepo.merge(user, attrs);
+    return this.userRepo.save(updatedUser);
+  }
 
-    return user;
+  async updateUserByTransaction(
+    transactionManager: EntityManager,
+    attrs: Partial<User>,
+  ): Promise<User> {
+    return await transactionManager.getRepository(User).save(attrs);
   }
 }
