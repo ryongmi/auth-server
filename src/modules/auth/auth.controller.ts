@@ -7,24 +7,17 @@ import {
   Query,
   Req,
   Res,
-  Session,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes } from 'crypto';
 import { AuthService } from '../auth/auth.service';
-import { Serialize, TransactionInterceptor } from '../../common/interceptors';
-import { TransactionManager } from '../../common/decorators/transaction-manager.decorator';
-import { OAuthStateGuard } from './guards/oauth-state.guard';
-import {
-  UserDto,
-  CreateUserDto,
-  UserLoginDto,
-  LoginResponseDto,
-} from '../user/dtos';
+import { TransactionInterceptor } from '../../common/interceptors';
+import { Serialize, TransactionManager } from '../../common/decorators';
+import { OAuthStateGuard } from './guards';
+import { CreateUserDto, UserLoginDto, LoginResponseDto } from '../user/dtos';
 import {
   SwaagerApiTags,
   SwaagerApiBody,
@@ -32,11 +25,10 @@ import {
   SwaagerApiQuery,
   SwaagerApiOkResponse,
   SwaagerApiErrorResponse,
-} from '../../common/decorators/swagger-api.decorator';
+} from '../../common/decorators';
 
 @SwaagerApiTags({ tags: ['auth'] })
 @Controller()
-@Serialize(UserDto)
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -77,7 +69,10 @@ export class AuthController {
     description: '로그인중 서버에서 에러가 발생',
   })
   @UseInterceptors(TransactionInterceptor)
-  @Serialize(LoginResponseDto)
+  @Serialize({
+    dto: LoginResponseDto,
+    message: '구글 로그인 성공',
+  })
   async getLoginGoogleCallback(
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
@@ -128,7 +123,7 @@ export class AuthController {
   @SwaagerApiOkResponse({
     status: 200,
     description: '네이버 로그인 성공',
-    dto: UserDto,
+    dto: LoginResponseDto,
   })
   @SwaagerApiErrorResponse({
     status: 500,
@@ -136,7 +131,10 @@ export class AuthController {
   })
   @UseGuards(OAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
-  @Serialize(LoginResponseDto)
+  @Serialize({
+    dto: LoginResponseDto,
+    message: '네이버버 로그인 성공',
+  })
   async getLoginNaverCallback(
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
@@ -163,6 +161,9 @@ export class AuthController {
     status: 500,
     description: '로그아웃중 서버에서 에러가 발생',
   })
+  @Serialize({
+    message: '로그아웃 성공',
+  })
   async postLogout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -182,30 +183,23 @@ export class AuthController {
   @SwaagerApiOkResponse({
     status: 200,
     description: '로그인 성공',
-    dto: UserDto,
+    dto: LoginResponseDto,
   })
   @SwaagerApiErrorResponse({
     status: 500,
     description: '로그인중 서버에서 에러가 발생',
   })
+  @Serialize({
+    dto: LoginResponseDto,
+    message: '로그인 성공',
+  })
   async postLogin(
+    @Res({ passthrough: true }) res: Response,
     @Body() body: UserLoginDto,
-    @Session() session: Record<string, any>,
   ) {
-    return await this.authService
-      .login(body.email, body.password)
-      .then((user) => {
-        session.user = {
-          id: user.id,
-          // user_id: user.user_id,
-          name: user.name,
-          nickname: user.nickname,
-          email: user.email,
-          profileImage: user.profileImage,
-        };
+    const data = await this.authService.login(res, body);
 
-        return user;
-      });
+    return data;
   }
 
   @Post('/signup')
@@ -218,17 +212,24 @@ export class AuthController {
   @SwaagerApiOkResponse({
     status: 201,
     description: '회원가입 성공',
-    dto: UserDto,
+    dto: LoginResponseDto,
   })
   @SwaagerApiErrorResponse({
     status: 500,
     description: '회원가입중 서버에서 에러가 발생',
   })
   @UseInterceptors(TransactionInterceptor)
+  @Serialize({
+    dto: LoginResponseDto,
+    message: '회원가입 성공',
+  })
   async postCreateUser(
-    @Body() body: CreateUserDto,
+    @Res({ passthrough: true }) res: Response,
     @TransactionManager() transactionManager: EntityManager,
+    @Body() body: CreateUserDto,
   ) {
-    return await this.authService.signup(transactionManager, body);
+    const data = await this.authService.signup(res, transactionManager, body);
+
+    return data;
   }
 }
