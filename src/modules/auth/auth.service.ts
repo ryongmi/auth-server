@@ -65,7 +65,7 @@ export class AuthService {
     const { tokenData, naverUserInfo } =
       await this.naverOAuthService.getNaverUserInfo(code, state);
 
-    let user = await this.userService.findByEmail(naverUserInfo.email);
+    let user = await this.userService.findUserByEmail(naverUserInfo.email);
     let oauthAccount = new OAuthAccount();
     oauthAccount.providerId = naverUserInfo.id;
     oauthAccount.provider = UserType.NAVER;
@@ -124,7 +124,7 @@ export class AuthService {
     const { tokenData, googleUserInfo } =
       await this.googleOAuthService.getGoogleUserInfo(code);
 
-    let user = await this.userService.findByEmail(googleUserInfo.email);
+    let user = await this.userService.findUserByEmail(googleUserInfo.email);
     let oauthAccount = new OAuthAccount();
     oauthAccount.providerId = googleUserInfo.id;
     oauthAccount.provider = UserType.GOOGLE;
@@ -191,7 +191,7 @@ export class AuthService {
   }
 
   async login(res: Response, { email, password }: UserLoginDto) {
-    const user = await this.userService.findByEmail(email);
+    const user = await this.userService.findUserByEmail(email);
 
     if (!user) {
       throw UserException.userNotFound();
@@ -232,7 +232,7 @@ export class AuthService {
     transactionManager: EntityManager,
     attrs: Partial<User>,
   ) {
-    const users = await this.userService.findByUserIdOREmail(
+    const users = await this.userService.findUserByUserIdOREmail(
       attrs.id,
       attrs.email,
     );

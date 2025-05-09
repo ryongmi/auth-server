@@ -33,17 +33,17 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  findAll(@Query() query: UserQueryDto) {
-    return this.userService.findAll(query);
+  getUsers(@Query() query: UserQueryDto) {
+    return this.userService.findUsers(query);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.userService.findById(id);
+    return this.userService.findUserById(id);
   }
 
   @Get('me')
   getMyInfo(@Req() req: Request) {
-    return this.userService.findById(req.user.id);
+    return this.userService.findUserById(req.user.id);
   }
 }
