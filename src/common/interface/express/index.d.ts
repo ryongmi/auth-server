@@ -1,4 +1,4 @@
-import { UserPayload } from '../user-payload.interface'; // 토큰 payload 타입
+import { UserPayload } from './'; // 토큰 payload 타입
 
 declare module 'express' {
   export interface Request {
