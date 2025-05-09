@@ -19,7 +19,10 @@ export class UserService {
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.userRepo.findOne({ where: { email } });
+    return this.userRepo.findOne({
+      where: { email },
+      relations: ['oauthAccount'],
+    });
   }
 
   async findByUsername(name: string): Promise<User[] | undefined> {
