@@ -6,6 +6,7 @@ import {
 } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { UserQueryDto } from 'src/modules/user/dtos';
 
 export class BaseRepository<T> extends Repository<T> {
   constructor(entity: EntityTarget<T>, dataSource: DataSource) {
@@ -44,6 +45,26 @@ export class BaseRepository<T> extends Repository<T> {
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
+  async findAll(
+    query: UserQueryDto,
+    alias: string,
+  ): Promise<{ items: T[]; total: number; page: number; limit: number }> {
+    const { page, limit, sortOrder, sortBy } = query;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.createQueryBuilder(alias)
+      .orderBy(`${alias}.${sortBy}`, sortOrder)
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+      
   async findAll(): Promise<T[]> {
     return this.find();
   }

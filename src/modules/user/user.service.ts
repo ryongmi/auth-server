@@ -2,13 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { User } from '../user/entities';
 import { EntityManager } from 'typeorm';
 import { UserRepository } from './user.repositoty';
+import { UserQueryDto } from './dtos';
 
 @Injectable()
 export class UserService {
   constructor(private readonly userRepo: UserRepository) {}
 
-  async findAll(): Promise<User[]> {
-    return this.userRepo.findAll();
+  async findAll(
+    query: UserQueryDto,
+  ): Promise<{ items: User[]; total: number; page: number; limit: number }> {
+    return this.userRepo.findAll(query, 'user');
   }
 
   async findById(id: number): Promise<User> {
