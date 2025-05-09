@@ -20,9 +20,11 @@ export class JwtTokenService {
 
   async signAccessToken(payload: any): Promise<string> {
     try {
+      const secret = this.configService.get<string>('jwt.accessSecret');
+      const expiresIn = this.configService.get<string>('jwt.accessExpiresIn');
       const token = await this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.accessSecret'),
-        expiresIn: this.configService.get<string>('jwt.accessExpiresIn'), // AccessToken은 짧게
+        secret,
+        expiresIn, // AccessToken은 짧게
       });
 
       return token;
@@ -35,9 +37,11 @@ export class JwtTokenService {
 
   async signRefreshToken(payload: any): Promise<string> {
     try {
+      const secret = this.configService.get<string>('jwt.refreshSecret');
+      const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn');
       const token = await this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
-        expiresIn: this.configService.get<string>('jwt.refreshExpiresIn'), // RefreshToken은 길게
+        secret,
+        expiresIn, // RefreshToken은 길게
       });
 
       return token;
@@ -51,8 +55,9 @@ export class JwtTokenService {
   // Access Token 복호화
   async decodeAccessToken(token: string): Promise<any> {
     try {
+      const secret = this.configService.get<string>('jwt.accessSecret');
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('jwt.accessSecret'),
+        secret,
       });
 
       return payload;
@@ -64,8 +69,9 @@ export class JwtTokenService {
   // Refresh Token 복호화
   async decodeRefreshToken(token: string): Promise<any> {
     try {
+      const secret = this.configService.get<string>('jwt.refreshSecret');
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
+        secret,
       });
 
       return payload;
@@ -90,13 +96,15 @@ export class JwtTokenService {
     const refreshTokenStore =
       this.configService.get<string>('jwt.refreshStore');
     const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge');
+    const mode = this.configService.get<string>('mode');
+    const cookiePath = this.configService.get<string>('jwt.sessionCookiePath');
 
     res.cookie(refreshTokenStore, refreshToken, {
       // httpOnly: true,
-      httpOnly: this.configService.get<string>('mode') === 'production',
-      secure: this.configService.get<string>('mode') === 'production',
+      httpOnly: mode === 'production',
+      secure: mode === 'production',
       sameSite: 'strict',
-      path: this.configService.get<string>('jwt.sessionCookiePath'),
+      path: cookiePath,
       maxAge: refreshMaxAge, // 예: 7일
     });
   }
@@ -104,13 +112,15 @@ export class JwtTokenService {
   clearRefreshTokenCookie(res: Response) {
     const refreshTokenStore =
       this.configService.get<string>('jwt.refreshStore');
+    const mode = this.configService.get<string>('mode');
+    const cookiePath = this.configService.get<string>('jwt.sessionCookiePath');
 
     res.clearCookie(refreshTokenStore, {
       // httpOnly: true,
-      httpOnly: this.configService.get<string>('mode') === 'production',
-      secure: this.configService.get<string>('mode') === 'production',
+      httpOnly: mode === 'production',
+      secure: mode === 'production',
       sameSite: 'strict',
-      path: this.configService.get<string>('jwt.sessionCookiePath'),
+      path: cookiePath,
     });
   }
 }
