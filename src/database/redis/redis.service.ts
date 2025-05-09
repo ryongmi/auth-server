@@ -11,7 +11,7 @@ export class RedisService {
   async setExValue(
     state: string,
     expire: number,
-    value: string,
+    value: string | number | Buffer,
   ): Promise<void> {
     // value를 Redis에 저장하고, 5분(300초) 후에 만료되도록 설정
     await this.redisClient.setex(state, expire, value); // setex: key, expire(초), value

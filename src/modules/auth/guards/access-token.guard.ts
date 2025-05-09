@@ -31,10 +31,11 @@ export class AccessTokenGuard implements CanActivate {
 
     try {
       // 2. Access Token 검증
-      const payload = await this.jwtService.decodeAccessToken(accessToken);
+      const { id, tokenData } =
+        await this.jwtService.decodeAccessToken(accessToken);
 
       // 3. 검증 성공 시 요청 객체에 사용자 정보 저장
-      request.user = payload; // 이후 컨트롤러에서 @Req()로 user 접근 가능
+      request.user = { id, tokenData }; // 이후 컨트롤러에서 @Req()로 user 접근 가능
 
       return true;
     } catch (error) {
