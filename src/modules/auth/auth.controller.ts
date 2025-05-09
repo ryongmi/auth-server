@@ -77,6 +77,7 @@ export class AuthController {
     message: '구글 로그인 성공',
   })
   async getLoginGoogleCallback(
+    @Req() req: Request,
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
     @Res({ passthrough: true }) res: Response,
@@ -88,6 +89,9 @@ export class AuthController {
       transactionManager,
       code,
     );
+
+    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
+    req.user = data.user;
 
     return data;
   }
@@ -141,6 +145,7 @@ export class AuthController {
     message: '네이버버 로그인 성공',
   })
   async getLoginNaverCallback(
+    @Req() req: Request,
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
     @Res({ passthrough: true }) res: Response,
@@ -154,6 +159,9 @@ export class AuthController {
       code,
       state,
     );
+
+    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
+    req.user = data.user;
 
     return data;
   }
@@ -199,10 +207,14 @@ export class AuthController {
     message: '로그인 성공',
   })
   async postLogin(
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() body: UserLoginDto,
   ) {
     const data = await this.authService.login(res, body);
+
+    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
+    req.user = data.user;
 
     return data;
   }
@@ -229,11 +241,15 @@ export class AuthController {
     message: '회원가입 성공',
   })
   async postCreateUser(
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @TransactionManager() transactionManager: EntityManager,
     @Body() body: CreateUserDto,
   ) {
     const data = await this.authService.signup(res, transactionManager, body);
+
+    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
+    req.user = data.user;
 
     return data;
   }
@@ -246,6 +262,7 @@ export class AuthController {
   })
   async postRefresh(@Req() req: Request) {
     const accessToken = await this.authService.getNewAccessToken(req.user);
+
     return { accessToken };
   }
 }

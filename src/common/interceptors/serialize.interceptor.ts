@@ -93,7 +93,9 @@ export class SerializerInterceptor implements NestInterceptor {
         return {
           statusCode: statusCode || HttpStatus.OK,
           message: options.message || '요청이 성공적으로 처리되었습니다.',
-          isLogin: Boolean(req.cookies['refreshToken']),
+          isLogin: Boolean(req?.user),
+          // Boolean(req.cookies['refreshToken']) ||
+          // 'accessToken' in transformed,
           data: transformed,
         };
       }),
