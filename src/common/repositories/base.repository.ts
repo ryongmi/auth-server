@@ -64,10 +64,11 @@ export class BaseRepository<T> extends Repository<T> {
       page,
       limit,
     };
-      
-  async findAll(): Promise<T[]> {
-    return this.find();
   }
+
+  // async findAll(): Promise<T[]> {
+  //   return this.find();
+  // }
 
   // 쿼리 빌더로 복잡한 쿼리 작성
   protected getQueryBuilder(alias: string): SelectQueryBuilder<T> {

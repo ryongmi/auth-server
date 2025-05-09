@@ -48,7 +48,7 @@ export class SeederService {
         await queryRunner.startTransaction();
 
         try {
-          await this.authService.signup(queryRunner.manager, user);
+          // await this.authService.signup(queryRunner.manager, user);
           await queryRunner.commitTransaction();
         } catch (error) {
           await queryRunner.rollbackTransaction();

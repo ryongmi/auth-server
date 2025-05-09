@@ -39,11 +39,11 @@ export class UserController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+    return this.userService.findById(id);
   }
 
   @Get('me')
   getMyInfo(@Req() req: Request) {
-    return this.userService.findOne(req.user.id);
+    return this.userService.findById(req.user.id);
   }
 }

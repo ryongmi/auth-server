@@ -14,7 +14,7 @@ export class UserService {
     return this.userRepo.findAll(query, 'user');
   }
 
-  async findById(id: number): Promise<User> {
+  async findById(id: string): Promise<User> {
     return this.userRepo.findOneByIdOrFail(id);
   }
 
