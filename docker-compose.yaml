@@ -61,6 +61,8 @@ services:
       - 9229:9229 # Node.js 디버깅 포트
     env_file:
       - .env.${NODE_ENV}
+    environment:
+      - TZ=Asia/Seoul
     depends_on:
       - redis
       - mysql
