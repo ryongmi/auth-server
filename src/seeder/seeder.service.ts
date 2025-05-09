@@ -37,7 +37,7 @@ export class SeederService {
       // const existingUser = await this.userRepository.findOne({
       //   where: { email: user.email },
       // });
-      const existingUser = await this.userService.findByUserIdOREmail(
+      const existingUser = await this.userService.findUserByUserIdOREmail(
         user.userId,
         user.email,
       );
