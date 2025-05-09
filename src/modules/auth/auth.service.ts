@@ -12,23 +12,26 @@ import { UserService } from '../user/user.service';
 import { GoogleOAuthService } from './google-oauth.service';
 import { NaverOAuthService } from './naver-oauth.service';
 import { JwtTokenService } from './jwt/jwt-token.service';
+import { UserPayload } from 'src/common/interface';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly jwtService: JwtTokenService,
-    private config: ConfigService,
   ) {}
 
   // state 값 생성
   async generateState(): Promise<string> {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
+    const naverStateStore = this.configService.get<string>(
+      'jwt.naverStateStore',
+    );
 
     await this.redisService.setExValue(
       `${naverStateStore}${state}`,
@@ -41,7 +44,9 @@ export class AuthService {
 
   // state 값 검증
   async validateState(state: string): Promise<boolean> {
-    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
+    const naverStateStore = this.configService.get<string>(
+      'jwt.naverStateStore',
+    );
 
     const value = await this.redisService.getValue(
       `${naverStateStore}${state}`,
@@ -51,7 +56,9 @@ export class AuthService {
 
   // 인증 후 state 삭제
   async deleteState(state: string): Promise<void> {
-    const naverStateStore = this.config.get<string>('jwt.naverStateStore');
+    const naverStateStore = this.configService.get<string>(
+      'jwt.naverStateStore',
+    );
 
     await this.redisService.deleteValue(`${naverStateStore}${state}`); // 인증 완료 후 state 삭제
   }
@@ -178,13 +185,13 @@ export class AuthService {
   async logout(req: Request, res: Response) {
     const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
 
-    const blackListStore = this.config.get<string>('jwt.blackListStore');
-    const refreshMaxAge = this.config.get<number>('jwt.refreshMaxAge');
+    const blackListStore = this.configService.get<string>('jwt.blackListStore');
+    const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge');
 
     await this.redisService.setExValue(
       `${blackListStore}${refreshToken}`,
       refreshMaxAge,
-      '1',
+      1,
     ); // Redis에 블랙리스트 지정
 
     this.jwtService.clearRefreshTokenCookie(res);
@@ -261,5 +268,9 @@ export class AuthService {
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
     return { user, accessToken };
+  }
+
+  async getNewAccessToken(payload: UserPayload): Promise<string> {
+    return this.jwtService.signAccessToken(payload);
   }
 }

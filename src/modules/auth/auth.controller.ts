@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
 import { TransactionInterceptor } from '../../common/interceptors';
 import { Serialize, TransactionManager } from '../../common/decorators';
-import { OAuthStateGuard } from './guards';
+import { OAuthStateGuard, RefreshTokenGuard } from './guards';
 import { CreateUserDto, UserLoginDto, LoginResponseDto } from '../user/dtos';
 import {
   SwaagerApiTags,
@@ -31,8 +31,8 @@ import {
 @Controller()
 export class AuthController {
   constructor(
+    private configService: ConfigService,
     private authService: AuthService,
-    private config: ConfigService,
   ) {}
 
   @Get('login-google')
@@ -42,10 +42,13 @@ export class AuthController {
     description: '구글 로그인 OAuth로 redirect 성공',
   })
   getLoginGoogle(@Res() res: Response) {
+    const clientId = this.configService.get<string>('google.clientId');
+    const redirectUrl = this.configService.get<string>('google.redirectUrl');
+
     const url =
       'https://accounts.google.com/o/oauth2/v2/auth' +
-      `?client_id=${this.config.get<string>('google.clientId')}` +
-      `&redirect_uri=${this.config.get<string>('google.redirectUrl')}` +
+      `?client_id=${clientId}` +
+      `&redirect_uri=${redirectUrl}` +
       '&response_type=code' +
       '&scope=email profile';
 
@@ -97,11 +100,13 @@ export class AuthController {
   })
   async getLoginNaver(@Res() res: Response) {
     const state = await this.authService.generateState();
+    const clientId = this.configService.get<string>('naver.clientId');
+    const redirectUrl = this.configService.get<string>('naver.redirectUrl');
 
     const url =
       'https://nid.naver.com/oauth2.0/authorize' +
-      `?client_id=${this.config.get<string>('naver.clientId')}` +
-      `&redirect_uri=${this.config.get<string>('naver.redirectUrl')}` +
+      `?client_id=${clientId}` +
+      `&redirect_uri=${redirectUrl}` +
       '&response_type=code' +
       `&state=${state}`;
 
@@ -231,5 +236,16 @@ export class AuthController {
     const data = await this.authService.signup(res, transactionManager, body);
 
     return data;
+  }
+
+  @Post('refresh')
+  @UseGuards(RefreshTokenGuard)
+  @Serialize({
+    dto: LoginResponseDto,
+    message: '토큰 재발급 성공',
+  })
+  async postRefresh(@Req() req: Request) {
+    const accessToken = await this.authService.getNewAccessToken(req.user);
+    return { accessToken };
   }
 }

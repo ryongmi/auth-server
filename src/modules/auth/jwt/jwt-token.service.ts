@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 import { JwtException } from '../../../exception';
+import { UserPayload } from 'src/common/interface';
 
 @Injectable()
 export class JwtTokenService {
@@ -22,6 +23,7 @@ export class JwtTokenService {
     try {
       const secret = this.configService.get<string>('jwt.accessSecret');
       const expiresIn = this.configService.get<string>('jwt.accessExpiresIn');
+
       const token = await this.jwtService.signAsync(payload, {
         secret,
         expiresIn, // AccessToken은 짧게
@@ -53,7 +55,7 @@ export class JwtTokenService {
   }
 
   // Access Token 복호화
-  async decodeAccessToken(token: string): Promise<any> {
+  async decodeAccessToken(token: string): Promise<Partial<UserPayload>> {
     try {
       const secret = this.configService.get<string>('jwt.accessSecret');
       const payload = await this.jwtService.verifyAsync(token, {
@@ -67,7 +69,7 @@ export class JwtTokenService {
   }
 
   // Refresh Token 복호화
-  async decodeRefreshToken(token: string): Promise<any> {
+  async decodeRefreshToken(token: string): Promise<Partial<UserPayload>> {
     try {
       const secret = this.configService.get<string>('jwt.refreshSecret');
       const payload = await this.jwtService.verifyAsync(token, {
