@@ -6,7 +6,7 @@ import { UserException } from 'src/exception';
 import { RedisService } from 'src/database/redis/redis.service';
 import { UserType } from '../../common/enum';
 import { hashPassword, isPasswordMatching } from 'src/common/utils';
-import { UserLoginDto } from '../user/dtos';
+import { UserLoginDto } from '../../common/entity-dto';
 import { User, OAuthAccount } from '../user/entities';
 import { UserService } from '../user/user.service';
 import { GoogleOAuthService } from './google-oauth.service';
@@ -198,6 +198,7 @@ export class AuthService {
   }
 
   async login(res: Response, { email, password }: UserLoginDto) {
+    debugger;
     const user = await this.userService.findUserByEmail(email);
 
     if (!user) {
@@ -239,12 +240,10 @@ export class AuthService {
     transactionManager: EntityManager,
     attrs: Partial<User>,
   ) {
-    const users = await this.userService.findUserByUserIdOREmail(
-      attrs.id,
-      attrs.email,
-    );
+    const users = await this.userService.findUserByEmail(attrs.email);
 
-    if (users.length !== 0) {
+    if (users) {
+      // 이메일 에러로 변경해야함
       throw UserException.userUseIdOREmail();
     }
 

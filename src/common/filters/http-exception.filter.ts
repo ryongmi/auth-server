@@ -43,8 +43,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
-      error: 'Bad Request',
-      message: 'Invalid input data',
+      error: exception.message || 'Bad Request',
+      message:
+        (typeof error === 'string' ? error : error.message) ||
+        'Invalid input data',
       // timestamp: new Date().toISOString(),
       // path: url,
     });

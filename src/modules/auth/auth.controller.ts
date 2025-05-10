@@ -15,10 +15,15 @@ import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
 import { TransactionInterceptor } from '../../common/interceptors';
-import { Serialize, TransactionManager } from '../../common/decorators';
 import { OAuthStateGuard, RefreshTokenGuard } from './guards';
-import { CreateUserDto, UserLoginDto, LoginResponseDto } from '../user/dtos';
 import {
+  CreateUserDto,
+  UserLoginDto,
+  LoginResponseDto,
+} from '../../common/entity-dto';
+import {
+  Serialize,
+  TransactionManager,
   SwaagerApiTags,
   SwaagerApiBody,
   SwaagerApiOperation,
@@ -28,7 +33,7 @@ import {
 } from '../../common/decorators';
 
 @SwaagerApiTags({ tags: ['auth'] })
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(
     private configService: ConfigService,
@@ -36,6 +41,7 @@ export class AuthController {
   ) {}
 
   @Get('login-google')
+  @HttpCode(200)
   @SwaagerApiOperation({ summary: '구글 로그인' })
   @SwaagerApiOkResponse({
     status: 200,
@@ -56,6 +62,7 @@ export class AuthController {
   }
 
   @Get('login-google/callback')
+  @HttpCode(200)
   @SwaagerApiOperation({ summary: '구글 OAuth 정보 가져오기' })
   @SwaagerApiQuery({
     name: 'code',
@@ -97,6 +104,7 @@ export class AuthController {
   }
 
   @Get('/login-naver')
+  @HttpCode(200)
   @SwaagerApiOperation({ summary: '네이버 로그인' })
   @SwaagerApiOkResponse({
     status: 200,
@@ -118,6 +126,7 @@ export class AuthController {
   }
 
   @Get('/login-naver/callback')
+  @HttpCode(200)
   @SwaagerApiOperation({ summary: '네이버 OAuth 정보 가져오기' })
   @SwaagerApiQuery({
     name: 'code',
@@ -175,7 +184,7 @@ export class AuthController {
     description: '로그아웃중 서버에서 에러가 발생',
   })
   @Serialize({
-    message: '로그아웃 성공',
+    message: '정상적으로 로그아웃 되었습니다.',
   })
   async postLogout(
     @Req() req: Request,

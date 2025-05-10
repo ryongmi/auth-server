@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 
 export class UserException {
@@ -14,7 +15,7 @@ export class UserException {
   }
 
   static userUseIdOREmail(): HttpException {
-    return new BadRequestException('아이디나 이메일이 사용중입니다.');
+    return new ConflictException('아이디나 이메일이 사용중입니다.');
   }
 
   static userInfoNotExist(): HttpException {

@@ -14,9 +14,10 @@ import {
 import { EntityManager } from 'typeorm';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { Serialize, TransactionManager } from '../../common/decorators';
-import { UserDto, UserQueryDto } from './dtos';
+import { UserQueryDto } from './dtos';
 import {
+  Serialize,
+  TransactionManager,
   SwaagerApiTags,
   SwaagerApiBody,
   SwaagerApiOperation,
@@ -28,7 +29,7 @@ import { UserService } from './user.service';
 
 @SwaagerApiTags({ tags: ['users'] })
 @Controller('users')
-@Serialize({ dto: UserDto })
+// @Serialize({ dto: UserDto })
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
