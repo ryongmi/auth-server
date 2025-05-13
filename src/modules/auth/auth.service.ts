@@ -243,8 +243,7 @@ export class AuthService {
     const users = await this.userService.findUserByEmail(attrs.email);
 
     if (users) {
-      // 이메일 에러로 변경해야함
-      throw UserException.userUseIdOREmail();
+      throw UserException.userUseEmail();
     }
 
     const hashedPassword = await hashPassword(attrs.password);

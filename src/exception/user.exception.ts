@@ -14,6 +14,10 @@ export class UserException {
     return new NotFoundException('사용자를 찾을 수 없습니다.');
   }
 
+  static userUseEmail(): HttpException {
+    return new ConflictException('이메일이 사용중입니다.');
+  }
+
   static userUseIdOREmail(): HttpException {
     return new ConflictException('아이디나 이메일이 사용중입니다.');
   }
