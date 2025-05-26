@@ -1,15 +1,15 @@
 import {
-  BadRequestException,
-  ForbiddenException,
+  // BadRequestException,
+  // ForbiddenException,
   HttpException,
-  HttpStatus,
-  InternalServerErrorException,
-  NotFoundException,
+  // HttpStatus,
+  // InternalServerErrorException,
+  // NotFoundException,
   UnauthorizedException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
 export class JwtException {
   static refreshTokenNotFound(): HttpException {
-    return new UnauthorizedException('No refresh token provided');
+    return new UnauthorizedException("No refresh token provided");
   }
 }

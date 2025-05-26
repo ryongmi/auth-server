@@ -1,1 +1,1 @@
-export const SERIALIZE_META_KEY = 'serialize:meta';
+export const SERIALIZE_META_KEY = "serialize:meta";

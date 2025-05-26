@@ -1,10 +1,11 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
-import { AppConfigModule } from './config/app-config.module';
-import { RedisModule, DatabaseModule } from './database';
-import { UserModule } from './modules/user/user.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { SeederModule } from './seeder/seeder.module';
-import { SerializerInterceptor } from './common/interceptors';
+// import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { Module } from "@nestjs/common";
+import { AppConfigModule } from "./config/app-config.module";
+import { RedisModule, DatabaseModule } from "./database";
+import { UserModule } from "./modules/user/user.module";
+import { AuthModule } from "./modules/auth/auth.module";
+import { SeederModule } from "./seeder/seeder.module";
+import { SerializerInterceptor } from "./common/interceptors";
 
 @Module({
   imports: [

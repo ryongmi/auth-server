@@ -1,11 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsDate, IsOptional } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Expose } from "class-transformer";
+import { IsDate, IsOptional } from "class-validator";
 
 export abstract class TimestampDto {
   @ApiProperty({
     type: String,
-    format: 'date-time',
+    format: "date-time",
     required: false,
   })
   @IsDate()
@@ -15,7 +15,7 @@ export abstract class TimestampDto {
 
   @ApiProperty({
     type: String,
-    format: 'date-time',
+    format: "date-time",
     required: false,
   })
   @IsDate()
@@ -25,7 +25,7 @@ export abstract class TimestampDto {
 
   @ApiProperty({
     type: String,
-    format: 'date-time',
+    format: "date-time",
     required: false,
     nullable: true,
   })

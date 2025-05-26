@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators } from "@nestjs/common";
 import {
   ApiExtraModels,
   ApiTags,
@@ -7,7 +7,7 @@ import {
   ApiBody,
   ApiResponse,
   getSchemaPath,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 import {
   ResponseFormatDto,
   ErrorFormatDto,
@@ -16,7 +16,7 @@ import {
   SwaagerApiQueryDto,
   SwaagerApiResponseDto,
   SwaagerApiTagsDto,
-} from '../dtos';
+} from "../dtos";
 
 /**
  *
@@ -68,7 +68,7 @@ export const SwaagerApiOkResponse = (param: SwaagerApiResponseDto) => {
             },
           ],
         },
-      }),
+      })
     );
   } else {
     return ApiResponse({ status, description });

@@ -4,8 +4,8 @@ import {
   IsValidPassword,
   IsValidProfileImage,
   IsValidUsername,
-} from 'src/common/decorators';
-import { BaseDtoUUIDIsOptional } from 'src/common/dtos';
+} from "src/common/decorators";
+import { BaseDtoUUIDIsOptional } from "src/common/dtos";
 
 // export class CreateUserDto extends PickType(User, [
 //   'email',

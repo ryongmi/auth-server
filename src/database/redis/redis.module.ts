@@ -37,37 +37,37 @@
 // })
 // export class RedisModule {}
 
-import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
-import { RedisService } from './redis.service';
+import { Module } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Redis } from "ioredis";
+import { RedisService } from "./redis.service";
 
 @Module({
   providers: [
     RedisService,
     {
-      provide: 'REDIS_CLIENT',
+      provide: "REDIS_CLIENT",
       useFactory: async (configService: ConfigService) => {
         // 최신 방식으로 Redis 클라이언트 생성
         const client = new Redis({
-          host: configService.get<string>('db-redis.host'), // Redis 호스트
-          port: configService.get<number>('db-redis.port'), // Redis 포트
-          password: configService.get<string>('db-redis.password'), // Redis 비밀번호
+          host: configService.get<string>("db-redis.host"), // Redis 호스트
+          port: configService.get<number>("db-redis.port"), // Redis 포트
+          password: configService.get<string>("db-redis.password"), // Redis 비밀번호
           // db: configService.get<number>('db-redis.dbIndex') || 0, // 선택적으로 DB 인덱스를 설정
           // 추가적인 설정은 필요에 따라 추가 가능
           reconnectOnError: (err) => {
-            console.log('Redis reconnect error:', err);
+            console.log("Redis reconnect error:", err);
             return true;
           },
           connectTimeout: 10000, // Redis 서버에 연결하는 데 걸리는 시간
         });
 
-        client.on('connect', () => {
-          console.log('Redis client connected');
+        client.on("connect", () => {
+          console.log("Redis client connected");
         });
 
-        client.on('error', (err) => {
-          console.error('Redis client error:', err);
+        client.on("error", (err) => {
+          console.error("Redis client error:", err);
         });
 
         return client;

@@ -1,1 +1,1 @@
-export { SERIALIZE_META_KEY } from './serialize.constants';
+export { SERIALIZE_META_KEY } from "./serialize.constants";

@@ -1,1 +1,1 @@
-export { UserPayload } from './user-payload.interface';
+export { UserPayload } from "./user-payload.interface";

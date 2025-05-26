@@ -1,29 +1,35 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { lastValueFrom, map } from 'rxjs';
-import { AuthException } from '../../exception';
+import { Injectable } from "@nestjs/common";
+import { HttpService } from "@nestjs/axios";
+import { ConfigService } from "@nestjs/config";
+import { lastValueFrom, map } from "rxjs";
+import { AuthException } from "../../exception";
 
 @Injectable()
 export class GoogleOAuthService {
   constructor(
     private readonly httpService: HttpService,
-    private readonly config: ConfigService,
+    private readonly config: ConfigService
   ) {}
 
   async getGoogleUserInfo(code: string) {
     try {
+      const client_id = this.config.get<string>("google.clientId")!;
+      const client_secret = this.config.get<string>("google.clientSecret")!;
+      const redirect_uri = this.config.get<string>("google.redirectUrl")!;
+      const tokenUrl = this.config.get<string>("google.tokenUrl")!;
+      const userInfoUrl = this.config.get<string>("google.userInfoUrl")!;
+
       // 교환할 토큰 요청
       const tokenData = await lastValueFrom(
         this.httpService
-          .post(this.config.get<string>('google.tokenUrl'), {
+          .post(tokenUrl, {
             code,
-            client_id: this.config.get<string>('google.clientId'),
-            client_secret: this.config.get<string>('google.clientSecret'),
-            redirect_uri: this.config.get<string>('google.redirectUrl'),
-            grant_type: 'authorization_code',
+            client_id,
+            client_secret,
+            redirect_uri,
+            grant_type: "authorization_code",
           })
-          .pipe(map((response) => response.data)),
+          .pipe(map((response) => response.data))
       );
 
       const accessToken = tokenData.access_token;
@@ -31,14 +37,14 @@ export class GoogleOAuthService {
       // 사용자 정보 요청
       const googleUserInfo = await lastValueFrom(
         this.httpService
-          .get(this.config.get<string>('google.userInfoUrl'), {
+          .get(userInfoUrl, {
             headers: { Authorization: `Bearer ${accessToken}` },
           })
-          .pipe(map((response) => response.data)),
+          .pipe(map((response) => response.data))
       );
 
       return { tokenData, googleUserInfo };
-    } catch (error) {
+    } catch (error: unknown) {
       // if (error.isAxiosError) {
       //   // AxiosError를 확인하고 처리
       //   throw new InternalServerErrorException(
@@ -50,6 +56,7 @@ export class GoogleOAuthService {
       //   'Unexpected error occurred',
       //   error.message,
       // );
+      console.log("구글 로그인 실패", error);
       throw AuthException.authLoginError();
     }
   }

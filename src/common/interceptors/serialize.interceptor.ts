@@ -58,31 +58,28 @@ import {
   ExecutionContext,
   CallHandler,
   HttpStatus,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { plainToClass } from 'class-transformer';
-import { Request } from 'express';
-import { SERIALIZE_META_KEY } from '../constants';
-import { SerializeOptions } from '../decorators';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
+import { plainToClass } from "class-transformer";
+import { Request } from "express";
+import { SERIALIZE_META_KEY } from "../constants";
+import { SerializeOptions } from "../decorators";
 
 @Injectable()
 export class SerializerInterceptor implements NestInterceptor {
   constructor(private readonly reflector: Reflector) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
     const statusCode = context.switchToHttp().getResponse().statusCode;
 
     const options: SerializeOptions =
-      this.reflector.get<SerializeOptions>(
-        SERIALIZE_META_KEY,
-        context.getHandler(),
-      ) || {};
+      this.reflector.get<SerializeOptions>(SERIALIZE_META_KEY, context.getHandler()) || {};
 
     return next.handle().pipe(
-      map((data: any) => {
+      map((data: object | null) => {
         const transformed =
           options.dto !== undefined
             ? plainToClass(options.dto, data, {
@@ -92,13 +89,13 @@ export class SerializerInterceptor implements NestInterceptor {
 
         return {
           statusCode: statusCode || HttpStatus.OK,
-          message: options.message || '요청이 성공적으로 처리되었습니다.',
+          message: options.message || "요청이 성공적으로 처리되었습니다.",
           isLogin: Boolean(req?.user),
           // Boolean(req.cookies['refreshToken']) ||
           // 'accessToken' in transformed,
           data: transformed,
         };
-      }),
+      })
     );
   }
 }

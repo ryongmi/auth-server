@@ -3,11 +3,12 @@ import {
   FindOptionsWhere,
   EntityTarget,
   SelectQueryBuilder,
-} from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+  ObjectLiteral,
+} from "typeorm";
+import { NotFoundException } from "@nestjs/common";
+import { DataSource } from "typeorm";
 
-export class BaseRepository<T> extends Repository<T> {
+export class BaseRepository<T extends ObjectLiteral> extends Repository<T> {
   constructor(entity: EntityTarget<T>, dataSource: DataSource) {
     super(entity, dataSource.createEntityManager());
   }
@@ -17,7 +18,7 @@ export class BaseRepository<T> extends Repository<T> {
    * @param id 엔티티 ID
    * @returns 찾은 엔티티
    */
-  async findOneById(id: number | string): Promise<T | undefined> {
+  async findOneById(id: number | string): Promise<T | null> {
     const where = { id } as unknown as FindOptionsWhere<T>;
     return this.findOne({ where });
   }
@@ -28,10 +29,7 @@ export class BaseRepository<T> extends Repository<T> {
    * @param relations 함께 조회할 테이블 이름 배열
    * @returns 찾은 엔티티
    */
-  async findOneByIdWithRelations(
-    id: number | string,
-    relations: Array<string>,
-  ): Promise<T | undefined> {
+  async findOneByIdWithRelations(id: number | string, relations: Array<string>): Promise<T | null> {
     const where = { id } as unknown as FindOptionsWhere<T>;
     return this.findOne({ where, relations });
   }
@@ -46,9 +44,7 @@ export class BaseRepository<T> extends Repository<T> {
     const entity = await this.findOneById(id);
 
     if (!entity) {
-      throw new NotFoundException(
-        `${this.metadata.name} with ID ${id} not found`,
-      );
+      throw new NotFoundException(`${this.metadata.name} with ID ${id} not found`);
     }
 
     return entity;

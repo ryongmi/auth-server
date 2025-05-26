@@ -1,14 +1,14 @@
-import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
+// import { TypeOrmModule } from '@nestjs/typeorm';
 // import { User } from './entities';
-import { UserModule } from '../user/user.module';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { GoogleOAuthService } from '../auth/google-oauth.service';
-import { NaverOAuthService } from '../auth/naver-oauth.service';
-import { RedisModule } from 'src/database';
-import { JwtModule } from './jwt/jwt.module';
+import { UserModule } from "../user/user.module";
+import { AuthService } from "./auth.service";
+import { AuthController } from "./auth.controller";
+import { GoogleOAuthService } from "../auth/google-oauth.service";
+import { NaverOAuthService } from "../auth/naver-oauth.service";
+import { RedisModule } from "src/database";
+import { JwtModule } from "./jwt/jwt.module";
 
 @Module({
   imports: [HttpModule, UserModule, RedisModule, JwtModule],

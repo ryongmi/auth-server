@@ -1,7 +1,7 @@
-import * as Joi from 'joi';
+import * as Joi from "joi";
 
 const defaultConfigSchema = {
-  NODE_ENV: Joi.string().valid('local', 'development', 'production').required(),
+  NODE_ENV: Joi.string().valid("local", "development", "production").required(),
   PORT: Joi.number().default(8000),
 };
 

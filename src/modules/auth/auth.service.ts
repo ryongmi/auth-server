@@ -1,18 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { EntityManager } from 'typeorm';
-import { Request, Response } from 'express';
-import { UserException } from 'src/exception';
-import { RedisService } from 'src/database/redis/redis.service';
-import { UserType } from '../../common/enum';
-import { hashPassword, isPasswordMatching } from 'src/common/utils';
-import { UserLoginDto } from '../../common/entity-dto';
-import { User, OAuthAccount } from '../user/entities';
-import { UserService } from '../user/user.service';
-import { GoogleOAuthService } from './google-oauth.service';
-import { NaverOAuthService } from './naver-oauth.service';
-import { JwtTokenService } from './jwt/jwt-token.service';
-import { UserPayload } from 'src/common/interface';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { EntityManager } from "typeorm";
+import { Request, Response } from "express";
+import { UserException } from "src/exception";
+import { RedisService } from "src/database/redis/redis.service";
+import { UserType } from "../../common/enum";
+import { hashPassword, isPasswordMatching } from "src/common/utils";
+import { UserLoginDto } from "../../common/entity-dto";
+import { User, OAuthAccount } from "../user/entities";
+import { UserService } from "../user/user.service";
+import { GoogleOAuthService } from "./google-oauth.service";
+import { NaverOAuthService } from "./naver-oauth.service";
+import { JwtTokenService } from "./jwt/jwt-token.service";
+import { UserPayload } from "src/common/interface";
 
 @Injectable()
 export class AuthService {
@@ -22,58 +22,40 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
-    private readonly jwtService: JwtTokenService,
+    private readonly jwtService: JwtTokenService
   ) {}
 
   // state 값 생성
   async generateState(): Promise<string> {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    const naverStateStore = this.configService.get<string>(
-      'jwt.naverStateStore',
-    );
+    const naverStateStore = this.configService.get<string>("jwt.naverStateStore");
 
-    await this.redisService.setExValue(
-      `${naverStateStore}${state}`,
-      300,
-      'pending',
-    ); // Redis에 상태값 저장 (5분 동안 유지)
+    await this.redisService.setExValue(`${naverStateStore}${state}`, 300, "pending"); // Redis에 상태값 저장 (5분 동안 유지)
 
     return state; // 생성된 state 반환
   }
 
   // state 값 검증
   async validateState(state: string): Promise<boolean> {
-    const naverStateStore = this.configService.get<string>(
-      'jwt.naverStateStore',
-    );
+    const naverStateStore = this.configService.get<string>("jwt.naverStateStore");
 
-    const value = await this.redisService.getValue(
-      `${naverStateStore}${state}`,
-    );
-    return value === 'pending'; // 'pending' 상태이면 유효한 state
+    const value = await this.redisService.getValue(`${naverStateStore}${state}`);
+    return value === "pending"; // 'pending' 상태이면 유효한 state
   }
 
   // 인증 후 state 삭제
   async deleteState(state: string): Promise<void> {
-    const naverStateStore = this.configService.get<string>(
-      'jwt.naverStateStore',
-    );
+    const naverStateStore = this.configService.get<string>("jwt.naverStateStore");
 
     await this.redisService.deleteValue(`${naverStateStore}${state}`); // 인증 완료 후 state 삭제
   }
 
-  async loginNaver(
-    res: Response,
-    transactionManager: EntityManager,
-    code: string,
-    state: string,
-  ) {
-    const { tokenData, naverUserInfo } =
-      await this.naverOAuthService.getNaverUserInfo(code, state);
+  async loginNaver(res: Response, transactionManager: EntityManager, code: string, state: string) {
+    const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(code, state);
 
     let user = await this.userService.findUserByEmail(naverUserInfo.email);
-    let oauthAccount = new OAuthAccount();
+    const oauthAccount = new OAuthAccount();
     oauthAccount.providerId = naverUserInfo.id;
     oauthAccount.provider = UserType.NAVER;
 
@@ -90,10 +72,7 @@ export class AuthService {
       // 마지막 접속일 업데이트
       // user.lastLogin = new Date();
 
-      user = await this.userService.updateUserByTransaction(
-        transactionManager,
-        user,
-      );
+      user = await this.userService.updateUserByTransaction(transactionManager, user);
     } else {
       // 이메일이 존재하지 않는 경우 새 사용자 생성
       user = await this.userService.createUser(transactionManager, {
@@ -123,16 +102,11 @@ export class AuthService {
     return { user, accessToken };
   }
 
-  async loginGoogle(
-    res: Response,
-    transactionManager: EntityManager,
-    code: string,
-  ) {
-    const { tokenData, googleUserInfo } =
-      await this.googleOAuthService.getGoogleUserInfo(code);
+  async loginGoogle(res: Response, transactionManager: EntityManager, code: string) {
+    const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(code);
 
     let user = await this.userService.findUserByEmail(googleUserInfo.email);
-    let oauthAccount = new OAuthAccount();
+    const oauthAccount = new OAuthAccount();
     oauthAccount.providerId = googleUserInfo.id;
     oauthAccount.provider = UserType.GOOGLE;
 
@@ -149,10 +123,7 @@ export class AuthService {
       // 마지막 접속일 업데이트
       // user.lastLogin = new Date();
 
-      user = await this.userService.updateUserByTransaction(
-        transactionManager,
-        user,
-      );
+      user = await this.userService.updateUserByTransaction(transactionManager, user);
     } else {
       // 이메일이 존재하지 않는 경우 새 사용자 생성
       user = await this.userService.createUser(transactionManager, {
@@ -185,14 +156,10 @@ export class AuthService {
   async logout(req: Request, res: Response) {
     const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
 
-    const blackListStore = this.configService.get<string>('jwt.blackListStore');
-    const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge');
+    const blackListStore = this.configService.get<string>("jwt.blackListStore");
+    const refreshMaxAge = this.configService.get<number>("jwt.refreshMaxAge");
 
-    await this.redisService.setExValue(
-      `${blackListStore}${refreshToken}`,
-      refreshMaxAge,
-      1,
-    ); // Redis에 블랙리스트 지정
+    await this.redisService.setExValue(`${blackListStore}${refreshToken}`, refreshMaxAge, 1); // Redis에 블랙리스트 지정
 
     this.jwtService.clearRefreshTokenCookie(res);
   }
@@ -235,11 +202,7 @@ export class AuthService {
     return { user, accessToken };
   }
 
-  async signup(
-    res: Response,
-    transactionManager: EntityManager,
-    attrs: Partial<User>,
-  ) {
+  async signup(res: Response, transactionManager: EntityManager, attrs: Partial<User>) {
     const users = await this.userService.findUserByEmail(attrs.email);
 
     if (users) {
@@ -248,7 +211,7 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(attrs.password);
 
-    let oauthAccount = new OAuthAccount();
+    const oauthAccount = new OAuthAccount();
     oauthAccount.provider = UserType.HOMEPAGE;
 
     attrs.oauthAccount = oauthAccount;
@@ -260,8 +223,10 @@ export class AuthService {
       id: user.id,
     };
 
-    const accessToken = await this.jwtService.signAccessToken(payload);
-    const refreshToken = await this.jwtService.signRefreshToken(payload);
+    const { accessToken, refreshToken } =
+      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+    // const accessToken = await this.jwtService.signAccessToken(payload);
+    // const refreshToken = await this.jwtService.signRefreshToken(payload);
 
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 

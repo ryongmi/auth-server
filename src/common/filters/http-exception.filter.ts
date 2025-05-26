@@ -1,10 +1,4 @@
-import {
-  ExceptionFilter,
-  Catch,
-  ArgumentsHost,
-  HttpException,
-  Logger,
-} from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, Logger } from "@nestjs/common";
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -18,7 +12,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const { method, url, query, params, body, session } = request;
     const queryParams = JSON.stringify(query);
     const routeParams = JSON.stringify(params);
-    const requestBody = method !== 'GET' ? JSON.stringify(body) : null;
+    const requestBody = method !== "GET" ? JSON.stringify(body) : null;
 
     const status = exception.getStatus();
     const error = exception.getResponse() as
@@ -27,7 +21,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let logMessage = `${method} ${url} ${status} \nException Message: ${exception.message}`;
 
-    if (typeof error === 'string') {
+    if (typeof error === "string") {
       logMessage += `\nResponse  Message: ${error}`;
     } else {
       logMessage += `\nResponse  Message: ${error.message}`;
@@ -38,15 +32,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       logMessage += ` \nBody: ${requestBody}`;
     }
 
-    this.logger.error('logMessage', logMessage);
-    this.logger.error('error', error);
+    this.logger.error("logMessage", logMessage);
+    this.logger.error("error", error);
 
     response.status(status).json({
       statusCode: status,
-      error: exception.message || 'Bad Request',
-      message:
-        (typeof error === 'string' ? error : error.message) ||
-        'Invalid input data',
+      error: exception.message || "Bad Request",
+      message: (typeof error === "string" ? error : error.message) || "Invalid input data",
       // timestamp: new Date().toISOString(),
       // path: url,
     });

@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { OAuthAccount, User } from './entities';
-import { UserService } from './user.service';
-import { UserController } from './user.controller';
-import { UserRepository } from './user.repositoty';
+import { Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { OAuthAccount, User } from "./entities";
+import { UserService } from "./user.service";
+import { UserController } from "./user.controller";
+import { UserRepository } from "./user.repositoty";
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, OAuthAccount]), HttpModule],

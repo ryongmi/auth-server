@@ -1,18 +1,12 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  Logger,
-} from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from "@nestjs/common";
+import { Observable, throwError } from "rxjs";
+import { catchError } from "rxjs/operators";
 
 @Injectable()
 export class ErrorLoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('ErrorInterceptor');
+  private readonly logger = new Logger("ErrorInterceptor");
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest();
     const { method, url, body, params, query } = req;
 
@@ -26,13 +20,13 @@ export class ErrorLoggingInterceptor implements NestInterceptor {
 
         // HTTP 상태 코드를 가져옵니다.
         const statusCode = error.response?.statusCode || 500;
-        const errorMessage = error.message || 'Unknown error';
+        const errorMessage = error.message || "Unknown error";
         const logMessage = `${method} ${url} ${statusCode}: ${errorMessage}`;
 
         // 쿼리, 파라미터, 바디 값을 로그에 포함
         const queryParams = JSON.stringify(query);
         const routeParams = JSON.stringify(params);
-        const requestBody = method !== 'GET' ? JSON.stringify(body) : null;
+        const requestBody = method !== "GET" ? JSON.stringify(body) : null;
 
         let completeLogMessage = `${logMessage} \nQuery Params: ${queryParams} \nRoute Params: ${routeParams}`;
         if (requestBody) {
@@ -42,7 +36,7 @@ export class ErrorLoggingInterceptor implements NestInterceptor {
         this.logger.error(completeLogMessage);
 
         return throwError(error);
-      }),
+      })
     );
   }
 }

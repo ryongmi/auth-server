@@ -1,29 +1,31 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { lastValueFrom, map } from 'rxjs';
-import { AuthException } from '../../exception';
+import { Injectable } from "@nestjs/common";
+import { HttpService } from "@nestjs/axios";
+import { ConfigService } from "@nestjs/config";
+import { lastValueFrom, map } from "rxjs";
+import { AuthException } from "../../exception";
 
 @Injectable()
 export class NaverOAuthService {
   constructor(
     private readonly httpService: HttpService,
-    private readonly config: ConfigService,
+    private readonly config: ConfigService
   ) {}
 
   async getNaverUserInfo(code: string, state: string) {
-    const client_id = this.config.get<string>('naver.clientId');
-    const client_secret = this.config.get<string>('naver.clientSecret');
-    const redirect_uri = this.config.get<string>('naver.redirectUrl');
+    const client_id = this.config.get<string>("naver.clientId")!;
+    const client_secret = this.config.get<string>("naver.clientSecret")!;
+    const redirect_uri = this.config.get<string>("naver.redirectUrl")!;
+    const tokenUrl = this.config.get<string>("naver.tokenUrl")!;
+    const userInfoUrl = this.config.get<string>("naver.userInfoUrl")!;
 
     try {
       // 교환할 토큰 요청
       const tokenData = await lastValueFrom(
         this.httpService
-          .get(this.config.get<string>('naver.tokenUrl'), {
+          .get(tokenUrl, {
             headers: {
-              'X-Naver-Client-Id': client_id,
-              'X-Naver-Client-Secret': client_secret,
+              "X-Naver-Client-Id": client_id,
+              "X-Naver-Client-Secret": client_secret,
             },
             params: {
               client_id,
@@ -31,10 +33,10 @@ export class NaverOAuthService {
               redirect_uri,
               code,
               state,
-              grant_type: 'authorization_code',
+              grant_type: "authorization_code",
             },
           })
-          .pipe(map((response) => response.data)),
+          .pipe(map((response) => response.data))
       );
 
       const accessToken = tokenData.access_token;
@@ -42,14 +44,14 @@ export class NaverOAuthService {
       // 사용자 정보 요청
       const naverUserInfo = await lastValueFrom(
         this.httpService
-          .get(this.config.get<string>('naver.userInfoUrl'), {
+          .get(userInfoUrl, {
             headers: { Authorization: `Bearer ${accessToken}` },
           })
-          .pipe(map((response) => response.data.response)),
+          .pipe(map((response) => response.data.response))
       );
 
       return { tokenData, naverUserInfo };
-    } catch (error) {
+    } catch (error: unknown) {
       // if (error.isAxiosError) {
       //   // AxiosError를 확인하고 처리
       //   throw new InternalServerErrorException(
@@ -61,6 +63,7 @@ export class NaverOAuthService {
       //   'Unexpected error occurred',
       //   error.message,
       // );
+      console.log("네이버 로그인 실패", error);
       throw AuthException.authLoginError();
     }
   }

@@ -1,24 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { ApiProperty } from "@nestjs/swagger";
+import { Expose } from "class-transformer";
 
 export class ResponseFormatDto<T> {
   @ApiProperty({
     example: 0,
-    description: '해당 HTTP 코드',
+    description: "해당 HTTP 코드",
     type: Number,
   })
   @Expose()
-  statusCode: number;
+  statusCode: number = 200;
 
   @ApiProperty({
     example: false,
-    description: '로그인 유무',
+    description: "로그인 유무",
     type: Boolean,
   })
   @Expose()
-  isLogin: boolean;
+  isLogin!: boolean;
 
   @ApiProperty({ type: Object })
   @Expose()
-  data: T;
+  data!: T;
 }

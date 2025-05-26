@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { Brackets, DataSource } from 'typeorm';
-import { User } from './entities';
-import { BaseRepository } from '../../common/repositories';
-import { UserQueryDto } from './dtos';
+import { Injectable } from "@nestjs/common";
+import { DataSource } from "typeorm";
+import { User } from "./entities";
+import { BaseRepository } from "../../common/repositories";
+import { UserQueryDto } from "./dtos";
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -36,18 +36,17 @@ export class UserRepository extends BaseRepository<User> {
    * @returns 모든 엔티티 배열
    */
   async findAllWithFilters(
-    query: UserQueryDto,
+    query: UserQueryDto
   ): Promise<{ items: User[]; total: number; page: number; limit: number }> {
-    const { email, name, nickname, provider, page, limit, sortOrder, sortBy } =
-      query;
+    const { email, name, nickname, provider, page, limit, sortOrder, sortBy } = query;
     const skip = (page - 1) * limit;
 
-    const userAlias = 'user';
-    const oauthAccountAlias = 'oauthAccount';
+    const userAlias = "user";
+    const oauthAccountAlias = "oauthAccount";
 
     const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(
       `${userAlias}.${oauthAccountAlias}`,
-      oauthAccountAlias,
+      oauthAccountAlias
     );
 
     if (email) {
@@ -85,10 +84,10 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   // 예시: 유저와 프로필을 조인해서 조회
-  async findUserWithProfile(userId: string): Promise<User | undefined> {
-    return this.getQueryBuilder('user')
-      .leftJoinAndSelect('user.profile', 'profile')
-      .where('user.id = :userId', { userId })
+  async findUserWithProfile(userId: string): Promise<User | null> {
+    return this.getQueryBuilder("user")
+      .leftJoinAndSelect("user.profile", "profile")
+      .where("user.id = :userId", { userId })
       .getOne();
   }
 }
