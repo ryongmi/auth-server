@@ -17,13 +17,13 @@ import { BaseDtoUUIDIsOptional } from 'src/common/dtos';
 
 export class CreateUserDto extends BaseDtoUUIDIsOptional {
   @IsValidEmail()
-  email: string;
+  email!: string;
 
   @IsValidPassword()
-  password: string;
+  password!: string;
 
   @IsValidUsername()
-  name: string;
+  name!: string;
 
   @IsValidNickname(true)
   nickname?: string;
