@@ -1,57 +1,10 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "target": "ES2021",
-    "lib": ["ES2021", "DOM"], // ✅ 필요 시 DOM 추가 (Axios 등에서 타입 참조)
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-
-    // ✅ 엄격한 타입 설정 (이미 대부분 잘 되어 있음)
-    "strict": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
-
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-
-    // ✅ 편의 설정
-    "incremental": true,
-    "sourceMap": true,
-    "inlineSources": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "skipLibCheck": true,
-    "types": ["node"] // ✅ ESLint가 Node 환경 타입 인식하도록
-  },
+  "extends": "@krgeobuk/tsconfig/nest",
   // "compilerOptions": {
-  //   "module": "commonjs",
-  //   "moduleResolution": "node",
-  //   "declaration": true,
-  //   "removeComments": true,
-  //   "emitDecoratorMetadata": true,
-  //   "experimentalDecorators": true,
-  //   "allowSyntheticDefaultImports": true,
-  //   "target": "ES2021",
-  //   "sourceMap": true,
-  //   "inlineSources": true,
-  //   "outDir": "./dist",
-  //   "baseUrl": "./",
-  //   "incremental": true,
-  //   "skipLibCheck": true,
-  //   "strictNullChecks": false,
-  //   "noImplicitAny": false,
-  //   "strictBindCallApply": false,
-  //   "forceConsistentCasingInFileNames": true,
-  //   "noFallthroughCasesInSwitch": false,
-  //   "esModuleInterop": true,
-  //   "strict": true,
-  //   "types": ["node"] // ✅ ESLint가 Node 환경 타입 인식하도록
+  //   "outDir": "./dist", // 프로젝트별로 필요시 오버라이드
+  //   "baseUrl": "./", // 프로젝트별로 필요시 오버라이드
+  //   "skipLibCheck": true, // 프로젝트별로 필요시 오버라이드
+  //   "types": ["node"] // 프로젝트별로 필요시 오버라이드
   // },
   "include": ["src"],
   "exclude": ["node_modules", "dist"],
