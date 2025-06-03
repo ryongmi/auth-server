@@ -1,10 +1,11 @@
-import { Injectable, Inject } from "@nestjs/common";
-import { Redis } from "ioredis";
+import { Injectable, Inject } from '@nestjs/common';
+import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config';
+import { Redis } from 'ioredis';
 
 @Injectable()
 export class RedisService {
   constructor(
-    @Inject("REDIS_CLIENT") private readonly redisClient: Redis // Redis 클라이언트 주입
+    @Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis // Redis 클라이언트 주입
   ) {}
 
   // state 값 저장, 5분 동안 만료

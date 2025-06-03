@@ -1,6 +1,8 @@
-import config from "@krgeobuk/eslint-config/nest";
+import config from '@krgeobuk/eslint-config/nest';
 
-export default config;
+export default [...config];
+
+// export default config;
 
 // import tseslint from 'typescript-eslint';
 // import globals from 'globals';
