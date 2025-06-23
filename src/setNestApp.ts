@@ -1,12 +1,19 @@
-import { INestApplication, ValidationPipe } from "@nestjs/common";
-import cookieParser from "cookie-parser";
-import { HttpExceptionFilter } from "./common/filters";
-import { LoggingInterceptor } from "./common/interceptors";
-import { ConfigService } from "@nestjs/config";
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
+
+import { HttpExceptionFilter } from '@krgeobuk/core/filters';
+import { LoggingInterceptor } from '@krgeobuk/core/interceptors';
+
+import { DefaultConfig } from '@common/interfaces/index.js';
 // import { SeederService } from './seeder/seeder.service';
 
-export async function setNestApp(app: INestApplication, configService: ConfigService) {
-  const mode = configService.get<string>("mode") || "development";
+export function setNestApp(
+  app: INestApplication,
+  configService: ConfigService<unknown, boolean>
+): void {
+  const corsOrigins = configService.get<DefaultConfig['corsOrigins']>('corsOrigins');
+  const allowedOrigins = corsOrigins?.split(',').map((origin) => origin.trim()) || [];
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,10 +24,10 @@ export async function setNestApp(app: INestApplication, configService: ConfigSer
     })
   );
 
-  const allowedOrigins =
-    mode === "production"
-      ? ["https://www.krgeobuk.com", "https://api.krgeobuk.com"] // 배포 도메인
-      : ["http://localhost:8000", "http://127.0.0.1:8000"]; // 로컬 개발 도메인
+  // const allowedOrigins =
+  //   mode === 'production'
+  //     ? ['https://www.krgeobuk.com', 'https://api.krgeobuk.com'] // 배포 도메인
+  //     : ['http://localhost:8000', 'http://127.0.0.1:8000']; // 로컬 개발 도메인
 
   app.enableCors({
     origin: allowedOrigins, // 허용할 도메인
@@ -30,7 +37,7 @@ export async function setNestApp(app: INestApplication, configService: ConfigSer
   app.use(cookieParser());
 
   // 모든 엔드포인트에 api 추가
-  app.setGlobalPrefix("api");
+  app.setGlobalPrefix('api');
 
   // 글로벌 Log 설정
   app.useGlobalInterceptors(new LoggingInterceptor());

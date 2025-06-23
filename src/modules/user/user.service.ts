@@ -1,16 +1,17 @@
-import { Injectable } from "@nestjs/common";
-import { User } from "../user/entities";
-import { EntityManager } from "typeorm";
-import { UserRepository } from "./user.repositoty";
-import { UserQueryDto } from "./dtos";
+import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
+
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import type { ListQuery } from '@krgeobuk/user/interfaces';
+
+import { User } from './entities/user.entity.js';
+import { UserRepository } from './user.repositoty.js';
 
 @Injectable()
 export class UserService {
   constructor(private readonly userRepo: UserRepository) {}
 
-  async findUsers(
-    query: UserQueryDto
-  ): Promise<{ items: User[]; total: number; page: number; limit: number }> {
+  async findUsers(query: ListQuery): Promise<PaginatedResult<Partial<User>>> {
     return this.userRepo.findAllWithFilters(query);
   }
 
@@ -25,7 +26,6 @@ export class UserService {
 
     return this.userRepo.findOne({
       where: { email },
-      relations: ["oauthAccount"],
     });
   }
 
@@ -47,21 +47,15 @@ export class UserService {
   //   //   .execute();
   // }
 
-  async createUser(transactionManager: EntityManager, attrs: Partial<User>): Promise<User> {
-    const user = await transactionManager.getRepository(User).create(attrs);
-    return this.userRepo.save(user);
+  async createUser(attrs: Partial<User>, transactionManager?: EntityManager): Promise<User> {
+    const userEntity = new User();
+
+    Object.assign(userEntity, attrs);
+
+    return this.userRepo.saveEntity(userEntity, transactionManager);
   }
 
-  async updateUser(id: string, attrs: Partial<User>): Promise<User> {
-    const user = await this.userRepo.findOneByIdOrFail(id);
-    const updatedUser = this.userRepo.merge(user, attrs);
-    return this.userRepo.save(updatedUser);
-  }
-
-  async updateUserByTransaction(
-    transactionManager: EntityManager,
-    attrs: Partial<User>
-  ): Promise<User> {
-    return await transactionManager.getRepository(User).save(attrs);
+  async updateUser(userEntity: User, transactionManager?: EntityManager): Promise<User> {
+    return this.userRepo.saveEntity(userEntity, transactionManager);
   }
 }

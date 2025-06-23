@@ -1,38 +1,39 @@
-import { Controller, Get, Param, Query, Req } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req } from '@nestjs/common';
 // import { EntityManager } from 'typeorm';
-import { Request } from "express";
+import { Request } from 'express';
 // import { ConfigService } from '@nestjs/config';
-import { UserQueryDto } from "./dtos";
-import {
-  // Serialize,
-  // TransactionManager,
-  SwaagerApiTags,
-  // SwaagerApiBody,
-  // SwaagerApiOperation,
-  // SwaagerApiQuery,
-  // SwaagerApiOkResponse,
-  // SwaagerApiErrorResponse,
-} from "../../common/decorators";
-import { UserService } from "./user.service";
+import { ListQueryDto } from '@krgeobuk/user/dtos';
+import { SwaggerApiTags } from '@krgeobuk/swagger/decorators';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-@SwaagerApiTags({ tags: ["users"] })
-@Controller("users")
+import { User } from './entities/user.entity.js';
+import { UserService } from './user.service.js';
+
+// import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
+// import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
+
+@SwaggerApiTags({ tags: ['users'] })
+@Controller('users')
 // @Serialize({ dto: UserDto })
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  getUsers(@Query() query: UserQueryDto) {
+  getUsers(@Query() query: ListQueryDto): Promise<PaginatedResult<Partial<User>>> {
     return this.userService.findUsers(query);
   }
 
-  @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.userService.findUserById(id);
+  @Get('me')
+  getMyInfo(@Req() req: Request): void {
+    console.log('들어왔누');
+    // const { id } = req.jwt!;
+
+    // this.userService.findUserById(id);
   }
 
-  @Get("me")
-  getMyInfo(@Req() req: Request) {
-    return this.userService.findUserById(req.user.id);
+  @Get(':id')
+  findOne(@Param('id') id: string): void {
+    this.userService.findUserById(id);
   }
 }
+

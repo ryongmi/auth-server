@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 // import { ConfigModule } from '@nestjs/config';
 import { SharedRedisModule, REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config'; // 공통 패키지에서 import
-import { RedisService } from './redis.service';
+
+import { RedisService } from './redis.service.js';
 
 @Module({
   imports: [

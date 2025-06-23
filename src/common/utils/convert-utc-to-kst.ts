@@ -1,4 +1,4 @@
-export function convertUTCtoKST(utcDateString): Date {
+export function convertUTCtoKST(utcDateString: string): Date {
   // UTC 형식의 문자열을 Date 객체로 변환합니다.
   const utcDate = new Date(utcDateString);
 

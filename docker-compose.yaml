@@ -12,66 +12,61 @@ services:
   #     - frontend
   mysql:
     image: mysql:8
-    container_name: mysql-auth
-    # restart: always
-    volumes:
-      - ./data/mysqldata:/var/lib/mysql
-      # - ./config:/etc/mysql/conf.d # my.cnf 파일을 컨테이너에 복사
-    command:
-      - --bind-address=0.0.0.0 # MySQL 시작 시 bind-address를 0.0.0.0으로 설정
+    container_name: auth-mysql
     ports:
       - 3307:3306
-      # - ${MYSQL_OPEN_PORT}:3306
     env_file:
-      - ./envs/env.local
+      - ./envs/.env.local
     environment:
-      # - MYSQL_ROOT_HOST=mysql-auth-${NODE_ENV}
-      # - MYSQL_USER=${MYSQL_USER}
-      # - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      # - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      # - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_CHARSET=utf8mb4
       - MYSQL_COLLATION=utf8mb4_general_ci
       - MYSQL_TIMEZONE=Asia/Seoul
       - TZ=Asia/Seoul
+    volumes:
+      - ./data/mysqldata:/var/lib/mysql
     networks:
       - network-auth
 
   redis:
     image: redis:alpine
-    container_name: redis-auth
-    # restart: always
-    volumes:
-      - ./data/redisdata:/data
-      # - ./config/redis.conf:/usr/local/etc/redis/redis.conf
-    # env_file:
-    #   - ./envs/env.local
-    networks:
-      - network-auth
-    # command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    container_name: auth-redis
     ports:
       - 6380:6379
+    env_file:
+      - ./envs/.env.local
+    environment:
+      - TZ=Asia/Seoul
+    volumes:
+      - ./data/redisdata:/data
+    networks:
+      - network-auth
+    command: ['redis-server', '--requirepass']
     depends_on:
       - mysql
 
   server:
-    container_name: server-auth
+    image: krgeobuk/auth-server:local
+    container_name: auth-server
     build:
       context: .
       dockerfile: Dockerfile
       target: local
-    volumes:
-      - ./src:/app/src
-      - /app/node_modules # 익명 볼륨
-    networks:
-      - network-auth
     ports:
       - 8000:8000
       - 9229:9229 # Node.js 디버깅 포트
     env_file:
-      - ./envs/env.local
+      - ./envs/.env.local
     environment:
       - TZ=Asia/Seoul
+      - NODE_OPTIONS=--experimental-specifier-resolution=node
+    volumes:
+      - ./src:/app/src:cached # 소스 코드 동기화
+      - ./tsconfig.json:/app/tsconfig.json # tsconfig도 동기화
+      - ./nodemon.json:/app/nodemon.json # nodemon 설정도 동기화
+      - /app/dist
+      - /app/node_modules # 익명 볼륨
+    networks:
+      - network-auth
     depends_on:
       - redis
       - mysql
@@ -79,5 +74,5 @@ services:
 networks:
   network-auth:
     driver: bridge
-# docker-compose --env-file .env.local up
-# docker-compose --env-file .env.local up --build
+  network-shared:
+    external: true

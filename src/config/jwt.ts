@@ -1,6 +1,6 @@
-import { registerAs } from "@nestjs/config";
+import { registerAs } from '@nestjs/config';
 
-export const jwtConfig = registerAs("jwt", () => ({
+export const jwtConfig = registerAs('jwt', () => ({
   secret: process.env.JWT_SECRET,
   expiresIn: process.env.JWT_EXPIRES_IN,
   accessSecret: process.env.JWT_ACCESS_SECRET,
@@ -12,4 +12,5 @@ export const jwtConfig = registerAs("jwt", () => ({
   refreshStore: process.env.JWT_REFRESH_STORE_NAME,
   blackListStore: process.env.JWT_BLACKLIST_STORE_NAME,
   naverStateStore: process.env.JWT_NAVER_STATE_STORE_NAME,
+  googleStateStore: process.env.JWT_GOOGLE_STATE_STORE_NAME,
 }));

@@ -1,11 +1,12 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { default as defaultConfig } from "./default";
-import { mysqlConfig, redisConfig } from "./database";
-import { naverConfig } from "./naver";
-import { googleConfig } from "./google";
-import { jwtConfig } from "./jwt";
-import { validationSchema } from "./validation.schema";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { default as defaultConfig } from './default.js';
+import { mysqlConfig, redisConfig } from './database.js';
+import { naverConfig } from './naver.js';
+import { googleConfig } from './google.js';
+import { jwtConfig } from './jwt.js';
+import { validationSchema } from './validation.schema.js';
 
 @Module({
   imports: [

@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config';
 import { Redis } from 'ioredis';
+
+import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config';
 
 @Injectable()
 export class RedisService {

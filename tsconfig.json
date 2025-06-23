@@ -1,11 +1,21 @@
 {
-  "extends": "@krgeobuk/tsconfig/nest.json",
-  // "compilerOptions": {
-  //   "outDir": "./dist", // 프로젝트별로 필요시 오버라이드
-  //   "baseUrl": "./", // 프로젝트별로 필요시 오버라이드
-  //   "skipLibCheck": true, // 프로젝트별로 필요시 오버라이드
-  //   "types": ["node"] // 프로젝트별로 필요시 오버라이드
-  // },
+  "extends": "@krgeobuk/tsconfig/nest",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist", // 프로젝트별로 필요시 오버라이드
+    "baseUrl": "./", // 프로젝트별로 필요시 오버라이드
+    "types": ["node", "express"],
+    "typeRoots": ["node_modules/@types", "node_modules/@krgeobuk/core/interfaces/express"],
+    // "skipLibCheck": false, // true로 되어있다면 false로 변경
+    "paths": {
+      "@modules/*": ["src/modules/*"],
+      "@common/*": ["src/common/*"],
+      "@config": ["src/config/index.ts"],
+      "@config/*": ["src/config/*"],
+      "@database": ["src/database/index.ts"],
+      "@database/*": ["src/database/*"]
+    }
+  },
   "include": ["src"],
   "exclude": ["node_modules", "dist"],
   // docker에서 nestjs 파일 수정사항 반영을 위한 구문, 핫리로드
