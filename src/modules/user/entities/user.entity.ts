@@ -1,10 +1,11 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
 
 import { BaseEntityUUID } from '@krgeobuk/core/entities';
 
 @Entity()
 export class User extends BaseEntityUUID {
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Index('IDX_EMAIL', { unique: true })
+  @Column({ type: 'varchar', length: 255 })
   email!: string; // 홈페이지 가입 이메일, 통합 기준
 
   @Column({ type: 'varchar', length: 255, nullable: true })
