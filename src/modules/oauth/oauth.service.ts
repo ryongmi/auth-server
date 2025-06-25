@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, InsertResult, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
 import { ProviderType } from '@krgeobuk/oauth/enum';
-import type { NaverOAuthCallbackQuery } from '@krgeobuk/oauth/interfaces';
+import type {
+  NaverOAuthCallbackQuery,
+  NaverUserProfileResponse,
+  GoogleUserProfileResponse,
+} from '@krgeobuk/oauth/interfaces';
 import type { LoginResponse } from '@krgeobuk/auth/interfaces';
 import type { LoggedInUser } from '@krgeobuk/user/interfaces';
 
 import { RedisService } from '@database';
-import { UserService } from '@modules/user/index.js';
+import { User, UserService } from '@modules/user/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 
 import { OAuthAccount } from './entities/oauth-account.entity.js';
@@ -44,8 +48,8 @@ export class OAuthService {
   // state 값 검증
   async validateState(state: string, type: ProviderType): Promise<boolean> {
     const stateStore = this.configService.get<string>(`jwt.${type}StateStore`);
-
     const value = await this.redisService.getValue(`${stateStore}${state}`);
+
     return value === 'pending'; // 'pending' 상태이면 유효한 state
   }
 
@@ -61,64 +65,17 @@ export class OAuthService {
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
   ): Promise<LoginResponse<LoggedInUser>> {
-    let oauth;
-
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
 
-    let user = await this.userService.findUserByEmail(naverUserInfo.email);
-
-    const oauthAccountAttrs = {
-      providerId: naverUserInfo.id,
-      provider: ProviderType.NAVER,
-    };
-
-    if (user) {
-      // 이메일이 이미 존재하는 경우 계정 병합
-      if (!user.isIntegrated) {
-        // 처음 병합할 경우 필요한 정보 업데이트
-        user.name ||= naverUserInfo.name;
-        user.nickname ||= naverUserInfo.nickname;
-        user.profileImage ||= naverUserInfo.profileImage;
-        user.isIntegrated = true;
-
-        oauth = await this.oauthRepo.findOAuthAccountByUserId(user.id);
-        if (!oauth) {
-          // 에러 없을수가 없음
-          throw Error();
-        }
-
-        Object.assign(oauth, oauthAccountAttrs);
-
-        oauth = await this.updateOAuthAccount(oauth, transactionManager);
-      }
-
-      // 마지막 접속일 업데이트
-      // user.lastLogin = new Date();
-
-      user = await this.userService.updateUser(user, transactionManager);
-    } else {
-      const userAttrs = {
-        email: naverUserInfo.email,
-        name: naverUserInfo.name,
-        nickname: naverUserInfo.nickname,
-        profileImage: naverUserInfo.profileImage,
-        isIntegrated: true,
-      };
-
-      // 이메일이 존재하지 않는 경우 새 사용자 생성
-      user = await this.userService.createUser(userAttrs, transactionManager);
-
-      oauth = await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
-    }
+    const user = await this.oauthLogin(naverUserInfo, ProviderType.NAVER, transactionManager);
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
       id: user.id,
       tokenData,
+      // provider: ProviderType.NAVER,
     };
 
-    // const accessToken = await this.jwtService.signAccessToken(payload);
-    // const refreshToken = await this.jwtService.signRefreshToken(payload);
     // 공통적으로 사용하는 곳이 많아 한번에 에세스, 리프레쉬 토큰 생성 메서드 추가가
     const { accessToken, refreshToken } =
       await this.jwtService.signAccessTokenAndRefreshToken(payload);
@@ -133,65 +90,17 @@ export class OAuthService {
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
   ): Promise<LoginResponse<LoggedInUser>> {
-    let oauth;
-
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
 
-    let user = await this.userService.findUserByEmail(googleUserInfo.email);
-
-    const oauthAccountAttrs = {
-      providerId: googleUserInfo.id,
-      provider: ProviderType.GOOGLE,
-    };
-
-    if (user) {
-      // 이메일이 이미 존재하는 경우 계정 병합
-      if (!user.isIntegrated) {
-        // 처음 병합할 경우 필요한 정보 업데이트
-        user.name ||= googleUserInfo.name;
-        user.nickname ||= googleUserInfo.name;
-        user.profileImage ||= googleUserInfo.picture;
-        user.isIntegrated = true;
-
-        oauth = await this.oauthRepo.findOAuthAccountByUserId(user.id);
-        if (!oauth) {
-          // 에러 없을수가 없음
-          throw Error();
-        }
-
-        Object.assign(oauth, oauthAccountAttrs);
-
-        oauth = await this.updateOAuthAccount(oauth, transactionManager);
-      }
-
-      // 마지막 접속일 업데이트
-      // user.lastLogin = new Date();
-
-      user = await this.userService.updateUser(user, transactionManager);
-    } else {
-      const userAttrs = {
-        // oauthId: googleUserInfo.id,
-        email: googleUserInfo.email,
-        name: googleUserInfo.name,
-        nickname: googleUserInfo.name,
-        profileImage: googleUserInfo.picture,
-        isIntegrated: true,
-      };
-
-      // 이메일이 존재하지 않는 경우 새 사용자 생성
-      user = await this.userService.createUser(userAttrs, transactionManager);
-
-      oauth = await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
-    }
+    const user = await this.oauthLogin(googleUserInfo, ProviderType.GOOGLE, transactionManager);
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
       id: user.id,
       tokenData,
+      // provider: ProviderType.GOOGLE,
     };
 
-    // const accessToken = await this.jwtService.signAccessToken(payload);
-    // const refreshToken = await this.jwtService.signRefreshToken(payload);
     const { accessToken, refreshToken } =
       await this.jwtService.signAccessTokenAndRefreshToken(payload);
 
@@ -204,18 +113,79 @@ export class OAuthService {
   async createOAuthAccount(
     attrs: Partial<OAuthAccount>,
     transactionManager?: EntityManager
-  ): Promise<OAuthAccount> {
+  ): Promise<InsertResult> {
     const oauthAccountEntity = new OAuthAccount();
 
     Object.assign(oauthAccountEntity, attrs);
 
-    return this.oauthRepo.saveEntity(oauthAccountEntity, transactionManager);
+    return this.oauthRepo.insertEntity(oauthAccountEntity, transactionManager);
   }
 
   async updateOAuthAccount(
     oauthAccountEntity: OAuthAccount,
     transactionManager?: EntityManager
-  ): Promise<OAuthAccount> {
-    return this.oauthRepo.saveEntity(oauthAccountEntity, transactionManager);
+  ): Promise<UpdateResult> {
+    return this.oauthRepo.updateEntity(oauthAccountEntity, transactionManager);
+  }
+
+  private async oauthLogin(
+    userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
+    ProviderType: ProviderType,
+    transactionManager: EntityManager
+  ): Promise<User> {
+    let user = await this.userService.findUserByEmail(userInfo.email);
+
+    if (user) {
+      // 이메일이 이미 존재하는 경우 계정 병합
+      if (!user.isIntegrated) {
+        // 처음 병합할 경우 필요한 정보 업데이트
+        user.name ||= userInfo.name;
+        user.nickname ||= 'nickname' in userInfo ? userInfo.nickname : userInfo.name;
+        user.profileImage ||= 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
+        user.isIntegrated = true;
+
+        const oauth = await this.oauthRepo.findOAuthAccountByUserId(user.id);
+        if (!oauth) {
+          // 에러 없을수가 없음
+          throw Error();
+        }
+
+        const oauthAccountAttrs = {
+          providerId: userInfo.id,
+          provider: ProviderType,
+          userId: user.id,
+        };
+
+        Object.assign(oauth, oauthAccountAttrs);
+
+        await this.updateOAuthAccount(oauth, transactionManager);
+      }
+
+      // 마지막 접속일 업데이트
+      // user.lastLogin = new Date();
+
+      user = await this.userService.updateUser(user, transactionManager);
+    } else {
+      const userAttrs = {
+        email: userInfo.email,
+        name: userInfo.name,
+        nickname: 'nickname' in userInfo ? userInfo.nickname : userInfo.name,
+        profileImage: 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture,
+        isIntegrated: true,
+      };
+
+      // 이메일이 존재하지 않는 경우 새 사용자 생성
+      user = await this.userService.createUser(userAttrs, transactionManager);
+
+      const oauthAccountAttrs = {
+        providerId: userInfo.id,
+        provider: ProviderType,
+        userId: user.id,
+      };
+
+      await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
+    }
+
+    return user;
   }
 }
