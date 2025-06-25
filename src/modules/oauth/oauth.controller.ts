@@ -37,11 +37,6 @@ export class OAuthController {
     private oauthService: OAuthService
   ) {}
 
-  @Get('test')
-  async test(): Promise<void> {
-    console.log('testsetse');
-  }
-
   @Get('login-google')
   @HttpCode(200)
   @SwaggerApiOperation({ summary: '구글 로그인' })
@@ -49,7 +44,7 @@ export class OAuthController {
     status: 200,
     description: '구글 로그인 OAuth로 redirect 성공',
   })
-  async getLoginGoogle(@Res() res: Response): Promise<void> {
+  async loginGoogle(@Res() res: Response): Promise<void> {
     const state = await this.oauthService.generateState(ProviderType.GOOGLE);
     const clientId = this.configService.get<string>('google.clientId');
     const redirectUrl = this.configService.get<string>('google.redirectUrl');
@@ -88,7 +83,7 @@ export class OAuthController {
     dto: LoginResponseDto,
     message: '구글 로그인 성공',
   })
-  async getLoginGoogleCallback(
+  async loginGoogleCallback(
     @Req() req: Request,
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
@@ -111,7 +106,7 @@ export class OAuthController {
     status: 200,
     description: '네이버 로그인 OAuth로 redirect 성공',
   })
-  async getLoginNaver(@Res() res: Response): Promise<void> {
+  async loginNaver(@Res() res: Response): Promise<void> {
     const state = await this.oauthService.generateState(ProviderType.NAVER);
     const clientId = this.configService.get<string>('naver.clientId');
     const redirectUrl = this.configService.get<string>('naver.redirectUrl');
@@ -154,7 +149,7 @@ export class OAuthController {
     dto: LoginResponseDto,
     message: '네이버 로그인 성공',
   })
-  async getLoginNaverCallback(
+  async loginNaverCallback(
     @Req() req: Request,
     // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
     // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
