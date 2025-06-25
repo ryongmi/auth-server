@@ -37,7 +37,7 @@ export class AuthController {
   @Serialize({
     message: '로그아웃 성공',
   })
-  async postLogout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     return await this.authService.logout(req, res);
   }
 
@@ -61,7 +61,7 @@ export class AuthController {
     dto: LoginResponseDto,
     message: '로그인 성공',
   })
-  async postLogin(
+  async login(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() body: LoginRequestDto
@@ -94,7 +94,7 @@ export class AuthController {
     dto: LoginResponseDto,
     message: '회원가입 성공',
   })
-  async postCreateUser(
+  async signup(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() body: SignupRequestDto
@@ -113,7 +113,7 @@ export class AuthController {
     dto: RefreshResponseDto,
     message: '토큰 재발급 성공',
   })
-  async postRefresh(@Req() req: Request): Promise<RefreshResponseDto> {
+  async refresh(@Req() req: Request): Promise<RefreshResponseDto> {
     return await this.authService.refresh(req.jwt!);
   }
 }

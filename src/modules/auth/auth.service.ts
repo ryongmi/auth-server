@@ -113,8 +113,6 @@ export class AuthService {
 
     const { accessToken, refreshToken } =
       await this.jwtService.signAccessTokenAndRefreshToken(payload);
-    // const accessToken = await this.jwtService.signAccessToken(payload);
-    // const refreshToken = await this.jwtService.signRefreshToken(payload);
 
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
