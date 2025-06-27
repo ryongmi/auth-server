@@ -16,6 +16,7 @@ import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { RedisService } from '@database';
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
+import { JwtConfig } from '@common/interfaces/index.js';
 
 import { UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
@@ -34,8 +35,9 @@ export class AuthService {
   async logout(req: Request, res: Response): Promise<void> {
     const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
 
-    const blackListStore = this.configService.get<string>('jwt.blackListStore')!;
-    const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge')!;
+    const blackListStore =
+      this.configService.get<JwtConfig['blackListStore']>('jwt.blackListStore')!;
+    const refreshMaxAge = this.configService.get<JwtConfig['refreshMaxAge']>('jwt.refreshMaxAge')!;
 
     await this.redisService.setExValue(`${blackListStore}${refreshToken}`, refreshMaxAge, 1); // Redis에 블랙리스트 지정
 

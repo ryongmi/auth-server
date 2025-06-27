@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtException } from '@krgeobuk/jwt/exception';
 
+import { JwtConfig } from '@common/interfaces/index.js';
+
 import { JwtTokenService } from './jwt-token.service.js';
 
 @Module({
@@ -13,7 +15,7 @@ import { JwtTokenService } from './jwt-token.service.js';
     {
       provide: 'JWT_ACCESS_PUBLIC_KEY',
       useFactory: (configService: ConfigService): string => {
-        const publicKey = configService.get<string>('jwt.accessPublicKey');
+        const publicKey = configService.get<JwtConfig['accessPublicKey']>('jwt.accessPublicKey');
         if (!publicKey) throw JwtException.publicKeyMissing('access');
         return publicKey;
       },

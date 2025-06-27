@@ -5,10 +5,10 @@ import { ConfigService } from '@nestjs/config';
 
 import { setupSwagger } from '@krgeobuk/swagger/config';
 
+import { DefaultConfig } from '@common/interfaces/index.js';
+
 import { AppModule } from './app.module.js';
 import { setNestApp } from './setNestApp.js';
-
-import { DefaultConfig } from '@common/interfaces/index.js';
 
 async function bootstrap(): Promise<void> {
   // const app = await NestFactory.create(AppModule);
@@ -17,11 +17,10 @@ async function bootstrap(): Promise<void> {
 
   const port = configService.get<DefaultConfig['port']>('port')!;
 
-  //
   // 글로벌 설정
   setNestApp(app, configService);
+
   // Swagger 설정
-  // setSwagger(app);
   setupSwagger({ app, configService });
 
   await app.listen(port);

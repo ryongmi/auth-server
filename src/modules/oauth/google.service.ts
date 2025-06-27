@@ -10,6 +10,8 @@ import { transformAndValidate } from '@krgeobuk/core/utils';
 import { GoogleTokenResponseDto, GoogleUserProfileResponseDto } from '@krgeobuk/oauth/dtos';
 import type { GoogleOAuthCallbackQuery, GoogleInfoResponse } from '@krgeobuk/oauth/interfaces';
 
+import { GoogleConfig } from '@common/interfaces/index.js';
+
 @Injectable()
 export class GoogleOAuthService {
   constructor(
@@ -19,11 +21,11 @@ export class GoogleOAuthService {
 
   async getGoogleUserInfo(query: GoogleOAuthCallbackQuery): Promise<GoogleInfoResponse> {
     const { code, state } = query;
-    const client_id = this.config.get<string>('google.clientId')!;
-    const client_secret = this.config.get<string>('google.clientSecret')!;
-    const redirect_uri = this.config.get<string>('google.redirectUrl')!;
-    const tokenUrl = this.config.get<string>('google.tokenUrl')!;
-    const userInfoUrl = this.config.get<string>('google.userInfoUrl')!;
+    const client_id = this.config.get<GoogleConfig['clientId']>('google.clientId')!;
+    const client_secret = this.config.get<GoogleConfig['clientSecret']>('google.clientSecret')!;
+    const redirect_uri = this.config.get<GoogleConfig['redirectUrl']>('google.redirectUrl')!;
+    const tokenUrl = this.config.get<GoogleConfig['tokenUrl']>('google.tokenUrl')!;
+    const userInfoUrl = this.config.get<GoogleConfig['userInfoUrl']>('google.userInfoUrl')!;
 
     try {
       // 교환할 토큰 요청

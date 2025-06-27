@@ -14,6 +14,7 @@ import type { LoginResponse } from '@krgeobuk/auth/interfaces';
 import { RedisService } from '@database';
 import { User, UserService } from '@modules/user/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
+import { JwtConfig } from '@common/interfaces/index.js';
 
 import { OAuthAccount } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -37,7 +38,9 @@ export class OAuthService {
   async generateState(type: ProviderType): Promise<string> {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    const stateStore = this.configService.get<string>(`jwt.${type}StateStore`);
+    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
+      `jwt.${type}StateStore`
+    );
 
     await this.redisService.setExValue(`${stateStore}${state}`, 300, 'pending'); // Redis에 상태값 저장 (5분 동안 유지)
 
@@ -46,7 +49,9 @@ export class OAuthService {
 
   // state 값 검증
   async validateState(state: string, type: ProviderType): Promise<boolean> {
-    const stateStore = this.configService.get<string>(`jwt.${type}StateStore`);
+    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
+      `jwt.${type}StateStore`
+    );
     const value = await this.redisService.getValue(`${stateStore}${state}`);
 
     return value === 'pending'; // 'pending' 상태이면 유효한 state
@@ -54,7 +59,9 @@ export class OAuthService {
 
   // 인증 후 state 삭제
   async deleteState(state: string, type: ProviderType): Promise<void> {
-    const stateStore = this.configService.get<string>(`jwt.${type}StateStore`);
+    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
+      `jwt.${type}StateStore`
+    );
 
     await this.redisService.deleteValue(`${stateStore}${state}`); // 인증 완료 후 state 삭제
   }

@@ -5,6 +5,7 @@ import { Request } from 'express';
 
 import { JwtException } from '@krgeobuk/jwt/exception';
 
+import { JwtConfig } from '@common/interfaces/index.js';
 import { RedisService } from '@database';
 
 import { JwtTokenService } from '../jwt-token.service.js';
@@ -26,7 +27,8 @@ export class RefreshTokenGuard implements CanActivate {
 
     if (!refreshToken) throw JwtException.notFound('refresh');
 
-    const blackListStore = this.configService.get<string>('jwt.blackListStore');
+    const blackListStore =
+      this.configService.get<JwtConfig['blackListStore']>('jwt.blackListStore');
     const blacklistedToken = await this.redisService.getValue(`${blackListStore}${refreshToken}`);
 
     if (blacklistedToken) throw JwtException.invalid('refresh');

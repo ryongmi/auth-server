@@ -10,7 +10,6 @@ import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
 
 // import { SeederModule } from './seeder/seeder.module';
-// import { SerializerInterceptor } from "./common/interceptors";
 
 @Module({
   imports: [

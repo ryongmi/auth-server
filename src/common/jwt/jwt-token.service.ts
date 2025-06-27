@@ -9,6 +9,8 @@ import type { TokenPair, JwtPayload } from '@krgeobuk/jwt/interfaces';
 import type { TokenType } from '@krgeobuk/jwt/types';
 // import type { RefreshResponse } from '@krgeobuk/auth/interfaces';
 
+import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
+
 @Injectable()
 export class JwtTokenService {
   constructor(
@@ -27,8 +29,12 @@ export class JwtTokenService {
 
   async signToken(payload: JwtPayload, type: TokenType): Promise<string> {
     try {
-      const privateKey = this.configService.get<string>(`jwt.${type}PrivateKey`);
-      const expiresIn = this.configService.get<string>(`jwt.${type}ExpiresIn`);
+      const privateKey = this.configService.get<
+        JwtConfig['accessPrivateKey' | 'refreshPrivateKey']
+      >(`jwt.${type}PrivateKey`);
+      const expiresIn = this.configService.get<JwtConfig['accessExpiresIn' | 'refreshExpiresIn']>(
+        `jwt.${type}ExpiresIn`
+      );
 
       if (!privateKey) throw JwtException.privateKeyMissing(type);
       if (!expiresIn) throw JwtException.expireMissing(type);
@@ -76,7 +82,8 @@ export class JwtTokenService {
   // Refresh Token 검증
   async decodeRefreshToken(token: string): Promise<JwtPayload> {
     try {
-      const publicKey = this.configService.get<string>('jwt.refreshPublicKey');
+      const publicKey =
+        this.configService.get<JwtConfig['refreshPublicKey']>('jwt.refreshPublicKey');
       if (!publicKey) throw JwtException.publicKeyMissing('refresh');
 
       return await this.jwtService.verifyAsync(token, {
@@ -102,7 +109,7 @@ export class JwtTokenService {
   }
 
   getRefreshTokenToCookie(req: Request): string {
-    const refreshTokenStore = this.configService.get<string>('jwt.refreshStore');
+    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
     if (!refreshTokenStore) throw JwtException.configMissing('refresh');
 
     const refreshToken = req.cookies[refreshTokenStore] as string | undefined;
@@ -112,10 +119,11 @@ export class JwtTokenService {
   }
 
   setRefreshTokenToCookie(res: Response, refreshToken: string): void {
-    const refreshTokenStore = this.configService.get<string>('jwt.refreshStore');
-    const refreshMaxAge = this.configService.get<number>('jwt.refreshMaxAge');
-    const mode = this.configService.get<string>('mode');
-    const cookiePath = this.configService.get<string>('jwt.sessionCookiePath');
+    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
+    const refreshMaxAge = this.configService.get<JwtConfig['refreshMaxAge']>('jwt.refreshMaxAge');
+    const mode = this.configService.get<DefaultConfig['mode']>('mode');
+    const cookiePath =
+      this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
 
     if (!refreshTokenStore || !mode || !refreshMaxAge || !cookiePath) {
       throw JwtException.configMissing('refresh');
@@ -133,9 +141,10 @@ export class JwtTokenService {
   }
 
   clearRefreshTokenCookie(res: Response): void {
-    const refreshTokenStore = this.configService.get<string>('jwt.refreshStore');
-    const mode = this.configService.get<string>('mode');
-    const cookiePath = this.configService.get<string>('jwt.sessionCookiePath');
+    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
+    const mode = this.configService.get<DefaultConfig['mode']>('mode');
+    const cookiePath =
+      this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
 
     if (!refreshTokenStore || !mode || !cookiePath) {
       throw JwtException.configMissing('refresh');

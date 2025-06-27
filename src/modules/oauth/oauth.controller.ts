@@ -17,17 +17,20 @@ import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
 import { ProviderType } from '@krgeobuk/oauth/enum';
 import { LoginResponseDto } from '@krgeobuk/auth/dtos';
+import { OAuthResponse } from '@krgeobuk/oauth/response';
+import { OAuthError } from '@krgeobuk/oauth/exception';
 import {
   SwaggerApiTags,
-  // SwaggerApiBody,
   SwaggerApiOperation,
   SwaggerApiQuery,
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
 
-import { OAuthService } from './oauth.service.js';
+import { GoogleConfig, NaverConfig } from '@common/interfaces/index.js';
+
 import { NaverOAuthStateGuard, GoogleOAuthStateGuard } from './guards/oauth-state.guard.js';
+import { OAuthService } from './oauth.service.js';
 
 @SwaggerApiTags({ tags: ['oauth'] })
 @Controller('oauth')
@@ -46,8 +49,8 @@ export class OAuthController {
   })
   async loginGoogle(@Res() res: Response): Promise<void> {
     const state = await this.oauthService.generateState(ProviderType.GOOGLE);
-    const clientId = this.configService.get<string>('google.clientId');
-    const redirectUrl = this.configService.get<string>('google.redirectUrl');
+    const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
+    const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
 
     const url =
       'https://accounts.google.com/o/oauth2/v2/auth' +
@@ -61,27 +64,29 @@ export class OAuthController {
   }
 
   @Get('login-google/callback')
-  @HttpCode(200)
+  @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '구글 OAuth 정보 가져오기' })
   @SwaggerApiQuery({
-    name: 'code',
-    type: String,
-    description: '구글에서 return시킨 code',
+    name: 'Google OAuth Query 값',
+    type: GoogleOAuthCallbackQueryDto,
+    description: 'Google OAuth Query 값',
+    required: true,
   })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '구글 로그인 성공',
+    status: OAuthResponse.LOGIN_SUCCESS.statusCode,
+    description: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
     dto: LoginResponseDto,
   })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '로그인중 서버에서 에러가 발생',
+    status: OAuthError.LOGIN_ERROR.statusCode,
+    description: `Google ${OAuthError.LOGIN_ERROR.message}`,
   })
   @UseGuards(GoogleOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
   @Serialize({
     dto: LoginResponseDto,
-    message: '구글 로그인 성공',
+    code: OAuthResponse.LOGIN_SUCCESS.code,
+    message: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
   async loginGoogleCallback(
     @Req() req: Request,
@@ -108,8 +113,8 @@ export class OAuthController {
   })
   async loginNaver(@Res() res: Response): Promise<void> {
     const state = await this.oauthService.generateState(ProviderType.NAVER);
-    const clientId = this.configService.get<string>('naver.clientId');
-    const redirectUrl = this.configService.get<string>('naver.redirectUrl');
+    const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
+    const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
 
     const url =
       'https://nid.naver.com/oauth2.0/authorize' +
@@ -122,32 +127,29 @@ export class OAuthController {
   }
 
   @Get('/login-naver/callback')
-  @HttpCode(200)
+  @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '네이버 OAuth 정보 가져오기' })
   @SwaggerApiQuery({
-    name: 'code',
-    type: String,
-    description: '네이버에서 return시킨 code',
-  })
-  @SwaggerApiQuery({
-    name: 'state',
-    type: String,
-    description: '네이버 OAuth redirect전 서버에서 생성한 임의의 문자열',
+    name: 'Naver OAuth Query 값',
+    type: NaverOAuthCallbackQueryDto,
+    description: 'Naver OAuth Query 값',
+    required: true,
   })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '네이버 로그인 성공',
+    status: OAuthResponse.LOGIN_SUCCESS.statusCode,
+    description: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
     dto: LoginResponseDto,
   })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '로그인중 서버에서 에러가 발생',
+    status: OAuthError.LOGIN_ERROR.statusCode,
+    description: `Naver ${OAuthError.LOGIN_ERROR.message}`,
   })
   @UseGuards(NaverOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
   @Serialize({
     dto: LoginResponseDto,
-    message: '네이버 로그인 성공',
+    code: OAuthResponse.LOGIN_SUCCESS.code,
+    message: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
   async loginNaverCallback(
     @Req() req: Request,

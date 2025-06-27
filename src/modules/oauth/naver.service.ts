@@ -9,6 +9,8 @@ import { transformAndValidate } from '@krgeobuk/core/utils';
 import { NaverTokenResponseDto, NaverUserProfileResponseDto } from '@krgeobuk/oauth/dtos';
 import type { NaverOAuthCallbackQuery, NaverInfoResponse } from '@krgeobuk/oauth/interfaces';
 
+import { NaverConfig } from '@common/interfaces/index.js';
+
 @Injectable()
 export class NaverOAuthService {
   constructor(
@@ -18,11 +20,11 @@ export class NaverOAuthService {
 
   async getNaverUserInfo(query: NaverOAuthCallbackQuery): Promise<NaverInfoResponse> {
     const { code, state } = query;
-    const client_id = this.config.get<string>('naver.clientId')!;
-    const client_secret = this.config.get<string>('naver.clientSecret')!;
-    const redirect_uri = this.config.get<string>('naver.redirectUrl')!;
-    const tokenUrl = this.config.get<string>('naver.tokenUrl')!;
-    const userInfoUrl = this.config.get<string>('naver.userInfoUrl')!;
+    const client_id = this.config.get<NaverConfig['clientId']>('naver.clientId')!;
+    const client_secret = this.config.get<NaverConfig['clientSecret']>('naver.clientSecret')!;
+    const redirect_uri = this.config.get<NaverConfig['redirectUrl']>('naver.redirectUrl')!;
+    const tokenUrl = this.config.get<NaverConfig['tokenUrl']>('naver.tokenUrl')!;
+    const userInfoUrl = this.config.get<NaverConfig['userInfoUrl']>('naver.userInfoUrl')!;
 
     try {
       // 교환할 토큰 요청
