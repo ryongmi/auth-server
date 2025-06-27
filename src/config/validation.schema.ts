@@ -37,11 +37,11 @@ const naverConfigSchema = {
 };
 
 const jwtConfigSchema = {
-  JWT_SECRET: Joi.string().required(),
-  JWT_EXPIRES_IN: Joi.string().required(),
-  JWT_ACCESS_SECRET: Joi.string().required(),
+  JWT_ACCESS_PRIVATE_KEY_PATH: Joi.string().required(),
+  JWT_ACCESS_PUBLIC_KEY_PATH: Joi.string().required(),
+  JWT_REFRESH_PRIVATE_KEY_PATH: Joi.string().required(),
+  JWT_REFRESH_PUBLIC_KEY_PATH: Joi.string().required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().required(),
-  JWT_REFRESH_SECRET: Joi.string().required(),
   JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
   JWT_SESSION_COOKIE_PATH: Joi.string().required(),
   JWT_REFRESH_MAX_AGE: Joi.number().required(),

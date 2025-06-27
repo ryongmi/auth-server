@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
 
-import { decodeAccessToken } from '@krgeobuk/jwt/utils';
+// import { decodeAccessToken } from '@krgeobuk/jwt/utils';
 import { JwtException } from '@krgeobuk/jwt/exception';
 import type { TokenPair, JwtPayload } from '@krgeobuk/jwt/interfaces';
 import type { TokenType } from '@krgeobuk/jwt/types';
@@ -27,14 +27,15 @@ export class JwtTokenService {
 
   async signToken(payload: JwtPayload, type: TokenType): Promise<string> {
     try {
-      const secret = this.configService.get<string>(`jwt.${type}Secret`);
+      const privateKey = this.configService.get<string>(`jwt.${type}PrivateKey`);
       const expiresIn = this.configService.get<string>(`jwt.${type}ExpiresIn`);
 
-      if (!secret) throw JwtException.secretMissing(type);
+      if (!privateKey) throw JwtException.privateKeyMissing(type);
       if (!expiresIn) throw JwtException.expireMissing(type);
 
       return await this.jwtService.signAsync(payload, {
-        secret,
+        privateKey,
+        algorithm: 'RS256',
         expiresIn,
       });
     } catch (error: unknown) {
@@ -47,87 +48,44 @@ export class JwtTokenService {
     }
   }
 
-  // async signAccessToken(payload: JwtPayload): Promise<string> {
+  // Access Token 검증
+  // async decodeAccessToken(token: string): Promise<JwtPayload> {
   //   try {
-  //     const secret = this.configService.get<string>('jwt.accessSecret');
-  //     const expiresIn = this.configService.get<string>('jwt.accessExpiresIn');
+  //     const PublicKey = this.configService.get<string>('jwt.accessPublicKey');
+  //     if (!PublicKey) throw JwtException.secretMissing('access');
 
-  //     if (!secret) throw JwtException.secretMissing('access');
-  //     if (!expiresIn) throw JwtException.expireMissing('access');
-
-  //     return await this.jwtService.signAsync(payload, {
-  //       secret,
-  //       expiresIn, // AccessToken은 짧게
-  //     });
+  //     return decodeAccessToken({ token, PublicKey });
   //   } catch (error: unknown) {
   //     if (error instanceof Error) {
-  //       console.error('access 토큰 서명 실패:', error.message);
-  //     } else {
-  //       console.error('access 토큰 서명 실패: 알 수 없는 에러');
+  //       console.error('access 토큰 검증 실패:', error.message);
+
+  //       switch (error.name) {
+  //         case 'TokenExpiredError':
+  //           throw JwtException.expired('access');
+  //         case 'JsonWebTokenError':
+  //           throw JwtException.malformed('access');
+  //         case 'NotBeforeError':
+  //           throw JwtException.unsupported('access');
+  //       }
   //     }
-  //     throw JwtException.signFailure('access');
+
+  //     throw JwtException.decryptionFailed('access');
   //   }
   // }
 
-  // async signRefreshToken(payload: JwtPayload): Promise<string> {
-  //   try {
-  //     const secret = this.configService.get<string>('jwt.refreshSecret');
-  //     const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn');
-
-  //     if (!secret) throw JwtException.secretMissing('refresh');
-  //     if (!expiresIn) throw JwtException.expireMissing('refresh');
-
-  //     return await this.jwtService.signAsync(payload, {
-  //       secret,
-  //       expiresIn, // RefreshToken은 길게
-  //     });
-  //   } catch (error) {
-  //     if (error instanceof Error) {
-  //       console.error('Refresh 토큰 서명 실패:', error.message);
-  //     } else {
-  //       console.error('Refresh 토큰 서명 실패: 알 수 없는 에러');
-  //     }
-  //     throw JwtException.signFailure('refresh');
-  //   }
-  // }
-
-  // Access Token 복호화
-  async decodeAccessToken(token: string): Promise<JwtPayload> {
-    try {
-      const secret = this.configService.get<string>('jwt.accessSecret');
-      if (!secret) throw JwtException.secretMissing('access');
-
-      return decodeAccessToken({ token, secret });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('access 토큰 복호화 실패:', error.message);
-
-        switch (error.name) {
-          case 'TokenExpiredError':
-            throw JwtException.expired('access');
-          case 'JsonWebTokenError':
-            throw JwtException.malformed('access');
-          case 'NotBeforeError':
-            throw JwtException.unsupported('access');
-        }
-      }
-
-      throw JwtException.decryptionFailed('access');
-    }
-  }
-
-  // Refresh Token 복호화
+  // Refresh Token 검증
   async decodeRefreshToken(token: string): Promise<JwtPayload> {
     try {
-      const secret = this.configService.get<string>('jwt.refreshSecret');
-      if (!secret) throw JwtException.secretMissing('refresh');
+      const publicKey = this.configService.get<string>('jwt.refreshPublicKey');
+      if (!publicKey) throw JwtException.publicKeyMissing('refresh');
 
       return await this.jwtService.verifyAsync(token, {
-        secret,
+        publicKey,
+        algorithms: ['RS256'],
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error('refresh 토큰 복호화 실패:', error.message);
+        console.error('refresh 토큰 검증 실패:', error.message);
 
         switch (error.name) {
           case 'TokenExpiredError':

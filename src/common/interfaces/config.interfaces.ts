@@ -37,11 +37,11 @@ export interface NaverConfig {
 }
 
 export interface JwtConfig {
-  secret: string | undefined;
-  expiresIn: string | undefined;
-  accessSecret: string | undefined;
+  accessPrivateKey: string | undefined;
+  accessPublicKey: string | undefined;
+  refreshPrivateKey: string | undefined;
+  refreshPublicKey: string | undefined;
   accessExpiresIn: string | undefined;
-  refreshSecret: string | undefined;
   refreshExpiresIn: string | undefined;
   sessionCookiePath: string | undefined;
   refreshMaxAge: number | undefined;

@@ -5,8 +5,9 @@ import { Request } from 'express';
 
 import { JwtException } from '@krgeobuk/jwt/exception';
 
-import { JwtTokenService } from '../jwt-token.service.js';
 import { RedisService } from '@database';
+
+import { JwtTokenService } from '../jwt-token.service.js';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {

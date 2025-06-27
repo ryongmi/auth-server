@@ -11,15 +11,18 @@ import { JwtTokenService } from './jwt-token.service.js';
     JwtService,
     JwtTokenService,
     {
-      provide: 'JWT_ACCESS_SECRET',
+      provide: 'JWT_ACCESS_PUBLIC_KEY',
       useFactory: (configService: ConfigService): string => {
-        const secret = configService.get<string>('jwt.accessSecret');
-        if (!secret) throw JwtException.secretMissing('access');
-        return secret;
+        const publicKey = configService.get<string>('jwt.accessPublicKey');
+        if (!publicKey) throw JwtException.publicKeyMissing('access');
+        return publicKey;
       },
       inject: [ConfigService],
     },
+    // {
+    //   provide: 'REFRESH_TOKEN', useClass: '해당서비스'
+    // },
   ],
-  exports: [JwtTokenService], // JwtTokenService를 다른 모듈에서 사용 가능하도록 export
+  exports: [JwtTokenService, 'JWT_ACCESS_PUBLIC_KEY'], // 다른 모듈에서 사용 가능하도록 export
 })
 export class JwtModule {}
