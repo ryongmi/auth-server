@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-import type { ListQuery } from '@krgeobuk/user/interfaces';
+import type { Detail, SearchQuery, SearchResult } from '@krgeobuk/user/interfaces';
 
 import { OAuthAccount } from '@modules/oauth/entities/index.js';
 
@@ -15,32 +15,45 @@ export class UserRepository extends BaseRepository<User> {
     super(User, dataSource);
   }
 
-  //   async updateUserPassword(
-  //     id: string,
-  //     password: string,
-  //     changePassword: string,
-  //   ): Promise<User> {
-  //     const user = await this.findById(id);
-
-  //     if (!user) {
-  //       throw UserException.userNotFound();
-  //     }
-
-  //     const isExisted = await isExistedPassword(password);
-  //     if (!isExisted) {
-  //       throw UserException.userInfoNotExist();
-  //     }
-
-  //     const result = await isHashingPassword(changePassword);
-  //     user.password = result;
-
-  //     return await this.userRepo.save(user);
-  //   }
   /**
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  async findAllWithFilters(query: ListQuery): Promise<PaginatedResult<Partial<User>>> {
+  async findUserProfile(id: string): Promise<Detail> {
+    const userAlias = 'user';
+    const oauthAccountAlias = 'oauthAccount';
+
+    const qb = this.createQueryBuilder(userAlias)
+      .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
+      .addSelect(`${oauthAccountAlias}.provider`, 'provider')
+      .andWhere(`${userAlias}.id = :id`, { id });
+
+    // const qb = this.createQueryBuilder('user')
+    //   .leftJoin(OAuthAccount, 'oauthAccount', 'oauthAccount.userId = user.id')
+    //   .addSelect(['user.id', 'user.email', 'user.name', 'oauthAccount.provider']);
+
+    // const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
+    const row = await qb.getRawOne();
+
+    const data = {
+      email: row[`${userAlias}_email`],
+      name: row[`${userAlias}_name`],
+      nickname: row[`${userAlias}_nickname`],
+      profileImageUrl: row[`${userAlias}_profileImageUrl`],
+      isIntegrated: row[`${userAlias}_isIntegrated`],
+      isEmailVerified: row[`${userAlias}_isEmailVerified`],
+      createdAt: row[`${userAlias}_createdAt`],
+      provider: row[`${oauthAccountAlias}_provider`],
+    };
+
+    return data;
+  }
+
+  /**
+   * 모든 엔티티를 조회합니다.
+   * @returns 모든 엔티티 배열
+   */
+  async search(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
     const {
       email,
       name,
@@ -88,13 +101,9 @@ export class UserRepository extends BaseRepository<User> {
     //   qb.andWhere(`${userAlias}.role = :role`, { role });
     // }
 
-    qb.orderBy(`${userAlias}.${sortBy}`, sortOrder).skip(skip).take(limit);
+    qb.orderBy(`${userAlias}.${sortBy}`, sortOrder);
 
-    // const [items, total] = await qb
-    //   .orderBy(`${userAlias}.${sortBy}`, sortOrder)
-    //   .skip(skip)
-    //   .take(limit)
-    //   .getManyAndCount();
+    qb.skip(skip).take(limit);
 
     const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
@@ -103,6 +112,12 @@ export class UserRepository extends BaseRepository<User> {
       email: row[`${userAlias}_email`],
       name: row[`${userAlias}_name`],
       nickname: row[`${userAlias}_nickname`],
+      profileImageUrl: row[`${userAlias}_profileImageUrl`],
+      isIntegrated: row[`${userAlias}_isIntegrated`],
+      isEmailVerified: row[`${userAlias}_isEmailVerified`],
+      createdAt: row[`${userAlias}_createdAt`],
+      updatedAt: row[`${userAlias}_updatedAt`],
+      deletedAt: row[`${userAlias}_deletedAt`],
       provider: row[`${oauthAccountAlias}_provider`],
     }));
 
@@ -115,13 +130,5 @@ export class UserRepository extends BaseRepository<User> {
       limit,
       totalPages,
     };
-  }
-
-  // 예시: 유저와 프로필을 조인해서 조회
-  async findUserWithProfile(userId: string): Promise<User | null> {
-    return this.getQueryBuilder('user')
-      .leftJoinAndSelect('user.profile', 'profile')
-      .where('user.id = :userId', { userId })
-      .getOne();
   }
 }
