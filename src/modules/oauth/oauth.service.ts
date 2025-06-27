@@ -10,7 +10,6 @@ import type {
   GoogleUserProfileResponse,
 } from '@krgeobuk/oauth/interfaces';
 import type { LoginResponse } from '@krgeobuk/auth/interfaces';
-import type { LoggedInUser } from '@krgeobuk/user/interfaces';
 
 import { RedisService } from '@database';
 import { User, UserService } from '@modules/user/index.js';
@@ -64,7 +63,7 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<LoginResponse<LoggedInUser>> {
+  ): Promise<LoginResponse> {
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
 
     const user = await this.oauthLogin(naverUserInfo, ProviderType.NAVER, transactionManager);
@@ -89,7 +88,7 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<LoginResponse<LoggedInUser>> {
+  ): Promise<LoginResponse> {
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
 
     const user = await this.oauthLogin(googleUserInfo, ProviderType.GOOGLE, transactionManager);
@@ -141,7 +140,8 @@ export class OAuthService {
         // 처음 병합할 경우 필요한 정보 업데이트
         user.name ||= userInfo.name;
         user.nickname ||= 'nickname' in userInfo ? userInfo.nickname : userInfo.name;
-        user.profileImage ||= 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
+        user.profileImageUrl ||=
+          'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
         user.isIntegrated = true;
 
         const oauth = await this.oauthRepo.findOAuthAccountByUserId(user.id);
@@ -164,13 +164,13 @@ export class OAuthService {
       // 마지막 접속일 업데이트
       // user.lastLogin = new Date();
 
-      user = await this.userService.updateUser(user, transactionManager);
+      await this.userService.updateUser(user, transactionManager);
     } else {
       const userAttrs = {
         email: userInfo.email,
         name: userInfo.name,
         nickname: 'nickname' in userInfo ? userInfo.nickname : userInfo.name,
-        profileImage: 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture,
+        profileImageUrl: 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture,
         isIntegrated: true,
       };
 

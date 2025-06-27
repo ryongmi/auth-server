@@ -18,7 +18,7 @@ export class User extends BaseEntityUUID {
   nickname?: string;
 
   @Column({ type: 'varchar', length: 2048, nullable: true })
-  profileImage?: string;
+  profileImageUrl?: string;
 
   @Column({ default: false })
   isEmailVerified!: boolean;
