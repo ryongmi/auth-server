@@ -8,6 +8,8 @@ import {
   SignupRequestDto,
   RefreshResponseDto,
 } from '@krgeobuk/auth/dtos';
+import { AuthError } from '@krgeobuk/auth/exception';
+import { AuthResponse } from '@krgeobuk/auth/response';
 import {
   SwaggerApiTags,
   SwaggerApiBody,
@@ -16,6 +18,8 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
+import { JwtPayload } from '@krgeobuk/jwt/interfaces';
+import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
 import { RefreshTokenGuard } from '@common/jwt/index.js';
 
@@ -27,39 +31,43 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('/logout')
-  @HttpCode(200)
+  @HttpCode(AuthResponse.LOGOUT_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '로그아웃' })
-  @SwaggerApiOkResponse({ status: 200, description: '로그아웃 성공' })
+  @SwaggerApiOkResponse({
+    status: AuthResponse.LOGOUT_SUCCESS.statusCode,
+    description: AuthResponse.LOGOUT_SUCCESS.message,
+  })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '로그아웃중 서버에서 에러가 발생',
+    status: AuthError.LOGOUT_ERROR.statusCode,
+    description: AuthError.LOGOUT_ERROR.message,
   })
   @Serialize({
-    message: '로그아웃 성공',
+    ...AuthResponse.LOGOUT_SUCCESS,
+    // message: '로그아웃 성공',
   })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     return await this.authService.logout(req, res);
   }
 
   @Post('/login')
-  @HttpCode(200)
+  @HttpCode(AuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '로그인' })
   @SwaggerApiBody({
     dto: LoginRequestDto,
     description: '사이트 로그인시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '로그인 성공',
+    status: AuthResponse.LOGIN_SUCCESS.statusCode,
+    description: AuthResponse.LOGIN_SUCCESS.message,
     dto: LoginResponseDto,
   })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '로그인중 서버에서 에러가 발생',
+    status: AuthError.LOGIN_ERROR.statusCode,
+    description: AuthError.LOGIN_ERROR.message,
   })
   @Serialize({
     dto: LoginResponseDto,
-    message: '로그인 성공',
+    ...AuthResponse.LOGIN_SUCCESS,
   })
   async login(
     @Req() req: Request,
@@ -75,24 +83,24 @@ export class AuthController {
   }
 
   @Post('/signup')
-  @HttpCode(201)
+  @HttpCode(AuthResponse.SIGNUP_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '회원가입' })
   @SwaggerApiBody({
     dto: SignupRequestDto,
     description: '회원가입시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
-    status: 201,
-    description: '회원가입 성공',
+    status: AuthResponse.SIGNUP_SUCCESS.statusCode,
+    description: AuthResponse.SIGNUP_SUCCESS.message,
     dto: LoginResponseDto,
   })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '회원가입중 서버에서 에러가 발생',
+    status: AuthError.SIGNUP_ERROR.statusCode,
+    description: AuthError.SIGNUP_ERROR.message,
   })
   @Serialize({
     dto: LoginResponseDto,
-    message: '회원가입 성공',
+    ...AuthResponse.SIGNUP_SUCCESS,
   })
   async signup(
     @Req() req: Request,
@@ -108,12 +116,23 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @HttpCode(AuthResponse.REFRESH_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '토큰 재발급' })
+  @SwaggerApiOkResponse({
+    status: AuthResponse.REFRESH_SUCCESS.statusCode,
+    description: AuthResponse.REFRESH_SUCCESS.message,
+    dto: RefreshResponseDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: AuthError.REFRESH_ERROR.statusCode,
+    description: AuthError.REFRESH_ERROR.message,
+  })
   @UseGuards(RefreshTokenGuard)
   @Serialize({
     dto: RefreshResponseDto,
-    message: '토큰 재발급 성공',
+    ...AuthResponse.REFRESH_SUCCESS,
   })
-  async refresh(@Req() req: Request): Promise<RefreshResponseDto> {
-    return await this.authService.refresh(req.jwt!);
+  async refresh(@CurrentJwt() jwt: JwtPayload): Promise<RefreshResponseDto> {
+    return await this.authService.refresh(jwt);
   }
 }
