@@ -10,7 +10,6 @@ import type {
   SignupRequest,
   RefreshResponse,
 } from '@krgeobuk/auth/interfaces';
-import type { LoggedInUser } from '@krgeobuk/user/interfaces';
 import { UserException } from '@krgeobuk/user/exception';
 import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 
@@ -43,7 +42,7 @@ export class AuthService {
     this.jwtService.clearRefreshTokenCookie(res);
   }
 
-  async login(res: Response, attrs: LoginRequest): Promise<LoginResponse<LoggedInUser>> {
+  async login(res: Response, attrs: LoginRequest): Promise<LoginResponse> {
     const { email, password } = attrs;
 
     const user = await this.userService.findUserByEmail(email);
@@ -64,7 +63,7 @@ export class AuthService {
 
     const isMatch = isPasswordMatching(password, user.password ?? '');
     if (!isMatch) {
-      throw UserException.invalidLoginInfo();
+      throw UserException.passwordIncorrect();
     }
 
     // 마지막 로그인 날짜 기록
@@ -83,12 +82,12 @@ export class AuthService {
     return { user, accessToken };
   }
 
-  async signup(res: Response, attrs: SignupRequest): Promise<LoginResponse<LoggedInUser>> {
+  async signup(res: Response, attrs: SignupRequest): Promise<LoginResponse> {
     const { email, password } = attrs;
 
     const users = await this.userService.findUserByEmail(email);
     if (users) {
-      throw UserException.emailAlreadyInUse();
+      throw UserException.emailAlreadyExists();
     }
 
     const hashedPassword = await hashPassword(password);
