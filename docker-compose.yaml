@@ -23,7 +23,9 @@ services:
       - MYSQL_TIMEZONE=Asia/Seoul
       - TZ=Asia/Seoul
     volumes:
-      - ./data/mysqldata:/var/lib/mysql
+      - ./data/mysql:/var/lib/mysql
+      # - ./config/mysql/my.cnf:/etc/mysql/my.cnf
+      # - ./config/mysql/conf.d:/etc/mysql/conf.d
     networks:
       - network-auth
 
@@ -37,10 +39,10 @@ services:
     environment:
       - TZ=Asia/Seoul
     volumes:
-      - ./data/redisdata:/data
+      - ./data/redis:/data
     networks:
       - network-auth
-    command: ['redis-server', '--requirepass']
+    command: ['redis-server', '--requirepass', '1234qwer']
     depends_on:
       - mysql
 
