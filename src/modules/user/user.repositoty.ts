@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { LimitType, SortOrderType } from '@krgeobuk/core/enum';
 import type { Detail, SearchQuery, SearchResult } from '@krgeobuk/user/interfaces';
 
 import { OAuthAccount } from '@modules/oauth/entities/index.js';
@@ -25,7 +26,7 @@ export class UserRepository extends BaseRepository<User> {
 
     const qb = this.createQueryBuilder(userAlias)
       .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
-      .addSelect(`${oauthAccountAlias}.provider`, 'provider')
+      .addSelect(`${oauthAccountAlias}.provider`)
       .andWhere(`${userAlias}.id = :id`, { id });
 
     // const qb = this.createQueryBuilder('user')
@@ -60,8 +61,8 @@ export class UserRepository extends BaseRepository<User> {
       nickname,
       provider,
       page = 1,
-      limit = 30,
-      sortOrder = 'DESC',
+      limit = LimitType.FIFTEEN,
+      sortOrder = SortOrderType.DESC,
       sortBy = 'createdAt',
     } = query;
     const skip = (page - 1) * limit;
@@ -71,7 +72,8 @@ export class UserRepository extends BaseRepository<User> {
 
     const qb = this.createQueryBuilder(userAlias)
       .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
-      .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
+      .addSelect(`${oauthAccountAlias}.provider`);
+    // .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
     // const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(
     //   `${userAlias}.${oauthAccountAlias}`,
     //   oauthAccountAlias
@@ -103,7 +105,8 @@ export class UserRepository extends BaseRepository<User> {
 
     qb.orderBy(`${userAlias}.${sortBy}`, sortOrder);
 
-    qb.skip(skip).take(limit);
+    // qb.skip(skip).take(limit);
+    qb.offset(skip).limit(limit);
 
     const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
@@ -112,13 +115,15 @@ export class UserRepository extends BaseRepository<User> {
       email: row[`${userAlias}_email`],
       name: row[`${userAlias}_name`],
       nickname: row[`${userAlias}_nickname`],
-      profileImageUrl: row[`${userAlias}_profileImageUrl`],
-      isIntegrated: row[`${userAlias}_isIntegrated`],
-      isEmailVerified: row[`${userAlias}_isEmailVerified`],
-      createdAt: row[`${userAlias}_createdAt`],
-      updatedAt: row[`${userAlias}_updatedAt`],
-      deletedAt: row[`${userAlias}_deletedAt`],
-      provider: row[`${oauthAccountAlias}_provider`],
+      profileImageUrl: row[`${userAlias}_profile_image_url`],
+      isIntegrated: row[`${userAlias}_is_integrated`],
+      isEmailVerified: row[`${userAlias}_is_email_verified`],
+      createdAt: row[`${userAlias}_created_at`],
+      updatedAt: row[`${userAlias}_updated_at`],
+      deletedAt: row[`${userAlias}_deleted_at`],
+      oauthAccount: {
+        provider: row[`${oauthAccountAlias}_provider`],
+      },
     }));
 
     const totalPages = Math.ceil(total / limit);

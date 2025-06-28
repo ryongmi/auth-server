@@ -23,7 +23,7 @@ import { UserResponse } from '@krgeobuk/user/response';
 import { UserError } from '@krgeobuk/user/exception';
 import {
   SwaggerApiTags,
-  SwaggerApiQuery,
+  SwaggerApiBearerAuth,
   SwaggerApiParam,
   SwaggerApiBody,
   SwaggerApiOperation,
@@ -57,7 +57,6 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   @Serialize({
     dto: DetailDto,
-    // message: '프로필 조회 성공',
     ...UserResponse.PROFILE_FETCH_SUCCESS,
   })
   async getMyProfile(@CurrentJwt() { id }: JwtPayload): Promise<DetailDto> {
@@ -68,10 +67,6 @@ export class UserController {
   @Patch('me')
   @HttpCode(UserResponse.PROFILE_UPDATE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '본인 프로필 수정' })
-  @SwaggerApiBody({
-    dto: UpdateMyProfileDto,
-    description: '프로필 수정에 필요한 데이터',
-  })
   @SwaggerApiOkResponse({
     status: UserResponse.PROFILE_UPDATE_SUCCESS.statusCode,
     description: UserResponse.PROFILE_UPDATE_SUCCESS.message,
@@ -86,7 +81,6 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    // message: '프로필 수정 성공',
     ...UserResponse.PROFILE_UPDATE_SUCCESS,
   })
   async updateMyProfile(
@@ -122,7 +116,6 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    // message: '패스워드 수정 성공',
     ...UserResponse.PASSWORD_CHANGE_SUCCESS,
   })
   async changePassword(
@@ -145,7 +138,6 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    // message: '프로필 삭제 성공',
     ...UserResponse.ACCOUNT_DELETE_SUCCESS,
   })
   async deleteMyAccount(@CurrentJwt() { id }: JwtPayload): Promise<void> {
@@ -165,6 +157,7 @@ export class UserController {
   @SwaggerApiOkResponse({
     status: UserResponse.USER_FETCH_SUCCESS.statusCode,
     description: UserResponse.USER_FETCH_SUCCESS.message,
+    dto: DetailDto,
   })
   @SwaggerApiErrorResponse({
     status: UserError.USER_FETCH_ERROR.statusCode,
@@ -172,7 +165,7 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    // message: '프로필 삭제 성공',
+    dto: DetailDto,
     ...UserResponse.USER_FETCH_SUCCESS,
   })
   async getUserById(@Param('id') id: string): Promise<DetailDto> {
@@ -181,18 +174,12 @@ export class UserController {
 
   @Get()
   @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
   @SwaggerApiOperation({ summary: '유저 목록 조회' })
-  @SwaggerApiQuery({
-    name: '유저 목록 조회 필터',
-    type: SearchQueryDto,
-    description: '유저 목록 조회 필터',
-    required: false,
-  })
   @SwaggerApiPaginatedResponse({
     status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
     description: UserResponse.USER_SEARCH_SUCCESS.message,
     dto: SearchResultDto,
-    // extraModels: [SearchResultDto],
   })
   @SwaggerApiErrorResponse({
     status: UserError.USER_SEARCH_ERROR.statusCode,
@@ -200,7 +187,6 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    // message: '프로필 삭제 성공',
     dto: PaginatedSearchResultDto,
     ...UserResponse.USER_SEARCH_SUCCESS,
   })
