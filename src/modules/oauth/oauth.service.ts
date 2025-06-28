@@ -119,12 +119,12 @@ export class OAuthService {
   async createOAuthAccount(
     attrs: Partial<OAuthAccount>,
     transactionManager?: EntityManager
-  ): Promise<InsertResult> {
+  ): Promise<OAuthAccount> {
     const oauthAccountEntity = new OAuthAccount();
 
     Object.assign(oauthAccountEntity, attrs);
 
-    return this.oauthRepo.insertEntity(oauthAccountEntity, transactionManager);
+    return this.oauthRepo.saveEntity(oauthAccountEntity, transactionManager);
   }
 
   async updateOAuthAccount(
