@@ -12,7 +12,10 @@ import { setNestApp } from './setNestApp.js';
 
 async function bootstrap(): Promise<void> {
   // const app = await NestFactory.create(AppModule);
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(
+    AppModule,
+    { bufferLogs: true } // 로거 준비 전에 로그 유실 방지
+  );
   const configService = app.get(ConfigService);
 
   const port = configService.get<DefaultConfig['port']>('port')!;

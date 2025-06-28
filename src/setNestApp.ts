@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 import { HttpExceptionFilter } from '@krgeobuk/core/filters';
 import { LoggingInterceptor } from '@krgeobuk/core/interceptors';
@@ -38,6 +39,9 @@ export function setNestApp(
 
   // 모든 엔드포인트에 api 추가
   app.setGlobalPrefix('api');
+
+  // winston 설정
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   // 글로벌 Log 설정
   app.useGlobalInterceptors(new LoggingInterceptor());

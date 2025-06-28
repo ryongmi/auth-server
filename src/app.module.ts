@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { WinstonModule } from 'nest-winston';
 
 import { SerializerInterceptor } from '@krgeobuk/core/interceptors';
+import { winstonConfig } from '@krgeobuk/core/logger';
 
 import { RedisModule, DatabaseModule } from '@database';
 import { AppConfigModule } from '@config';
@@ -13,8 +15,9 @@ import { OAuthModule } from '@modules/oauth/index.js';
 
 @Module({
   imports: [
-    // SeederModule,
+    WinstonModule.forRoot(winstonConfig),
     AppConfigModule,
+    // SeederModule,
     DatabaseModule,
     RedisModule,
     UserModule,
