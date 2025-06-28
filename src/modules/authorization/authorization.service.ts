@@ -4,21 +4,11 @@ import { Injectable } from '@nestjs/common';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 // import type { ListQuery } from '@krgeobuk/user/interfaces';
 
-import { RoleRepository } from './role.repositoty.js';
-import { ServiceVisibleRoleRepository } from './service-visible-role.repositoty.js';
-import { ServiceRepository } from './service.repositoty.js';
-import { UserRoleRepository } from './user-role.repositoty.js';
 import { DataSource } from 'typeorm';
 
 @Injectable()
 export class AuthorizationService {
-  constructor(
-    private readonly dataSource: DataSource,
-    private readonly roleRepo: RoleRepository,
-    private readonly serviceRepo: ServiceRepository,
-    private readonly userRoleRepo: UserRoleRepository,
-    private readonly serviceVisibleRoleRepo: ServiceVisibleRoleRepository
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   // async findUsers(query: ListQuery): Promise<PaginatedResult<Partial<User>>> {
   //   return this.userRepo.findAllWithFilters(query);

@@ -10,6 +10,8 @@ import { AppConfigModule } from '@config';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
+import { RoleModule } from '@modules/role/index.js';
+import { ServiceModule } from '@modules/service/index.js';
 
 // import { SeederModule } from './seeder/seeder.module';
 
@@ -23,6 +25,8 @@ import { OAuthModule } from '@modules/oauth/index.js';
     UserModule,
     AuthModule,
     OAuthModule,
+    RoleModule,
+    ServiceModule,
     // RouterModule.register([
     //   {
     //     path: 'api',
