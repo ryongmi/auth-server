@@ -63,6 +63,7 @@ services:
       - NODE_OPTIONS=--experimental-specifier-resolution=node
     volumes:
       - ./src:/app/src:cached # 소스 코드 동기화
+      - ./logs:/app/logs # Log 동기화
       - ./tsconfig.json:/app/tsconfig.json # tsconfig도 동기화
       - ./nodemon.json:/app/nodemon.json # nodemon 설정도 동기화
       - /app/dist

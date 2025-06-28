@@ -50,7 +50,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: prodution
-    volumes: []
+    volumes:
+      - ./logs:/app/logs # Log 동기화
     # networks:
     #   - network-auth
     ports: []
