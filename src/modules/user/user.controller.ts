@@ -16,6 +16,7 @@ import {
   ChangePasswordDto,
   UpdateMyProfileDto,
   SearchResultDto,
+  PaginatedSearchResultDto,
   DetailDto,
 } from '@krgeobuk/user/dtos';
 import { UserResponse } from '@krgeobuk/user/response';
@@ -28,11 +29,11 @@ import {
   SwaggerApiOperation,
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
+  SwaggerApiPaginatedResponse,
 } from '@krgeobuk/swagger/decorators';
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { UserService } from './user.service.js';
 
@@ -178,7 +179,6 @@ export class UserController {
     return await this.userService.getUserProfile(id);
   }
 
-  //  PaginatedResult<SearchResultDto>
   @Get()
   @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '유저 목록 조회' })
@@ -188,9 +188,11 @@ export class UserController {
     description: '유저 목록 조회 필터',
     required: false,
   })
-  @SwaggerApiOkResponse({
+  @SwaggerApiPaginatedResponse({
     status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
     description: UserResponse.USER_SEARCH_SUCCESS.message,
+    dto: SearchResultDto,
+    // extraModels: [SearchResultDto],
   })
   @SwaggerApiErrorResponse({
     status: UserError.USER_SEARCH_ERROR.statusCode,
@@ -199,9 +201,10 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   @Serialize({
     // message: '프로필 삭제 성공',
+    dto: PaginatedSearchResultDto,
     ...UserResponse.USER_SEARCH_SUCCESS,
   })
-  async searchUsers(@Query() query: SearchQueryDto): Promise<PaginatedResult<SearchResultDto>> {
+  async searchUsers(@Query() query: SearchQueryDto): Promise<PaginatedSearchResultDto> {
     return this.userService.searchUsers(query);
   }
 }

@@ -107,7 +107,7 @@ export class UserRepository extends BaseRepository<User> {
 
     const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
-    const data = rows.map((row) => ({
+    const items = rows.map((row) => ({
       id: row[`${userAlias}_id`],
       email: row[`${userAlias}_email`],
       name: row[`${userAlias}_name`],
@@ -124,7 +124,7 @@ export class UserRepository extends BaseRepository<User> {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data,
+      items,
       total,
       page,
       limit,
