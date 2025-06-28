@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-// import { TypeOrmModule } from '@nestjs/typeorm';
-// import { User } from './entities';
+
 import { RedisModule } from '@database';
 import { JwtModule } from '@common/jwt/index.js';
 

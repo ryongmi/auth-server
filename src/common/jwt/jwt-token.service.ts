@@ -131,7 +131,6 @@ export class JwtTokenService {
     if (!refreshToken) throw JwtException.notFound('refresh');
 
     res.cookie(refreshTokenStore, refreshToken, {
-      // httpOnly: true,
       httpOnly: mode === 'production',
       secure: mode === 'production',
       sameSite: 'strict',
@@ -151,7 +150,6 @@ export class JwtTokenService {
     }
 
     res.clearCookie(refreshTokenStore, {
-      // httpOnly: true,
       httpOnly: mode === 'production',
       secure: mode === 'production',
       sameSite: 'strict',
