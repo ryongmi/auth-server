@@ -22,7 +22,6 @@ import { OAuthError } from '@krgeobuk/oauth/exception';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
-  SwaggerApiQuery,
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
@@ -66,12 +65,6 @@ export class OAuthController {
   @Get('login-google/callback')
   @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '구글 OAuth 정보 가져오기' })
-  @SwaggerApiQuery({
-    name: 'Google OAuth Query 값',
-    type: GoogleOAuthCallbackQueryDto,
-    description: 'Google OAuth Query 값',
-    required: true,
-  })
   @SwaggerApiOkResponse({
     status: OAuthResponse.LOGIN_SUCCESS.statusCode,
     description: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
@@ -129,12 +122,6 @@ export class OAuthController {
   @Get('/login-naver/callback')
   @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '네이버 OAuth 정보 가져오기' })
-  @SwaggerApiQuery({
-    name: 'Naver OAuth Query 값',
-    type: NaverOAuthCallbackQueryDto,
-    description: 'Naver OAuth Query 값',
-    required: true,
-  })
   @SwaggerApiOkResponse({
     status: OAuthResponse.LOGIN_SUCCESS.statusCode,
     description: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,

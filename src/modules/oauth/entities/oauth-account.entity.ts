@@ -1,7 +1,7 @@
 import { Entity, Column, Index, Unique } from 'typeorm';
 
 import { BaseEntityUUID } from '@krgeobuk/core/entities';
-import { ProviderType } from '@krgeobuk/oauth/enum';
+import { ProviderType, PROVIDER_TYPE_VALUES } from '@krgeobuk/oauth/enum';
 
 @Entity('oauth_account')
 @Index(['id', 'userId'], { unique: true })
@@ -10,7 +10,7 @@ export class OAuthAccount extends BaseEntityUUID {
   @Column({ type: 'varchar', length: 255 })
   providerId!: string; // OAuth 제공자 고유 ID
 
-  @Column({ type: 'enum', enum: ProviderType })
+  @Column({ type: 'enum', enum: PROVIDER_TYPE_VALUES })
   provider!: ProviderType; // google, naver 등
 
   // @Column({ type: 'varchar', length: 255 })

@@ -1,9 +1,28 @@
-import { Controller } from '@nestjs/common';
-// import { EntityManager } from 'typeorm';
-// import { Request } from 'express';
-// import { ConfigService } from '@nestjs/config';
+import { Controller, Get, Query } from '@nestjs/common';
+// import { Request, Response } from 'express';
 
-import { SwaggerApiTags } from '@krgeobuk/swagger/decorators';
+// import { Serialize } from '@krgeobuk/core/decorators';
+// import {
+//   SearchQueryDto,
+//   ChangePasswordDto,
+//   UpdateMyProfileDto,
+//   SearchResultDto,
+//   DetailDto,
+// } from '@krgeobuk/role/dtos';
+// import { AuthError } from '@krgeobuk/role/exception';
+// import { AuthResponse } from '@krgeobuk/role/response';
+import {
+  SwaggerApiTags,
+  // SwaggerApiBody,
+  // SwaggerApiOperation,
+  // SwaggerApiOkResponse,
+  // SwaggerApiErrorResponse,
+} from '@krgeobuk/swagger/decorators';
+// import { JwtPayload } from '@krgeobuk/jwt/interfaces';
+// import { CurrentJwt } from '@krgeobuk/jwt/decorators';
+// import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { RoleService } from './role.service.js';
@@ -18,8 +37,8 @@ export class RoleController {
 
   // 전체 Role 목록
   // @Get()
-  // findAll() {
-  //   return this.roleService.findAll();
+  // async searchRoles(@Query() query: SearchQueryDto): Promise<PaginatedResult<SearchResultDto>> {
+  //   return this.roleService.searchRoles(query);
   // }
 
   // // Role 생성
@@ -40,4 +59,3 @@ export class RoleController {
   //   return this.roleService.remove(id);
   // }
 }
-
