@@ -11,7 +11,7 @@ import type {
   RefreshResponse,
 } from '@krgeobuk/auth/interfaces';
 import { AuthException } from '@krgeobuk/auth/exception';
-import { UserException } from '@krgeobuk/user/exception';
+import { UserError, UserException } from '@krgeobuk/user/exception';
 import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 
 import { RedisService } from '@database';
@@ -36,7 +36,7 @@ export class AuthService {
   ) {}
 
   async logout(req: Request, res: Response): Promise<void> {
-    this.logger.log(`${this.logout.name} 시작`);
+    this.logger.log(`${this.logout.name} - 시작 되었습니다.`);
 
     const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
 
@@ -48,16 +48,20 @@ export class AuthService {
 
     this.jwtService.clearRefreshTokenCookie(res);
 
-    this.logger.log(`${this.logout.name} 끝`);
+    this.logger.log(`${this.logout.name} - 성공적으로 종료되었습니다.`);
   }
 
   async login(res: Response, attrs: LoginRequest): Promise<LoginResponse> {
-    this.logger.log(`${this.login.name} 시작`);
+    this.logger.log(`${this.login.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
 
     const user = await this.userService.findUserByEmail(email);
-    if (!user) throw UserException.userNotFound();
+    if (!user) {
+      const message = `[${this.login.name} Warn] code: ${UserError.USER_NOT_FOUND.code}, Message: ${UserError.USER_NOT_FOUND.message}`;
+      this.logger.warn(message);
+      throw UserException.invalidCredentials();
+    }
 
     // 생각해보니 이 메서드는 홈페이지 로그인에서만 사용할거라 아래 조건이 필요가없음
     // const userProvider = user.oauthAccount.provider;
@@ -70,7 +74,11 @@ export class AuthService {
     // }
 
     const isMatch = isPasswordMatching(password, user.password ?? '');
-    if (!isMatch) throw UserException.passwordIncorrect();
+    if (!isMatch) {
+      const message = `[${this.login.name} Warn] code: ${UserError.PASSWORD_INCORRECT.code}, Message: ${UserError.PASSWORD_INCORRECT.message}`;
+      this.logger.warn(message);
+      throw UserException.invalidCredentials();
+    }
 
     // 마지막 로그인 날짜 기록
     // await this.userService.lastLoginUpdate(user.id);
@@ -85,7 +93,7 @@ export class AuthService {
 
       this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
-      this.logger.log(`${this.login.name} 끝`);
+      this.logger.log(`${this.login.name} - 성공적으로 종료되었습니다.`);
       // return await this.userService.lastLoginUpdate(user);
       return { user, accessToken };
     } catch (error: unknown) {
@@ -99,7 +107,7 @@ export class AuthService {
   }
 
   async signup(res: Response, attrs: SignupRequest): Promise<LoginResponse> {
-    this.logger.log(`${this.signup.name} 시작`);
+    this.logger.log(`${this.signup.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
 
@@ -122,7 +130,7 @@ export class AuthService {
         // const oauthAccount = await this.oauthService.createOAuthAccount(oauthAccountAttrs, manager);
         await this.oauthService.createOAuthAccount(oauthAccountAttrs, manager);
 
-        this.logger.log(`${this.signup.name} OAuthAccount 생성완료`);
+        this.logger.log(`${this.signup.name} - OAuthAccount 생성완료`);
 
         return createdUser;
       });
@@ -137,7 +145,7 @@ export class AuthService {
 
       this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
-      this.logger.log(`${this.signup.name} 끝`);
+      this.logger.log(`${this.signup.name} - 성공적으로 종료되었습니다.`);
 
       return { user: createdUser, accessToken };
     } catch (error: unknown) {
@@ -151,12 +159,12 @@ export class AuthService {
   }
 
   async refresh(payload: JwtPayload): Promise<RefreshResponse> {
-    this.logger.log(`${this.refresh.name} 시작`);
+    this.logger.log(`${this.refresh.name} - 시작 되었습니다.`);
 
     try {
       const accessToken = await this.jwtService.signToken(payload, 'access');
 
-      this.logger.log(`${this.refresh.name} 끝`);
+      this.logger.log(`${this.refresh.name} - 성공적으로 종료되었습니다.`);
 
       return { accessToken };
     } catch (error: unknown) {
