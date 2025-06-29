@@ -44,7 +44,9 @@ export class UserRepository extends BaseRepository<User> {
       isIntegrated: row[`${userAlias}_isIntegrated`],
       isEmailVerified: row[`${userAlias}_isEmailVerified`],
       createdAt: row[`${userAlias}_createdAt`],
-      provider: row[`${oauthAccountAlias}_provider`],
+      oauthAccount: {
+        provider: row[`${oauthAccountAlias}_provider`],
+      },
     };
 
     return data;
