@@ -12,6 +12,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "build": "tsc && tsc-alias",
     "build:watch": "npx tsc --watch",
+    "clean": "tsc -b --clean && rm -rf dist && rm -rf node_modules && rm -rf package-lock.json",
     "start": "node dist/main.js",
     "start:debug": "nodemon",
     "start:dev": "node ./dist/main.js",
