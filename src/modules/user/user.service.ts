@@ -24,8 +24,12 @@ export class UserService {
     return this.userRepo.search(query);
   }
 
-  async findUserById(id: string): Promise<User> {
-    return this.userRepo.findOneByIdOrFail(id);
+  // async getUsers(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
+  //   return this.userRepo.search(query);
+  // }
+
+  async findUserById(id: string): Promise<User | null> {
+    return this.userRepo.findOneById(id);
   }
 
   async findUserByEmail(email: string | null): Promise<User | null> {
@@ -56,9 +60,7 @@ export class UserService {
 
   async updateMyProfile(id: string, attrs: UpdateMyProfile): Promise<void> {
     const user = await this.findUserById(id);
-    if (!user) {
-      throw UserException.userNotFound();
-    }
+    if (!user) throw UserException.userNotFound();
 
     Object.assign(user, attrs);
 

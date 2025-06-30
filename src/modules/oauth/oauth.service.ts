@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, InsertResult, UpdateResult } from 'typeorm';
+import { DataSource, EntityManager, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
 import { ProviderType } from '@krgeobuk/oauth/enum';
