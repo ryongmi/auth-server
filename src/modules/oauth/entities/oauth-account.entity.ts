@@ -5,6 +5,7 @@ import { ProviderType, PROVIDER_TYPE_VALUES } from '@krgeobuk/oauth/enum';
 
 @Entity('oauth_account')
 @Index(['id', 'userId'], { unique: true })
+@Index('IDX_OAUTH_ACCOUNT_USER_ID', ['userId'])
 @Unique(['userId', 'provider'])
 export class OAuthAccount extends BaseEntityUUID {
   @Column({ type: 'varchar', length: 255 })
@@ -16,7 +17,6 @@ export class OAuthAccount extends BaseEntityUUID {
   // @Column({ type: 'varchar', length: 255 })
   // email!: string; // OAuth에서 받은 이메일, 통합 판단 시 참고용
 
-  @Index('IDX_USER_ID')
   @Column({ type: 'uuid' })
   userId!: string; // FK 없이 userId 저장해서 직접 조회
 }
