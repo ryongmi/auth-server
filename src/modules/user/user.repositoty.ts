@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import { LimitType, SortOrderType } from '@krgeobuk/core/enum';
-import type { Detail, SearchQuery, SearchResult } from '@krgeobuk/user/interfaces';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import type { UserDetail, UserSearchQuery, UserSearchResult } from '@krgeobuk/user/interfaces';
 
 import { OAuthAccount } from '@modules/oauth/entities/index.js';
 
@@ -20,7 +20,7 @@ export class UserRepository extends BaseRepository<User> {
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  async findUserProfile(id: string): Promise<Detail> {
+  async findUserProfile(id: string): Promise<UserDetail> {
     const userAlias = 'user';
     const oauthAccountAlias = 'oauthAccount';
 
@@ -56,7 +56,7 @@ export class UserRepository extends BaseRepository<User> {
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  async search(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
+  async search(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
     const {
       email,
       name,

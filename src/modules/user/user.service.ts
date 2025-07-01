@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, UpdateResult } from 'typeorm';
+import { EntityManager, FindOptionsWhere, UpdateResult } from 'typeorm';
 
+import { UserException } from '@krgeobuk/user/exception';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type {
-  SearchQuery,
+  UserFilter,
+  UserSearchQuery,
   ChangePassword,
   UpdateMyProfile,
-  SearchResult,
-  Detail,
+  UserSearchResult,
+  UserDetail,
 } from '@krgeobuk/user/interfaces';
-import { UserException } from '@krgeobuk/user/exception';
 
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 
@@ -20,46 +21,70 @@ import { UserRepository } from './user.repositoty.js';
 export class UserService {
   constructor(private readonly userRepo: UserRepository) {}
 
-  async searchUsers(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
+  async searchUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
     return this.userRepo.search(query);
   }
 
-  // async getUsers(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
+  // async getUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
   //   return this.userRepo.search(query);
   // }
 
-  async findUserById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     return this.userRepo.findOneById(id);
   }
 
-  async findUserByEmail(email: string | null): Promise<User | null> {
-    if (!email) {
-      return null;
+  // async findUserIds(userIds: string[]): Promise<User[]> {
+  //   return this.userRepo.find({ where: { userId: In(userIds) } });
+  // }
+
+  async findByAnd(filter: UserFilter = {}): Promise<User[]> {
+    const where: FindOptionsWhere<User> = {};
+
+    if (filter.email) where.email = filter.email;
+    if (filter.name) where.name = filter.name;
+    if (filter.nickname) where.nickname = filter.nickname;
+    if (filter.profileImageUrl) where.profileImageUrl = filter.profileImageUrl;
+    if (filter.isEmailVerified) where.isEmailVerified = filter.isEmailVerified;
+    if (filter.isIntegrated) where.isIntegrated = filter.isIntegrated;
+
+    // ✅ 필터 없으면 전체 조회
+    if (Object.keys(where).length === 0) {
+      return this.userRepo.find(); // 조건 없이 전체 조회
     }
 
-    return this.userRepo.findOne({
-      where: { email },
-    });
+    return this.userRepo.find({ where });
   }
 
-  async findUsersByUsername(name: string): Promise<User[] | undefined> {
-    return this.userRepo.find({ where: { name } });
+  async findByOr(filter: UserFilter = {}): Promise<User[]> {
+    const { email, name, nickname, profileImageUrl, isEmailVerified, isIntegrated } = filter;
+
+    const where: FindOptionsWhere<User>[] = [];
+
+    if (email) where.push({ email });
+    if (name) where.push({ name });
+    if (nickname) where.push({ nickname });
+    if (profileImageUrl) where.push({ profileImageUrl });
+    if (isEmailVerified) where.push({ isEmailVerified });
+    if (isIntegrated) where.push({ isIntegrated });
+
+    // ✅ 필터 없으면 전체 조회
+    if (where.length === 0) {
+      return this.userRepo.find(); // 조건 없이 전체 조회
+    }
+
+    return this.userRepo.find({ where });
   }
 
-  async findUserByUserIdOREmail(id: string, email: string): Promise<User[] | undefined> {
-    return this.userRepo.find({ where: [{ id }, { email }] });
-  }
-
-  async getUserProfile(id: string): Promise<Detail> {
+  async getUserProfile(id: string): Promise<UserDetail> {
     return await this.userRepo.findUserProfile(id);
   }
 
-  async getMyProfile(id: string): Promise<Detail> {
+  async getMyProfile(id: string): Promise<UserDetail> {
     return await this.userRepo.findUserProfile(id);
   }
 
   async updateMyProfile(id: string, attrs: UpdateMyProfile): Promise<void> {
-    const user = await this.findUserById(id);
+    const user = await this.findById(id);
     if (!user) throw UserException.userNotFound();
 
     Object.assign(user, attrs);
@@ -76,7 +101,7 @@ export class UserService {
   async changePassword(id: string, attrs: ChangePassword): Promise<void> {
     const { newPassword, currentPassword } = attrs;
 
-    const user = await this.findUserById(id);
+    const user = await this.findById(id);
     if (!user) throw UserException.userNotFound();
 
     const isMatch = isPasswordMatching(currentPassword, user.password ?? '');

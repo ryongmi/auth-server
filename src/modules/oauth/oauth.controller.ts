@@ -15,8 +15,8 @@ import { ConfigService } from '@nestjs/config';
 import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
-import { ProviderType } from '@krgeobuk/oauth/enum';
-import { LoginResponseDto } from '@krgeobuk/auth/dtos';
+import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { AuthLoginResponseDto } from '@krgeobuk/auth/dtos';
 import { OAuthResponse } from '@krgeobuk/oauth/response';
 import { OAuthError } from '@krgeobuk/oauth/exception';
 import {
@@ -47,7 +47,7 @@ export class OAuthController {
     description: '구글 로그인 OAuth로 redirect 성공',
   })
   async loginGoogle(@Res() res: Response): Promise<void> {
-    const state = await this.oauthService.generateState(ProviderType.GOOGLE);
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.GOOGLE);
     const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
     const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
 
@@ -68,7 +68,7 @@ export class OAuthController {
   @SwaggerApiOkResponse({
     status: OAuthResponse.LOGIN_SUCCESS.statusCode,
     description: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -77,7 +77,7 @@ export class OAuthController {
   @UseGuards(GoogleOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
   @Serialize({
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
     code: OAuthResponse.LOGIN_SUCCESS.code,
     message: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
@@ -88,7 +88,7 @@ export class OAuthController {
     @Res({ passthrough: true }) res: Response,
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
-  ): Promise<LoginResponseDto> {
+  ): Promise<AuthLoginResponseDto> {
     const data = await this.oauthService.loginGoogle(res, transactionManager, query);
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
@@ -105,7 +105,7 @@ export class OAuthController {
     description: '네이버 로그인 OAuth로 redirect 성공',
   })
   async loginNaver(@Res() res: Response): Promise<void> {
-    const state = await this.oauthService.generateState(ProviderType.NAVER);
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.NAVER);
     const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
     const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
 
@@ -125,7 +125,7 @@ export class OAuthController {
   @SwaggerApiOkResponse({
     status: OAuthResponse.LOGIN_SUCCESS.statusCode,
     description: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -134,7 +134,7 @@ export class OAuthController {
   @UseGuards(NaverOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
   @Serialize({
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
     code: OAuthResponse.LOGIN_SUCCESS.code,
     message: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
@@ -145,7 +145,7 @@ export class OAuthController {
     @Res({ passthrough: true }) res: Response,
     @Query() query: NaverOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
-  ): Promise<LoginResponseDto> {
+  ): Promise<AuthLoginResponseDto> {
     const data = await this.oauthService.loginNaver(res, transactionManager, query);
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음

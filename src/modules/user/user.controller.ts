@@ -12,12 +12,12 @@ import {
 
 import { Serialize } from '@krgeobuk/core/decorators';
 import {
-  SearchQueryDto,
+  UserSearchQueryDto,
   ChangePasswordDto,
   UpdateMyProfileDto,
-  SearchResultDto,
-  PaginatedSearchResultDto,
-  DetailDto,
+  UserSearchResultDto,
+  UserPaginatedSearchResultDto,
+  UserDetailDto,
 } from '@krgeobuk/user/dtos';
 import { UserResponse } from '@krgeobuk/user/response';
 import { UserError } from '@krgeobuk/user/exception';
@@ -48,7 +48,7 @@ export class UserController {
   @SwaggerApiOkResponse({
     status: UserResponse.PROFILE_FETCH_SUCCESS.statusCode,
     description: UserResponse.PROFILE_FETCH_SUCCESS.message,
-    dto: DetailDto,
+    dto: UserDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: UserError.PROFILE_FETCH_ERROR.statusCode,
@@ -56,10 +56,10 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: DetailDto,
+    dto: UserDetailDto,
     ...UserResponse.PROFILE_FETCH_SUCCESS,
   })
-  async getMyProfile(@CurrentJwt() { id }: JwtPayload): Promise<DetailDto> {
+  async getMyProfile(@CurrentJwt() { id }: JwtPayload): Promise<UserDetailDto> {
     return await this.userService.getMyProfile(id);
   }
 
@@ -157,7 +157,7 @@ export class UserController {
   @SwaggerApiOkResponse({
     status: UserResponse.USER_FETCH_SUCCESS.statusCode,
     description: UserResponse.USER_FETCH_SUCCESS.message,
-    dto: DetailDto,
+    dto: UserDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: UserError.USER_FETCH_ERROR.statusCode,
@@ -165,10 +165,10 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: DetailDto,
+    dto: UserDetailDto,
     ...UserResponse.USER_FETCH_SUCCESS,
   })
-  async getUserById(@Param('id') id: string): Promise<DetailDto> {
+  async getUserById(@Param('id') id: string): Promise<UserDetailDto> {
     return await this.userService.getUserProfile(id);
   }
 
@@ -179,7 +179,7 @@ export class UserController {
   @SwaggerApiPaginatedResponse({
     status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
     description: UserResponse.USER_SEARCH_SUCCESS.message,
-    dto: SearchResultDto,
+    dto: UserSearchResultDto,
   })
   @SwaggerApiErrorResponse({
     status: UserError.USER_SEARCH_ERROR.statusCode,
@@ -187,10 +187,10 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: PaginatedSearchResultDto,
+    dto: UserPaginatedSearchResultDto,
     ...UserResponse.USER_SEARCH_SUCCESS,
   })
-  async searchUsers(@Query() query: SearchQueryDto): Promise<PaginatedSearchResultDto> {
+  async searchUsers(@Query() query: UserSearchQueryDto): Promise<UserPaginatedSearchResultDto> {
     return this.userService.searchUsers(query);
   }
 }

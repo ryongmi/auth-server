@@ -6,6 +6,7 @@ import { RedisModule } from '@database';
 import { JwtModule } from '@common/jwt/index.js';
 
 import { UserModule } from '@modules/user/index.js';
+import { AuthModule } from '@modules/auth/index.js';
 
 import { OAuthAccount } from './entities/oauth-account.entity.js';
 import { OAuthController } from './oauth.controller.js';
@@ -19,6 +20,7 @@ import { OAuthRepository } from './oauth.repositoty.js';
     TypeOrmModule.forFeature([OAuthAccount]),
     HttpModule,
     UserModule,
+    AuthModule,
     RedisModule,
     JwtModule,
   ],

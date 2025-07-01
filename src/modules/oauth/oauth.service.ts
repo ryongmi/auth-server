@@ -1,20 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, UpdateResult } from 'typeorm';
+import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
-import { ProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
 import type {
+  OAuthAccountFilter,
   NaverOAuthCallbackQuery,
   NaverUserProfileResponse,
   GoogleUserProfileResponse,
 } from '@krgeobuk/oauth/interfaces';
-import type { LoginResponse } from '@krgeobuk/auth/interfaces';
+import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 
 import { RedisService } from '@database';
-import { User, UserService } from '@modules/user/index.js';
-import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
+import { User, UserService } from '@modules/user/index.js';
+import { AuthService } from '@modules/auth/index.js';
 
 import { OAuthAccount } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -23,19 +24,23 @@ import { OAuthRepository } from './oauth.repositoty.js';
 
 @Injectable()
 export class OAuthService {
+  private readonly logger = new Logger(OAuthService.name);
+
   constructor(
-    private readonly dataSource: DataSource,
+    // private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly authService: AuthService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
-    private readonly jwtService: JwtTokenService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly oauthRepo: OAuthRepository
   ) {}
 
   // state 값 생성
-  async generateState(type: ProviderType): Promise<string> {
+  async generateState(type: OAuthAccountProviderType): Promise<string> {
+    this.logger.log(`${this.generateState.name} - 시작 되었습니다.`);
+
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
@@ -44,49 +49,109 @@ export class OAuthService {
 
     await this.redisService.setExValue(`${stateStore}${state}`, 300, 'pending'); // Redis에 상태값 저장 (5분 동안 유지)
 
+    this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
+
     return state; // 생성된 state 반환
   }
 
   // state 값 검증
-  async validateState(state: string, type: ProviderType): Promise<boolean> {
+  async validateState(state: string, type: OAuthAccountProviderType): Promise<boolean> {
+    this.logger.log(`${this.validateState.name} - 시작 되었습니다.`);
+
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
       `jwt.${type}StateStore`
     );
     const value = await this.redisService.getValue(`${stateStore}${state}`);
 
+    this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
+
     return value === 'pending'; // 'pending' 상태이면 유효한 state
   }
 
   // 인증 후 state 삭제
-  async deleteState(state: string, type: ProviderType): Promise<void> {
+  async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
+    this.logger.log(`${this.deleteState.name} - 시작 되었습니다.`);
+
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
       `jwt.${type}StateStore`
     );
 
     await this.redisService.deleteValue(`${stateStore}${state}`); // 인증 완료 후 state 삭제
+
+    this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
+  }
+
+  async findById(id: string): Promise<OAuthAccount | null> {
+    return this.oauthRepo.findOneById(id);
+  }
+
+  // async findByUserId(userId: string): Promise<OAuthAccount[]> {
+  //   return this.oauthRepo.find({ where: { userId } });
+  // }
+
+  // async findProvider(provider: OAuthAccountProviderType): Promise<OAuthAccount[]> {
+  //   return this.oauthRepo.find({ where: { provider } });
+  // }
+
+  async findUserIds(userIds: string[]): Promise<OAuthAccount[]> {
+    return this.oauthRepo.find({ where: { userId: In(userIds) } });
+  }
+
+  async findByAnd(filter: OAuthAccountFilter = {}): Promise<OAuthAccount[]> {
+    const where: FindOptionsWhere<OAuthAccount> = {};
+
+    if (filter.userId) where.userId = filter.userId;
+    if (filter.provider) where.provider = filter.provider;
+
+    // ✅ 필터 없으면 전체 조회
+    if (Object.keys(where).length === 0) {
+      return this.oauthRepo.find(); // 조건 없이 전체 조회
+    }
+
+    return this.oauthRepo.find({ where });
+  }
+
+  async findByOr(filter: OAuthAccountFilter = {}): Promise<OAuthAccount[]> {
+    const { userId, provider } = filter;
+
+    const where: FindOptionsWhere<OAuthAccount>[] = [];
+
+    if (userId) where.push({ userId });
+    if (provider) where.push({ provider });
+
+    // ✅ 필터 없으면 전체 조회
+    if (where.length === 0) {
+      return this.oauthRepo.find(); // 조건 없이 전체 조회
+    }
+
+    return this.oauthRepo.find({ where });
   }
 
   async loginNaver(
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<LoginResponse> {
+  ): Promise<AuthLoginResponse> {
+    this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
+
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
 
-    const user = await this.oauthLogin(naverUserInfo, ProviderType.NAVER, transactionManager);
+    const user = await this.oauthLogin(
+      naverUserInfo,
+      OAuthAccountProviderType.NAVER,
+      transactionManager
+    );
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    const payload = {
-      id: user.id,
-      tokenData,
-      // provider: ProviderType.NAVER,
-    };
+    // const payload = {
+    //   id: user.id,
+    //   tokenData,
+    //   // provider: ProviderType.NAVER,
+    // };
 
-    // 공통적으로 사용하는 곳이 많아 한번에 에세스, 리프레쉬 토큰 생성 메서드 추가가
-    const { accessToken, refreshToken } =
-      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+    const { accessToken } = await this.authService.issueTokens(res, user, tokenData);
 
-    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+    this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
 
     return { user, accessToken };
   }
@@ -95,25 +160,29 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<LoginResponse> {
+  ): Promise<AuthLoginResponse> {
+    this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
+
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
 
-    const user = await this.oauthLogin(googleUserInfo, ProviderType.GOOGLE, transactionManager);
+    const user = await this.oauthLogin(
+      googleUserInfo,
+      OAuthAccountProviderType.GOOGLE,
+      transactionManager
+    );
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    const payload = {
-      id: user.id,
-      tokenData,
-      // provider: ProviderType.GOOGLE,
-    };
+    // const payload = {
+    //   id: user.id,
+    //   tokenData,
+    //   // provider: ProviderType.GOOGLE,
+    // };
 
-    const { accessToken, refreshToken } =
-      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+    const { accessToken } = await this.authService.issueTokens(res, user, tokenData);
 
-    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+    this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
 
     return { user, accessToken };
-    // return { user, tokenData, accessToken };
   }
 
   async createOAuthAccount(
@@ -136,10 +205,12 @@ export class OAuthService {
 
   private async oauthLogin(
     userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
-    ProviderType: ProviderType,
+    ProviderType: OAuthAccountProviderType,
     transactionManager: EntityManager
   ): Promise<User> {
-    let user = await this.userService.findUserByEmail(userInfo.email);
+    this.logger.log(`${this.oauthLogin.name} - 시작 되었습니다.`);
+
+    let user = (await this.userService.findByAnd({ email: userInfo.email }))[0];
 
     if (user) {
       // 이메일이 이미 존재하는 경우 계정 병합
@@ -192,6 +263,8 @@ export class OAuthService {
 
       await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
     }
+
+    this.logger.log(`${this.oauthLogin.name} - 성공적으로 종료되었습니다.`);
 
     return user;
   }

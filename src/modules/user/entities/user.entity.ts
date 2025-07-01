@@ -3,8 +3,8 @@ import { Entity, Column, Index } from 'typeorm';
 import { BaseEntityUUID } from '@krgeobuk/core/entities';
 
 @Entity()
+@Index('IDX_USER_EMAIL', ['email'], { unique: true })
 export class User extends BaseEntityUUID {
-  @Index('IDX_EMAIL', { unique: true })
   @Column({ type: 'varchar', length: 255 })
   email!: string; // 홈페이지 가입 이메일, 통합 기준
 

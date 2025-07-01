@@ -3,10 +3,10 @@ import { Request, Response } from 'express';
 
 import { Serialize } from '@krgeobuk/core/decorators';
 import {
-  LoginRequestDto,
-  LoginResponseDto,
-  SignupRequestDto,
-  RefreshResponseDto,
+  AuthLoginRequestDto,
+  AuthLoginResponseDto,
+  AuthSignupRequestDto,
+  AuthRefreshResponseDto,
 } from '@krgeobuk/auth/dtos';
 import { AuthError } from '@krgeobuk/auth/exception';
 import { AuthResponse } from '@krgeobuk/auth/response';
@@ -52,27 +52,27 @@ export class AuthController {
   @HttpCode(AuthResponse.LOGIN_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '로그인' })
   @SwaggerApiBody({
-    dto: LoginRequestDto,
+    dto: AuthLoginRequestDto,
     description: '사이트 로그인시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
     status: AuthResponse.LOGIN_SUCCESS.statusCode,
     description: AuthResponse.LOGIN_SUCCESS.message,
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
   })
   @SwaggerApiErrorResponse({
     status: AuthError.LOGIN_ERROR.statusCode,
     description: AuthError.LOGIN_ERROR.message,
   })
   @Serialize({
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
     ...AuthResponse.LOGIN_SUCCESS,
   })
   async login(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: LoginRequestDto
-  ): Promise<LoginResponseDto> {
+    @Body() body: AuthLoginRequestDto
+  ): Promise<AuthLoginResponseDto> {
     const data = await this.authService.login(res, body);
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
@@ -85,27 +85,27 @@ export class AuthController {
   @HttpCode(AuthResponse.SIGNUP_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '회원가입' })
   @SwaggerApiBody({
-    dto: SignupRequestDto,
+    dto: AuthSignupRequestDto,
     description: '회원가입시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
     status: AuthResponse.SIGNUP_SUCCESS.statusCode,
     description: AuthResponse.SIGNUP_SUCCESS.message,
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
   })
   @SwaggerApiErrorResponse({
     status: AuthError.SIGNUP_ERROR.statusCode,
     description: AuthError.SIGNUP_ERROR.message,
   })
   @Serialize({
-    dto: LoginResponseDto,
+    dto: AuthLoginResponseDto,
     ...AuthResponse.SIGNUP_SUCCESS,
   })
   async signup(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: SignupRequestDto
-  ): Promise<LoginResponseDto> {
+    @Body() body: AuthSignupRequestDto
+  ): Promise<AuthLoginResponseDto> {
     const data = await this.authService.signup(res, body);
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
@@ -120,7 +120,7 @@ export class AuthController {
   @SwaggerApiOkResponse({
     status: AuthResponse.REFRESH_SUCCESS.statusCode,
     description: AuthResponse.REFRESH_SUCCESS.message,
-    dto: RefreshResponseDto,
+    dto: AuthRefreshResponseDto,
   })
   @SwaggerApiErrorResponse({
     status: AuthError.REFRESH_ERROR.statusCode,
@@ -128,10 +128,10 @@ export class AuthController {
   })
   @UseGuards(RefreshTokenGuard)
   @Serialize({
-    dto: RefreshResponseDto,
+    dto: AuthRefreshResponseDto,
     ...AuthResponse.REFRESH_SUCCESS,
   })
-  async refresh(@CurrentJwt() jwt: JwtPayload): Promise<RefreshResponseDto> {
+  async refresh(@CurrentJwt() jwt: JwtPayload): Promise<AuthRefreshResponseDto> {
     return await this.authService.refresh(jwt);
   }
 }
