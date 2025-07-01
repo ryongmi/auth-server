@@ -14,10 +14,10 @@ import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 
 import { RedisService } from '@database';
 import { JwtConfig } from '@common/interfaces/index.js';
-import { User, UserService } from '@modules/user/index.js';
+import { UserEntity, UserService } from '@modules/user/index.js';
 import { AuthService } from '@modules/auth/index.js';
 
-import { OAuthAccount } from './entities/oauth-account.entity.js';
+import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repositoty.js';
@@ -81,27 +81,20 @@ export class OAuthService {
     this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
   }
 
-  async findById(id: string): Promise<OAuthAccount | null> {
+  async findById(id: string): Promise<OAuthAccountEntity | null> {
     return this.oauthRepo.findOneById(id);
   }
 
-  // async findByUserId(userId: string): Promise<OAuthAccount[]> {
-  //   return this.oauthRepo.find({ where: { userId } });
-  // }
-
-  // async findProvider(provider: OAuthAccountProviderType): Promise<OAuthAccount[]> {
-  //   return this.oauthRepo.find({ where: { provider } });
-  // }
-
-  async findUserIds(userIds: string[]): Promise<OAuthAccount[]> {
+  async findByUserIds(userIds: string[]): Promise<OAuthAccountEntity[]> {
     return this.oauthRepo.find({ where: { userId: In(userIds) } });
   }
 
-  async findByAnd(filter: OAuthAccountFilter = {}): Promise<OAuthAccount[]> {
-    const where: FindOptionsWhere<OAuthAccount> = {};
+  async findByAnd(filter: OAuthAccountFilter = {}): Promise<OAuthAccountEntity[]> {
+    const where: FindOptionsWhere<OAuthAccountEntity> = {};
 
     if (filter.userId) where.userId = filter.userId;
     if (filter.provider) where.provider = filter.provider;
+    if (filter.providerId) where.providerId = filter.providerId;
 
     // ✅ 필터 없으면 전체 조회
     if (Object.keys(where).length === 0) {
@@ -111,13 +104,14 @@ export class OAuthService {
     return this.oauthRepo.find({ where });
   }
 
-  async findByOr(filter: OAuthAccountFilter = {}): Promise<OAuthAccount[]> {
-    const { userId, provider } = filter;
+  async findByOr(filter: OAuthAccountFilter = {}): Promise<OAuthAccountEntity[]> {
+    const { userId, provider, providerId } = filter;
 
-    const where: FindOptionsWhere<OAuthAccount>[] = [];
+    const where: FindOptionsWhere<OAuthAccountEntity>[] = [];
 
     if (userId) where.push({ userId });
     if (provider) where.push({ provider });
+    if (providerId) where.push({ providerId });
 
     // ✅ 필터 없으면 전체 조회
     if (where.length === 0) {
@@ -186,10 +180,10 @@ export class OAuthService {
   }
 
   async createOAuthAccount(
-    attrs: Partial<OAuthAccount>,
+    attrs: Partial<OAuthAccountEntity>,
     transactionManager?: EntityManager
-  ): Promise<OAuthAccount> {
-    const oauthAccountEntity = new OAuthAccount();
+  ): Promise<OAuthAccountEntity> {
+    const oauthAccountEntity = new OAuthAccountEntity();
 
     Object.assign(oauthAccountEntity, attrs);
 
@@ -197,7 +191,7 @@ export class OAuthService {
   }
 
   async updateOAuthAccount(
-    oauthAccountEntity: OAuthAccount,
+    oauthAccountEntity: OAuthAccountEntity,
     transactionManager?: EntityManager
   ): Promise<UpdateResult> {
     return this.oauthRepo.updateEntity(oauthAccountEntity, transactionManager);
@@ -207,7 +201,7 @@ export class OAuthService {
     userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
     ProviderType: OAuthAccountProviderType,
     transactionManager: EntityManager
-  ): Promise<User> {
+  ): Promise<UserEntity> {
     this.logger.log(`${this.oauthLogin.name} - 시작 되었습니다.`);
 
     let user = (await this.userService.findByAnd({ email: userInfo.email }))[0];

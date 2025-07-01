@@ -14,7 +14,7 @@ import type {
 
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 
-import { User } from './entities/user.entity.js';
+import { UserEntity } from './entities/user.entity.js';
 import { UserRepository } from './user.repositoty.js';
 
 @Injectable()
@@ -29,16 +29,16 @@ export class UserService {
   //   return this.userRepo.search(query);
   // }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<UserEntity | null> {
     return this.userRepo.findOneById(id);
   }
 
-  // async findUserIds(userIds: string[]): Promise<User[]> {
+  // async findUserIds(userIds: string[]): Promise<UserEntity[]> {
   //   return this.userRepo.find({ where: { userId: In(userIds) } });
   // }
 
-  async findByAnd(filter: UserFilter = {}): Promise<User[]> {
-    const where: FindOptionsWhere<User> = {};
+  async findByAnd(filter: UserFilter = {}): Promise<UserEntity[]> {
+    const where: FindOptionsWhere<UserEntity> = {};
 
     if (filter.email) where.email = filter.email;
     if (filter.name) where.name = filter.name;
@@ -55,10 +55,10 @@ export class UserService {
     return this.userRepo.find({ where });
   }
 
-  async findByOr(filter: UserFilter = {}): Promise<User[]> {
+  async findByOr(filter: UserFilter = {}): Promise<UserEntity[]> {
     const { email, name, nickname, profileImageUrl, isEmailVerified, isIntegrated } = filter;
 
-    const where: FindOptionsWhere<User>[] = [];
+    const where: FindOptionsWhere<UserEntity>[] = [];
 
     if (email) where.push({ email });
     if (name) where.push({ name });
@@ -143,15 +143,21 @@ export class UserService {
   //   //   .execute();
   // }
 
-  async createUser(attrs: Partial<User>, transactionManager?: EntityManager): Promise<User> {
-    const userEntity = new User();
+  async createUser(
+    attrs: Partial<UserEntity>,
+    transactionManager?: EntityManager
+  ): Promise<UserEntity> {
+    const userEntity = new UserEntity();
 
     Object.assign(userEntity, attrs);
 
     return this.userRepo.saveEntity(userEntity, transactionManager);
   }
 
-  async updateUser(userEntity: User, transactionManager?: EntityManager): Promise<UpdateResult> {
+  async updateUser(
+    userEntity: UserEntity,
+    transactionManager?: EntityManager
+  ): Promise<UpdateResult> {
     return this.userRepo.updateEntity(userEntity, transactionManager);
   }
 

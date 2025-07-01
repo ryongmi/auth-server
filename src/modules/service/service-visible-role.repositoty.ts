@@ -4,12 +4,12 @@ import { DataSource } from 'typeorm';
 import { BaseRepository } from '@krgeobuk/core/repositories';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { ServiceVisibleRole } from './entities/service-visible-role.entity.js';
+import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
 
 @Injectable()
-export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleRole> {
+export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleRoleEntity> {
   constructor(private dataSource: DataSource) {
-    super(ServiceVisibleRole, dataSource);
+    super(ServiceVisibleRoleEntity, dataSource);
   }
 
   //   async updateUserPassword(

@@ -8,7 +8,7 @@ import { JwtModule } from '@common/jwt/index.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 
-import { OAuthAccount } from './entities/oauth-account.entity.js';
+import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthController } from './oauth.controller.js';
 import { OAuthService } from './oauth.service.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -17,7 +17,7 @@ import { OAuthRepository } from './oauth.repositoty.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OAuthAccount]),
+    TypeOrmModule.forFeature([OAuthAccountEntity]),
     HttpModule,
     UserModule,
     AuthModule,

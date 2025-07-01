@@ -1,66 +1,90 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 // import { EntityManager } from 'typeorm';
 
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 // import type { ListQuery } from '@krgeobuk/user/interfaces';
 
-import { RoleRepository } from './role.repositoty.js';
+import { UserRoleEntity } from './entities/user-role.entity.js';
 import { UserRoleRepository } from './user-role.repositoty.js';
-import { DataSource } from 'typeorm';
+
+interface Filter {
+  userId?: string;
+  roleId?: string;
+}
 
 @Injectable()
 export class UserRoleService {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly roleRepo: RoleRepository,
     private readonly userRoleRepo: UserRoleRepository
   ) {}
 
-  // async findUsers(query: ListQuery): Promise<PaginatedResult<Partial<User>>> {
-  //   return this.userRepo.findAllWithFilters(query);
-  // }
+  async findByUserId(userId: string): Promise<UserRoleEntity[]> {
+    return this.userRoleRepo.find({ where: { userId } });
+  }
 
-  // async findUserById(id: string): Promise<User> {
-  //   return this.userRepo.findOneByIdOrFail(id);
-  // }
+  async findByRoleId(roleId: string): Promise<UserRoleEntity[]> {
+    return this.userRoleRepo.find({ where: { roleId } });
+  }
 
-  // async findUserByEmail(email: string | null): Promise<User | null> {
-  //   if (!email) {
-  //     return null;
-  //   }
+  async findByUserIds(userIds: string[]): Promise<UserRoleEntity[]> {
+    return this.userRoleRepo.find({ where: { userId: In(userIds) } });
+  }
 
-  //   return this.userRepo.findOne({
-  //     where: { email },
-  //   });
-  // }
+  async findByRoleIds(roleIds: string[]): Promise<UserRoleEntity[]> {
+    return this.userRoleRepo.find({ where: { roleId: In(roleIds) } });
+  }
 
-  // async findUsersByUsername(name: string): Promise<User[] | undefined> {
-  //   return this.userRepo.find({ where: { name } });
-  // }
+  async findByAnd(filter: Filter = {}): Promise<UserRoleEntity[]> {
+    const where: FindOptionsWhere<UserRoleEntity> = {};
 
-  // async findUserByUserIdOREmail(id: string, email: string): Promise<User[] | undefined> {
-  //   return this.userRepo.find({ where: [{ id }, { email }] });
-  // }
+    if (filter.userId) where.userId = filter.userId;
+    if (filter.roleId) where.roleId = filter.roleId;
 
-  // async lastLoginUpdate(id: string) {
-  //   // return await this.repo.save(attrs);
-  //   // await this.repo
-  //   //   .createQueryBuilder()
-  //   //   .update(User)
-  //   //   .set({ lastLogin: new Date() })
-  //   //   .where('id = :id', { id })
-  //   //   .execute();
-  // }
+    // ✅ 필터 없으면 전체 조회
+    if (Object.keys(where).length === 0) {
+      return this.userRoleRepo.find(); // 조건 없이 전체 조회
+    }
 
-  // async createUser(attrs: Partial<User>, transactionManager?: EntityManager): Promise<User> {
-  //   const userEntity = new User();
+    return this.userRoleRepo.find({ where });
+  }
 
-  //   Object.assign(userEntity, attrs);
+  async findByOr(filter: Filter = {}): Promise<UserRoleEntity[]> {
+    const { userId, roleId } = filter;
 
-  //   return this.userRepo.saveEntity(userEntity, transactionManager);
-  // }
+    const where: FindOptionsWhere<UserRoleEntity>[] = [];
 
-  // async updateUser(userEntity: User, transactionManager?: EntityManager): Promise<User> {
-  //   return this.userRepo.saveEntity(userEntity, transactionManager);
-  // }
+    if (userId) where.push({ userId });
+    if (roleId) where.push({ roleId });
+
+    // ✅ 필터 없으면 전체 조회
+    if (where.length === 0) {
+      return this.userRoleRepo.find(); // 조건 없이 전체 조회
+    }
+
+    return this.userRoleRepo.find({ where });
+  }
+
+  async createUserRole(
+    attrs: Partial<UserRoleEntity>,
+    transactionManager?: EntityManager
+  ): Promise<UserRoleEntity> {
+    const userRoleEntity = new UserRoleEntity();
+
+    Object.assign(userRoleEntity, attrs);
+
+    return this.userRoleRepo.saveEntity(userRoleEntity, transactionManager);
+  }
+
+  async updateUserRole(
+    userRoleEntity: UserRoleEntity,
+    transactionManager?: EntityManager
+  ): Promise<UpdateResult> {
+    return this.userRoleRepo.updateEntity(userRoleEntity, transactionManager);
+  }
+
+  async deleteUserRole(id: string): Promise<UpdateResult> {
+    return this.userRoleRepo.softDelete(id);
+  }
 }

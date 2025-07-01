@@ -1,66 +1,86 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-// import { EntityManager } from 'typeorm';
+import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { ListQuery } from '@krgeobuk/user/interfaces';
-
-import { ServiceRepository } from './service.repositoty.js';
+import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
 import { ServiceVisibleRoleRepository } from './service-visible-role.repositoty.js';
+
+interface Filter {
+  serviceId?: string;
+  roleId?: string;
+}
 
 @Injectable()
 export class ServiceVisibleRoleService {
   constructor(
-    private readonly dataSource: DataSource,
-    private readonly serviceRepo: ServiceRepository,
+    // private readonly dataSource: DataSource,
     private readonly svrRepo: ServiceVisibleRoleRepository
   ) {}
 
-  // async findUsers(query: ListQuery): Promise<PaginatedResult<Partial<User>>> {
-  //   return this.userRepo.findAllWithFilters(query);
-  // }
+  async findByServiceId(serviceId: string): Promise<ServiceVisibleRoleEntity[]> {
+    return this.svrRepo.find({ where: { serviceId } });
+  }
 
-  // async findUserById(id: string): Promise<User> {
-  //   return this.userRepo.findOneByIdOrFail(id);
-  // }
+  async findByRoleId(roleId: string): Promise<ServiceVisibleRoleEntity[]> {
+    return this.svrRepo.find({ where: { roleId } });
+  }
 
-  // async findUserByEmail(email: string | null): Promise<User | null> {
-  //   if (!email) {
-  //     return null;
-  //   }
+  async findByServiceIds(serviceIds: string[]): Promise<ServiceVisibleRoleEntity[]> {
+    return this.svrRepo.find({ where: { serviceId: In(serviceIds) } });
+  }
 
-  //   return this.userRepo.findOne({
-  //     where: { email },
-  //   });
-  // }
+  async findByRoleIds(roleIds: string[]): Promise<ServiceVisibleRoleEntity[]> {
+    return this.svrRepo.find({ where: { roleId: In(roleIds) } });
+  }
 
-  // async findUsersByUsername(name: string): Promise<User[] | undefined> {
-  //   return this.userRepo.find({ where: { name } });
-  // }
+  async findByAnd(filter: Filter = {}): Promise<ServiceVisibleRoleEntity[]> {
+    const where: FindOptionsWhere<ServiceVisibleRoleEntity> = {};
 
-  // async findUserByUserIdOREmail(id: string, email: string): Promise<User[] | undefined> {
-  //   return this.userRepo.find({ where: [{ id }, { email }] });
-  // }
+    if (filter.serviceId) where.serviceId = filter.serviceId;
+    if (filter.roleId) where.roleId = filter.roleId;
 
-  // async lastLoginUpdate(id: string) {
-  //   // return await this.repo.save(attrs);
-  //   // await this.repo
-  //   //   .createQueryBuilder()
-  //   //   .update(User)
-  //   //   .set({ lastLogin: new Date() })
-  //   //   .where('id = :id', { id })
-  //   //   .execute();
-  // }
+    // ✅ 필터 없으면 전체 조회
+    if (Object.keys(where).length === 0) {
+      return this.svrRepo.find(); // 조건 없이 전체 조회
+    }
 
-  // async createUser(attrs: Partial<User>, transactionManager?: EntityManager): Promise<User> {
-  //   const userEntity = new User();
+    return this.svrRepo.find({ where });
+  }
 
-  //   Object.assign(userEntity, attrs);
+  async findByOr(filter: Filter = {}): Promise<ServiceVisibleRoleEntity[]> {
+    const { serviceId, roleId } = filter;
 
-  //   return this.userRepo.saveEntity(userEntity, transactionManager);
-  // }
+    const where: FindOptionsWhere<ServiceVisibleRoleEntity>[] = [];
 
-  // async updateUser(userEntity: User, transactionManager?: EntityManager): Promise<User> {
-  //   return this.userRepo.saveEntity(userEntity, transactionManager);
-  // }
+    if (serviceId) where.push({ serviceId });
+    if (roleId) where.push({ roleId });
+
+    // ✅ 필터 없으면 전체 조회
+    if (where.length === 0) {
+      return this.svrRepo.find(); // 조건 없이 전체 조회
+    }
+
+    return this.svrRepo.find({ where });
+  }
+
+  async createServiceVisibleRole(
+    attrs: Partial<ServiceVisibleRoleEntity>,
+    transactionManager?: EntityManager
+  ): Promise<ServiceVisibleRoleEntity> {
+    const svrEntity = new ServiceVisibleRoleEntity();
+
+    Object.assign(svrEntity, attrs);
+
+    return this.svrRepo.saveEntity(svrEntity, transactionManager);
+  }
+
+  async updateServiceVisibleRole(
+    svrEntity: ServiceVisibleRoleEntity,
+    transactionManager?: EntityManager
+  ): Promise<UpdateResult> {
+    return this.svrRepo.updateEntity(svrEntity, transactionManager);
+  }
+
+  async deleteServiceVisibleRole(id: string): Promise<UpdateResult> {
+    return this.svrRepo.softDelete(id);
+  }
 }

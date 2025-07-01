@@ -4,12 +4,12 @@ import { DataSource } from 'typeorm';
 import { BaseRepository } from '@krgeobuk/core/repositories';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { Service } from './entities/service.entity.js';
+import { ServiceEntity } from './entities/service.entity.js';
 
 @Injectable()
-export class ServiceRepository extends BaseRepository<Service> {
+export class ServiceRepository extends BaseRepository<ServiceEntity> {
   constructor(private dataSource: DataSource) {
-    super(Service, dataSource);
+    super(ServiceEntity, dataSource);
   }
 
   //   async updateUserPassword(

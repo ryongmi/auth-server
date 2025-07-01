@@ -4,12 +4,12 @@ import { DataSource } from 'typeorm';
 import { BaseRepository } from '@krgeobuk/core/repositories';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { UserRole } from './entities/user-role.entity.js';
+import { UserRoleEntity } from './entities/user-role.entity.js';
 
 @Injectable()
-export class UserRoleRepository extends BaseRepository<UserRole> {
+export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
   constructor(private dataSource: DataSource) {
-    super(UserRole, dataSource);
+    super(UserRoleEntity, dataSource);
   }
 
   //   async updateUserPassword(

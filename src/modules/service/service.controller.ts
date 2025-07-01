@@ -23,7 +23,7 @@ import {
 
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { ServiceService } from './service.service.js';
+import { ServiceManager } from './service.manager.js';
 
 // import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 // import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
@@ -31,7 +31,7 @@ import { ServiceService } from './service.service.js';
 @SwaggerApiTags({ tags: ['authorizations'] })
 @Controller('services')
 export class ServiceController {
-  constructor(private readonly serviceService: ServiceService) {}
+  constructor(private readonly serviceManager: ServiceManager) {}
 
   // 전체 서비스 목록 조회
   // @Get()
