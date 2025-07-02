@@ -3,23 +3,23 @@ import { DataSource, EntityManager } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
 
-import { OAuthAccount } from './entities/oauth-account.entity.js';
+import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 
 @Injectable()
-export class OAuthRepository extends BaseRepository<OAuthAccount> {
+export class OAuthRepository extends BaseRepository<OAuthAccountEntity> {
   constructor(private dataSource: DataSource) {
-    super(OAuthAccount, dataSource);
+    super(OAuthAccountEntity, dataSource);
   }
 
-  async findOAuthAccountByUserId(userId: string): Promise<OAuthAccount | null> {
-    return await this.dataSource.getRepository(OAuthAccount).findOne({ where: { userId } });
+  async findOAuthAccountByUserId(userId: string): Promise<OAuthAccountEntity | null> {
+    return await this.dataSource.getRepository(OAuthAccountEntity).findOne({ where: { userId } });
   }
 
   async createOAuthAccountByTransaction(
     transactionManager: EntityManager,
-    attrs: Partial<OAuthAccount>
-  ): Promise<OAuthAccount> {
-    const account = transactionManager.getRepository(OAuthAccount).create(attrs);
-    return await transactionManager.getRepository(OAuthAccount).save(account);
+    attrs: Partial<OAuthAccountEntity>
+  ): Promise<OAuthAccountEntity> {
+    const account = transactionManager.getRepository(OAuthAccountEntity).create(attrs);
+    return await transactionManager.getRepository(OAuthAccountEntity).save(account);
   }
 }

@@ -1,12 +1,14 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 
 import { OAuthException } from '@krgeobuk/oauth/exception';
-import { ProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
 
 import { OAuthService } from '../oauth.service.js';
 
 @Injectable()
 export class NaverOAuthStateGuard implements CanActivate {
+  private readonly logger = new Logger(NaverOAuthStateGuard.name);
+
   constructor(private readonly oauthService: OAuthService) {} // RedisService 주입
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -16,20 +18,26 @@ export class NaverOAuthStateGuard implements CanActivate {
     // error 값이 있으면 예외 처리
     if (error) {
       const { error_description } = request.query;
-      console.log(`${NaverOAuthStateGuard.name} Error: ${error}, ErrorMsg: ${error_description}`);
-      throw OAuthException.loginError(ProviderType.NAVER);
+      const message = `Error: ${error}, ErrorMsg: ${error_description}`;
+
+      this.logger.error(message);
+
+      throw OAuthException.loginError(OAuthAccountProviderType.NAVER);
     }
 
     // state 값이 없으면 예외 처리
-    if (!state) throw OAuthException.stateNotFound(ProviderType.NAVER);
+    if (!state) throw OAuthException.stateNotFound(OAuthAccountProviderType.NAVER);
 
     // state 값이 유효한지 Redis에서 확인
-    const isValidState = await this.oauthService.validateState(state, ProviderType.NAVER);
+    const isValidState = await this.oauthService.validateState(
+      state,
+      OAuthAccountProviderType.NAVER
+    );
 
-    if (!isValidState) throw OAuthException.stateExpired(ProviderType.NAVER);
+    if (!isValidState) throw OAuthException.stateExpired(OAuthAccountProviderType.NAVER);
 
     // 유효성 검사 끝난 state 레디스에서 삭제
-    await this.oauthService.deleteState(state, ProviderType.NAVER);
+    await this.oauthService.deleteState(state, OAuthAccountProviderType.NAVER);
 
     return true;
   }
@@ -37,6 +45,8 @@ export class NaverOAuthStateGuard implements CanActivate {
 
 @Injectable()
 export class GoogleOAuthStateGuard implements CanActivate {
+  private readonly logger = new Logger(GoogleOAuthStateGuard.name);
+
   constructor(private readonly oauthService: OAuthService) {} // RedisService 주입
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,20 +55,26 @@ export class GoogleOAuthStateGuard implements CanActivate {
 
     // error 값이 있으면 예외 처리
     if (error) {
-      console.log(`${GoogleOAuthStateGuard.name} Error: ${error}`);
-      throw OAuthException.loginError(ProviderType.GOOGLE);
+      const message = `Error: ${error}`;
+
+      this.logger.error(message);
+
+      throw OAuthException.loginError(OAuthAccountProviderType.GOOGLE);
     }
 
     // state 값이 없으면 예외 처리
-    if (!state) throw OAuthException.stateNotFound(ProviderType.GOOGLE);
+    if (!state) throw OAuthException.stateNotFound(OAuthAccountProviderType.GOOGLE);
 
     // state 값이 유효한지 Redis에서 확인
-    const isValidState = await this.oauthService.validateState(state, ProviderType.GOOGLE);
+    const isValidState = await this.oauthService.validateState(
+      state,
+      OAuthAccountProviderType.GOOGLE
+    );
 
-    if (!isValidState) throw OAuthException.stateExpired(ProviderType.GOOGLE);
+    if (!isValidState) throw OAuthException.stateExpired(OAuthAccountProviderType.GOOGLE);
 
     // 유효성 검사 끝난 state 레디스에서 삭제
-    await this.oauthService.deleteState(state, ProviderType.GOOGLE);
+    await this.oauthService.deleteState(state, OAuthAccountProviderType.GOOGLE);
 
     return true;
   }

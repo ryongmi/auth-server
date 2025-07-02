@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom, map } from 'rxjs';
 
-import { ProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { transformAndValidate } from '@krgeobuk/core/utils';
 
@@ -14,12 +14,16 @@ import { GoogleConfig } from '@common/interfaces/index.js';
 
 @Injectable()
 export class GoogleOAuthService {
+  private readonly logger = new Logger(GoogleOAuthService.name);
+
   constructor(
     private readonly httpService: HttpService,
     private readonly config: ConfigService
   ) {}
 
   async getGoogleUserInfo(query: GoogleOAuthCallbackQuery): Promise<GoogleInfoResponse> {
+    this.logger.log(`${this.getGoogleUserInfo.name} - 시작 되었습니다.`);
+
     const { code, state } = query;
     const client_id = this.config.get<GoogleConfig['clientId']>('google.clientId')!;
     const client_secret = this.config.get<GoogleConfig['clientSecret']>('google.clientSecret')!;
@@ -42,11 +46,15 @@ export class GoogleOAuthService {
           .pipe(map((response) => response.data))
       );
 
+      this.logger.log(`${this.getGoogleUserInfo.name} - Google 토큰 가져오기 성공.`);
+
       // 변환 + 유효성 검사
       const tokenData = await transformAndValidate<GoogleTokenResponseDto>({
         cls: GoogleTokenResponseDto,
         plain: tokenDataRaw,
       });
+
+      this.logger.log(`${this.getGoogleUserInfo.name} - Google 토큰 유효성 검사 성공.`);
 
       const accessToken = tokenData.accessToken;
 
@@ -59,27 +67,24 @@ export class GoogleOAuthService {
           .pipe(map((response) => response.data))
       );
 
+      this.logger.log(`${this.getGoogleUserInfo.name} - Google 유저 정보 가져오기 성공.`);
+
       // 변환 + 유효성 검사
       const googleUserInfo = await transformAndValidate<GoogleUserProfileResponseDto>({
         cls: GoogleUserProfileResponseDto,
         plain: googleUserInfoRaw,
       });
 
+      this.logger.log(`${this.getGoogleUserInfo.name} - 성공적으로 종료되었습니다.`);
+
       return { tokenData, googleUserInfo };
     } catch (error: unknown) {
-      // if (error.isAxiosError) {
-      //   // AxiosError를 확인하고 처리
-      //   throw new InternalServerErrorException(
-      //     'Failed to fetch user info',
-      //     error.message,
-      //   );
-      // }
-      // throw new InternalServerErrorException(
-      //   'Unexpected error occurred',
-      //   error.message,
-      // );
-      console.log('구글 로그인 실패', error);
-      throw OAuthException.loginError(ProviderType.GOOGLE);
+      const message = `[${this.getGoogleUserInfo.name} Error] ${error instanceof Error ? error.message : String(error)}`;
+      const stack = error instanceof Error ? error.stack : '';
+
+      this.logger.error(message, stack);
+
+      throw OAuthException.loginError(OAuthAccountProviderType.GOOGLE);
     }
   }
 }

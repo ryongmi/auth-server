@@ -1,10 +1,12 @@
-import { Entity, Column, Index } from 'typeorm';
+import { Entity, Column, Index, Unique } from 'typeorm';
 
 import { BaseEntityUUID } from '@krgeobuk/core/entities';
 
-@Entity()
-@Index(['name', 'serviceId'], { unique: true }) // 같은 서비스 내 이름 중복 방지
-export class Role extends BaseEntityUUID {
+@Entity('role')
+// @Index(['name', 'serviceId'], { unique: true }) // 같은 서비스 내 이름 중복 방지
+@Index('IDX_ROLE_SERVICE_ID', ['serviceId'])
+@Unique(['name', 'serviceId']) // 같은 서비스 내 이름 중복 방지
+export class RoleEntity extends BaseEntityUUID {
   @Column({ type: 'varchar', length: 50 })
   name!: string;
 

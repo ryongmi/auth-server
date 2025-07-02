@@ -2,30 +2,34 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import { LimitType, SortOrderType } from '@krgeobuk/core/enum';
-import type { Detail, SearchQuery, SearchResult } from '@krgeobuk/user/interfaces';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import type { UserDetail, UserSearchQuery, UserSearchResult } from '@krgeobuk/user/interfaces';
 
-import { OAuthAccount } from '@modules/oauth/entities/index.js';
+import { OAuthAccountEntity } from '@modules/oauth/entities/index.js';
 
-import { User } from './entities/user.entity.js';
+import { UserEntity } from './entities/user.entity.js';
 
 @Injectable()
-export class UserRepository extends BaseRepository<User> {
+export class UserRepository extends BaseRepository<UserEntity> {
   constructor(private dataSource: DataSource) {
-    super(User, dataSource);
+    super(UserEntity, dataSource);
   }
 
   /**
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  async findUserProfile(id: string): Promise<Detail> {
+  async findUserProfile(id: string): Promise<UserDetail> {
     const userAlias = 'user';
     const oauthAccountAlias = 'oauthAccount';
 
     const qb = this.createQueryBuilder(userAlias)
-      .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
+      .leftJoin(
+        OAuthAccountEntity,
+        oauthAccountAlias,
+        `${oauthAccountAlias}.userId = ${userAlias}.id`
+      )
       .addSelect(`${oauthAccountAlias}.provider`)
       .andWhere(`${userAlias}.id = :id`, { id });
 
@@ -44,7 +48,9 @@ export class UserRepository extends BaseRepository<User> {
       isIntegrated: row[`${userAlias}_isIntegrated`],
       isEmailVerified: row[`${userAlias}_isEmailVerified`],
       createdAt: row[`${userAlias}_createdAt`],
-      provider: row[`${oauthAccountAlias}_provider`],
+      oauthAccount: {
+        provider: row[`${oauthAccountAlias}_provider`],
+      },
     };
 
     return data;
@@ -54,7 +60,7 @@ export class UserRepository extends BaseRepository<User> {
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  async search(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
+  async search(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
     const {
       email,
       name,
@@ -71,7 +77,11 @@ export class UserRepository extends BaseRepository<User> {
     const oauthAccountAlias = 'oauthAccount';
 
     const qb = this.createQueryBuilder(userAlias)
-      .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
+      .leftJoin(
+        OAuthAccountEntity,
+        oauthAccountAlias,
+        `${oauthAccountAlias}.userId = ${userAlias}.id`
+      )
       .addSelect(`${oauthAccountAlias}.provider`);
     // .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
     // const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(

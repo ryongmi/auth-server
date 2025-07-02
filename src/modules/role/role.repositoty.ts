@@ -4,12 +4,14 @@ import { DataSource } from 'typeorm';
 import { BaseRepository } from '@krgeobuk/core/repositories';
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { Role } from './entities/role.entity.js';
+import { ServiceEntity } from '@modules/service/entities/index.js';
+
+import { RoleEntity } from './entities/role.entity.js';
 
 @Injectable()
-export class RoleRepository extends BaseRepository<Role> {
+export class RoleRepository extends BaseRepository<RoleEntity> {
   constructor(private dataSource: DataSource) {
-    super(Role, dataSource);
+    super(RoleEntity, dataSource);
   }
 
   //   async updateUserPassword(
@@ -33,29 +35,31 @@ export class RoleRepository extends BaseRepository<Role> {
 
   //     return await this.userRepo.save(user);
   //   }
+
   /**
    * 모든 엔티티를 조회합니다.
    * @returns 모든 엔티티 배열
    */
-  // async findAllWithFilters(query: ListQuery): Promise<PaginatedResult<Partial<Role>>> {
+  // async search(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
   //   const {
   //     email,
   //     name,
   //     nickname,
   //     provider,
   //     page = 1,
-  //     limit = 30,
-  //     sortOrder = 'DESC',
+  //     limit = LimitType.FIFTEEN,
+  //     sortOrder = SortOrderType.DESC,
   //     sortBy = 'createdAt',
   //   } = query;
   //   const skip = (page - 1) * limit;
 
-  //   const userAlias = 'user';
-  //   const oauthAccountAlias = 'oauthAccount';
+  //   const roleAlias = 'role';
+  //   const serviceAlias = 'service';
 
-  //   const qb = this.createQueryBuilder(userAlias)
-  //     .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
-  //     .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
+  //   const qb = this.createQueryBuilder(roleAlias)
+  //     .leftJoin(Service, serviceAlias, `${roleAlias}.serviceId = ${serviceAlias}.id`)
+  //     .addSelect(`${serviceAlias}.provider`);
+  //   // .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
   //   // const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(
   //   //   `${userAlias}.${oauthAccountAlias}`,
   //   //   oauthAccountAlias
@@ -85,40 +89,37 @@ export class RoleRepository extends BaseRepository<Role> {
   //   //   qb.andWhere(`${userAlias}.role = :role`, { role });
   //   // }
 
-  //   qb.orderBy(`${userAlias}.${sortBy}`, sortOrder).skip(skip).take(limit);
+  //   qb.orderBy(`${userAlias}.${sortBy}`, sortOrder);
 
-  //   // const [items, total] = await qb
-  //   //   .orderBy(`${userAlias}.${sortBy}`, sortOrder)
-  //   //   .skip(skip)
-  //   //   .take(limit)
-  //   //   .getManyAndCount();
+  //   // qb.skip(skip).take(limit);
+  //   qb.offset(skip).limit(limit);
 
   //   const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
-  //   const data = rows.map((row) => ({
+  //   const items = rows.map((row) => ({
   //     id: row[`${userAlias}_id`],
   //     email: row[`${userAlias}_email`],
   //     name: row[`${userAlias}_name`],
   //     nickname: row[`${userAlias}_nickname`],
-  //     provider: row[`${oauthAccountAlias}_provider`],
+  //     profileImageUrl: row[`${userAlias}_profile_image_url`],
+  //     isIntegrated: row[`${userAlias}_is_integrated`],
+  //     isEmailVerified: row[`${userAlias}_is_email_verified`],
+  //     createdAt: row[`${userAlias}_created_at`],
+  //     updatedAt: row[`${userAlias}_updated_at`],
+  //     deletedAt: row[`${userAlias}_deleted_at`],
+  //     oauthAccount: {
+  //       provider: row[`${oauthAccountAlias}_provider`],
+  //     },
   //   }));
 
   //   const totalPages = Math.ceil(total / limit);
 
   //   return {
-  //     data,
+  //     items,
   //     total,
   //     page,
   //     limit,
   //     totalPages,
   //   };
-  // }
-
-  // // 예시: 유저와 프로필을 조인해서 조회
-  // async findUserWithProfile(userId: string): Promise<Role | null> {
-  //   return this.getQueryBuilder('user')
-  //     .leftJoinAndSelect('user.profile', 'profile')
-  //     .where('user.id = :userId', { userId })
-  //     .getOne();
   // }
 }
