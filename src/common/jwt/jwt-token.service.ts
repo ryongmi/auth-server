@@ -5,8 +5,8 @@ import type { Request, Response } from 'express';
 
 // import { decodeAccessToken } from '@krgeobuk/jwt/utils';
 import { JwtException } from '@krgeobuk/jwt/exception';
-import type { TokenPair, JwtPayload } from '@krgeobuk/jwt/interfaces';
-import type { TokenType } from '@krgeobuk/jwt/types';
+import type { JwtTokenPair, JwtPayload } from '@krgeobuk/jwt/interfaces';
+import type { JwtTokenType } from '@krgeobuk/jwt/types';
 // import type { RefreshResponse } from '@krgeobuk/auth/interfaces';
 
 import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
@@ -18,7 +18,7 @@ export class JwtTokenService {
     private readonly configService: ConfigService
   ) {}
 
-  async signAccessTokenAndRefreshToken(payload: JwtPayload): Promise<TokenPair> {
+  async signAccessTokenAndRefreshToken(payload: JwtPayload): Promise<JwtTokenPair> {
     const [accessToken, refreshToken] = await Promise.all([
       this.signToken(payload, 'access'),
       this.signToken(payload, 'refresh'),
@@ -27,7 +27,7 @@ export class JwtTokenService {
     return { accessToken, refreshToken };
   }
 
-  async signToken(payload: JwtPayload, type: TokenType): Promise<string> {
+  async signToken(payload: JwtPayload, type: JwtTokenType): Promise<string> {
     try {
       const privateKey = this.configService.get<
         JwtConfig['accessPrivateKey' | 'refreshPrivateKey']

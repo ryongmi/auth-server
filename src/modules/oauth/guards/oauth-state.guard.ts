@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 
 import { OAuthException } from '@krgeobuk/oauth/exception';
-import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 import { OAuthService } from '../oauth.service.js';
 

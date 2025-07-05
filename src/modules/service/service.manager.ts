@@ -41,7 +41,7 @@ export class ServiceManager {
 
     if (filter.name) where.name = filter.name;
     if (filter.description) where.description = filter.description;
-    if (filter.url) where.url = filter.url;
+    if (filter.url) where.baseUrl = filter.url;
     if (filter.isVisible) where.isVisible = filter.isVisible;
     if (filter.isVisibleByRole) where.isVisibleByRole = filter.isVisibleByRole;
     if (filter.displayName) where.displayName = filter.displayName;
@@ -62,7 +62,7 @@ export class ServiceManager {
 
     if (name) where.push({ name });
     if (description) where.push({ description });
-    if (url) where.push({ url });
+    if (url) where.push({ baseUrl: url });
     if (isVisible) where.push({ isVisible });
     if (isVisibleByRole) where.push({ isVisibleByRole });
     if (displayName) where.push({ displayName });

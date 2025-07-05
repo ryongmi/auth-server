@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { Request, Response } from 'express';
 
-import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AuthException } from '@krgeobuk/auth/exception';
 import { UserError, UserException } from '@krgeobuk/user/exception';
 import type {
@@ -19,7 +19,7 @@ import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
 
-import { User, UserService } from '@modules/user/index.js';
+import { UserEntity, UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
 
 @Injectable()
@@ -34,28 +34,6 @@ export class AuthService {
     private readonly jwtService: JwtTokenService,
     private readonly oauthService: OAuthService
   ) {}
-
-  async issueTokens(res: Response, user: User, tokenData?: unknown): Promise<AuthLoginResponse> {
-    this.logger.log(`${this.issueTokens.name} - 시작 되었습니다.`);
-
-    const payload = tokenData
-      ? {
-          id: user.id,
-          tokenData,
-        }
-      : {
-          id: user.id,
-        };
-
-    const { accessToken, refreshToken } =
-      await this.jwtService.signAccessTokenAndRefreshToken(payload);
-
-    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
-
-    this.logger.log(`${this.issueTokens.name} - 성공적으로 종료되었습니다.`);
-
-    return { accessToken, user };
-  }
 
   async logout(req: Request, res: Response): Promise<void> {
     this.logger.log(`${this.logout.name} - 시작 되었습니다.`);
@@ -105,12 +83,15 @@ export class AuthService {
     // 마지막 로그인 날짜 기록
     // await this.userService.lastLoginUpdate(user.id);
 
-    // const payload = {
-    //   id: user.id,
-    // };
+    const payload = {
+      id: user.id,
+    };
 
     try {
-      const { accessToken } = await this.issueTokens(res, user);
+      const { accessToken, refreshToken } =
+        await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
       this.logger.log(`${this.login.name} - 성공적으로 종료되었습니다.`);
       // return await this.userService.lastLoginUpdate(user);
@@ -154,12 +135,15 @@ export class AuthService {
         return createdUser;
       });
 
-      // const payload = {
-      //   id: createdUser.id,
-      //   // provider: oauthAccount.provider,
-      // };
+      const payload = {
+        id: createdUser.id,
+        // provider: oauthAccount.provider,
+      };
 
-      const { accessToken } = await this.issueTokens(res, createdUser);
+      const { accessToken, refreshToken } =
+        await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
       this.logger.log(`${this.signup.name} - 성공적으로 종료되었습니다.`);
 

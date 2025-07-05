@@ -1,7 +1,10 @@
 import { Entity, Column, Index, Unique } from 'typeorm';
 
 import { BaseEntityUUID } from '@krgeobuk/core/entities';
-import { OAuthAccountProviderType, OAUTH_ACCOUNT_PROVIDER_TYPE_VALUES } from '@krgeobuk/oauth/enum';
+import {
+  OAuthAccountProviderType,
+  OAUTH_ACCOUNT_PROVIDER_TYPE_VALUES,
+} from '@krgeobuk/shared/oauth';
 
 @Entity('oauth_account')
 @Index(['id', 'userId'], { unique: true })

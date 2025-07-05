@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
-import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import type {
   OAuthAccountFilter,
   NaverOAuthCallbackQuery,
@@ -13,9 +13,9 @@ import type {
 import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 
 import { RedisService } from '@database';
+import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
-import { AuthService } from '@modules/auth/index.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -29,7 +29,7 @@ export class OAuthService {
   constructor(
     // private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
-    private readonly authService: AuthService,
+    private readonly jwtService: JwtTokenService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
@@ -137,13 +137,16 @@ export class OAuthService {
     );
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    // const payload = {
-    //   id: user.id,
-    //   tokenData,
-    //   // provider: ProviderType.NAVER,
-    // };
+    const payload = {
+      id: user.id,
+      tokenData,
+      // provider: ProviderType.NAVER,
+    };
 
-    const { accessToken } = await this.authService.issueTokens(res, user, tokenData);
+    const { accessToken, refreshToken } =
+      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
     this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
 
@@ -166,13 +169,16 @@ export class OAuthService {
     );
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    // const payload = {
-    //   id: user.id,
-    //   tokenData,
-    //   // provider: ProviderType.GOOGLE,
-    // };
+    const payload = {
+      id: user.id,
+      tokenData,
+      // provider: ProviderType.GOOGLE,
+    };
 
-    const { accessToken } = await this.authService.issueTokens(res, user, tokenData);
+    const { accessToken, refreshToken } =
+      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
     this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
 

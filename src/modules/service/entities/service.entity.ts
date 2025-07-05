@@ -11,7 +11,7 @@ export class ServiceEntity extends BaseEntityUUID {
   description?: string; // 홈페이지 가입 이메일, 통합 기준
 
   @Column({ type: 'varchar', length: 2048, nullable: true })
-  url?: string; // 실제 서비스 URL
+  baseUrl?: string; // 실제 서비스 URL
 
   @Column({ type: 'boolean', default: true })
   isVisible?: boolean; // 포털에서 표시 여부

@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
-import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AuthLoginResponseDto } from '@krgeobuk/auth/dtos';
 import { OAuthResponse } from '@krgeobuk/oauth/response';
 import { OAuthError } from '@krgeobuk/oauth/exception';

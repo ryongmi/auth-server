@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom, map } from 'rxjs';
 
-import { OAuthAccountProviderType } from '@krgeobuk/oauth/enum';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { transformAndValidate } from '@krgeobuk/core/utils';
 import { NaverTokenResponseDto, NaverUserProfileResponseDto } from '@krgeobuk/oauth/dtos';
