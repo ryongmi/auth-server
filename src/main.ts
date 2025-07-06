@@ -11,7 +11,6 @@ import { AppModule } from './app.module.js';
 import { setNestApp } from './setNestApp.js';
 
 async function bootstrap(): Promise<void> {
-  // const app = await NestFactory.create(AppModule);
   const app = await NestFactory.create(
     AppModule,
     { bufferLogs: true } // 로거 준비 전에 로그 유실 방지
