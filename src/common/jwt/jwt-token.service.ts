@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
@@ -13,6 +13,8 @@ import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
 
 @Injectable()
 export class JwtTokenService {
+  private readonly logger = new Logger(JwtTokenService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService
@@ -45,11 +47,20 @@ export class JwtTokenService {
         expiresIn,
       });
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error(`${type} 토큰 서명 실패:`, error.message);
-      } else {
-        console.error(`${type} 토큰 서명 실패: 알 수 없는 에러`);
-      }
+      // 내부 로그: 상세한 디버깅 정보
+      const internalMessage = error instanceof Error ? error.message : '알 수 없는 에러';
+      const stack = error instanceof Error ? error.stack : undefined;
+      
+      this.logger.error(
+        `[JWT_SIGN_FAILURE] ${type} 토큰 서명 실패 - Internal: ${internalMessage}`,
+        {
+          tokenType: type,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
+      
+      // 클라이언트용: 일반화된 안전한 메시지
       throw JwtException.signFailure(type);
     }
   }
@@ -91,9 +102,22 @@ export class JwtTokenService {
         algorithms: ['RS256'],
       });
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('refresh 토큰 검증 실패:', error.message);
+      // 내부 로그: 상세한 디버깅 정보
+      const internalMessage = error instanceof Error ? error.message : '알 수 없는 에러';
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      const stack = error instanceof Error ? error.stack : undefined;
+      
+      this.logger.error(
+        `[JWT_VERIFY_FAILURE] refresh 토큰 검증 실패 - Internal: ${internalMessage}`,
+        {
+          tokenType: 'refresh',
+          errorType: errorName,
+          stack
+        }
+      );
 
+      // 클라이언트용: 에러 타입에 따른 적절한 메시지
+      if (error instanceof Error) {
         switch (error.name) {
           case 'TokenExpiredError':
             throw JwtException.expired('refresh');
@@ -131,7 +155,7 @@ export class JwtTokenService {
     if (!refreshToken) throw JwtException.notFound('refresh');
 
     res.cookie(refreshTokenStore, refreshToken, {
-      httpOnly: mode === 'production',
+      httpOnly: true,
       secure: mode === 'production',
       sameSite: 'strict',
       path: cookiePath,
@@ -150,7 +174,7 @@ export class JwtTokenService {
     }
 
     res.clearCookie(refreshTokenStore, {
-      httpOnly: mode === 'production',
+      httpOnly: true,
       secure: mode === 'production',
       sameSite: 'strict',
       path: cookiePath,

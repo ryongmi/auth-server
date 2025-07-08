@@ -20,7 +20,7 @@ import { UserEntity, UserService } from '@modules/user/index.js';
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
-import { OAuthRepository } from './oauth.repositoty.js';
+import { OAuthRepository } from './oauth.repository.js';
 
 @Injectable()
 export class OAuthService {

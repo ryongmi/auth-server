@@ -12,7 +12,7 @@ import { OAuthController } from './oauth.controller.js';
 import { OAuthService } from './oauth.service.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
-import { OAuthRepository } from './oauth.repositoty.js';
+import { OAuthRepository } from './oauth.repository.js';
 
 @Module({
   imports: [

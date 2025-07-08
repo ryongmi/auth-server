@@ -7,7 +7,7 @@ import { JwtModule } from '@common/jwt/index.js';
 import { UserEntity } from './entities/user.entity.js';
 import { UserController } from './user.controller.js';
 import { UserService } from './user.service.js';
-import { UserRepository } from './user.repositoty.js';
+import { UserRepository } from './user.repository.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity]), JwtModule, HttpModule],

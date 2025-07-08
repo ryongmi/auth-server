@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
@@ -12,6 +12,8 @@ import { JwtTokenService } from '../jwt-token.service.js';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
+  private readonly logger = new Logger(RefreshTokenGuard.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtTokenService,
@@ -42,8 +44,22 @@ export class RefreshTokenGuard implements CanActivate {
 
       return true;
     } catch (error: unknown) {
-      console.error('Refresh Token 검증 실패:', error);
+      // 내부 로그: 리프레시 토큰 검증 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[REFRESH_TOKEN_GUARD_ERROR] Refresh Token 검증 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'refresh_token_validation',
+          errorType: errorName,
+          tokenPresent: !!refreshToken,
+          stack
+        }
+      );
 
+      // 클라이언트용: 에러 타입에 따른 적절한 메시지
       if (error instanceof Error && 'name' in error) {
         const name = (error as { name: string }).name;
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EntityManager, FindOptionsWhere, UpdateResult } from 'typeorm';
 
 import { UserException } from '@krgeobuk/user/exception';
@@ -15,10 +15,12 @@ import type {
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 
 import { UserEntity } from './entities/user.entity.js';
-import { UserRepository } from './user.repositoty.js';
+import { UserRepository } from './user.repository.js';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(private readonly userRepo: UserRepository) {}
 
   async searchUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
@@ -92,8 +94,21 @@ export class UserService {
     try {
       await this.updateUser(user);
     } catch (error: unknown) {
-      console.log(`${this.updateMyProfile.name} Error : ${error}`);
+      // 내부 로그: 프로필 업데이트 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[USER_PROFILE_UPDATE_ERROR] 프로필 업데이트 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'updateMyProfile',
+          userId: user.id,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
+      // 클라이언트용: 일반화된 에러 메시지
       throw UserException.profileUpdateError();
     }
   }
@@ -114,8 +129,21 @@ export class UserService {
     try {
       await this.updateUser(user);
     } catch (error: unknown) {
-      console.log(`${this.changePassword.name} Error : ${error}`);
+      // 내부 로그: 비밀번호 변경 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[USER_PASSWORD_CHANGE_ERROR] 비밀번호 변경 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'changePassword',
+          userId: id,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
+      // 클라이언트용: 일반화된 에러 메시지
       throw UserException.passwordChangeError();
     }
   }
@@ -127,8 +155,21 @@ export class UserService {
         throw new Error('해당 유저 미존재 또는 삭제 실패');
       }
     } catch (error: unknown) {
-      console.log(`${this.deleteMyAccount.name} Error : ${error}`);
+      // 내부 로그: 계정 삭제 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[USER_ACCOUNT_DELETE_ERROR] 계정 삭제 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'deleteMyAccount',
+          userId: id,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
+      // 클라이언트용: 일반화된 에러 메시지
       throw UserException.accountDeleteError();
     }
   }

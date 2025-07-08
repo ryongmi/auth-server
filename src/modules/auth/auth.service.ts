@@ -58,8 +58,16 @@ export class AuthService {
 
     const user = (await this.userService.findByAnd({ email }))[0];
     if (!user) {
-      const message = `[${this.login.name} Warn] code: ${UserError.USER_NOT_FOUND.code}, Message: ${UserError.USER_NOT_FOUND.message}`;
-      this.logger.warn(message);
+      // 내부 로그: 상세한 정보 (이메일 해시화 고려)
+      this.logger.warn(
+        `[AUTH_LOGIN_FAILED] 사용자 찾기 실패 - code: ${UserError.USER_NOT_FOUND.code}`,
+        {
+          action: 'login',
+          reason: 'user_not_found',
+          emailHash: email ? email.substring(0, 3) + '***' : 'unknown' // 이메일 마스킹
+        }
+      );
+      // 클라이언트용: 보안을 위한 일반화된 메시지
       throw UserException.invalidCredentials();
     }
 
@@ -75,8 +83,17 @@ export class AuthService {
 
     const isMatch = isPasswordMatching(password, user.password ?? '');
     if (!isMatch) {
-      const message = `[${this.login.name} Warn] code: ${UserError.PASSWORD_INCORRECT.code}, Message: ${UserError.PASSWORD_INCORRECT.message}`;
-      this.logger.warn(message);
+      // 내부 로그: 상세한 정보
+      this.logger.warn(
+        `[AUTH_LOGIN_FAILED] 비밀번호 불일치 - code: ${UserError.PASSWORD_INCORRECT.code}`,
+        {
+          action: 'login',
+          reason: 'password_incorrect',
+          userId: user.id,
+          emailHash: email ? email.substring(0, 3) + '***' : 'unknown'
+        }
+      );
+      // 클라이언트용: 보안을 위한 일반화된 메시지
       throw UserException.invalidCredentials();
     }
 
@@ -97,11 +114,21 @@ export class AuthService {
       // return await this.userService.lastLoginUpdate(user);
       return { user, accessToken };
     } catch (error: unknown) {
-      const message = `[${this.login.name} > JWT Error] ${error instanceof Error ? error.message : String(error)}`;
+      // 내부 로그: JWT 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      // console.error(`[${this.login.name} > JWT Error] ${message}\n${stack}`);
-      this.logger.error(message, stack);
+      
+      this.logger.error(
+        `[AUTH_LOGIN_JWT_ERROR] JWT 토큰 생성 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'login',
+          userId: payload.id,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
+      // 클라이언트용: 일반화된 에러 메시지
       throw AuthException.loginError();
     }
   }
@@ -149,11 +176,21 @@ export class AuthService {
 
       return { user: createdUser, accessToken };
     } catch (error: unknown) {
-      const message = `[${this.signup.name} Error] ${error instanceof Error ? error.message : String(error)}`;
+      // 내부 로그: 회원가입 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[AUTH_SIGNUP_ERROR] 회원가입 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'signup',
+          email: attrs.email ? attrs.email.substring(0, 3) + '***' : 'unknown', // 이메일 마스킹
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
-      this.logger.error(message, stack);
-
+      // 클라이언트용: 일반화된 에러 메시지
       throw AuthException.signupError();
     }
   }
@@ -168,11 +205,21 @@ export class AuthService {
 
       return { accessToken };
     } catch (error: unknown) {
-      const message = `[${this.refresh.name} Error] ${error instanceof Error ? error.message : String(error)}`;
+      // 내부 로그: 토큰 새로고침 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error(
+        `[AUTH_REFRESH_ERROR] 토큰 새로고침 실패 - Internal: ${internalMessage}`,
+        {
+          action: 'refresh',
+          userId: payload.id,
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          stack
+        }
+      );
 
-      this.logger.error(message, stack);
-
+      // 클라이언트용: 일반화된 에러 메시지
       throw AuthException.refreshError();
     }
   }
