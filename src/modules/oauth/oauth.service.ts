@@ -222,10 +222,21 @@ export class OAuthService {
           'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
         user.isIntegrated = true;
 
-        const oauth = await this.oauthRepo.findOAuthAccountByUserId(user.id);
+        const oauth = (await this.findByAnd({ userId: user.id }))[0];
         if (!oauth) {
-          // 에러 없을수가 없음
-          throw Error();
+          // 내부 로그: OAuth 계정 누락 에러
+          this.logger.error(
+            `[OAUTH_ACCOUNT_NOT_FOUND] 사용자 통합 계정 처리 중 OAuth 계정 누락`,
+            {
+              action: 'user_integration',
+              userId: user.id,
+              userEmail: user.email,
+              expectedProvider: 'existing_oauth_account'
+            }
+          );
+          
+          // 클라이언트용: 일반화된 에러 (내부 데이터 불일치)
+          throw new Error('OAuth 계정 데이터 불일치 - 관리자에게 문의하세요');
         }
 
         const oauthAccountAttrs = {
