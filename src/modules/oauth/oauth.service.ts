@@ -12,6 +12,7 @@ import type {
   GoogleUserProfileResponse,
 } from '@krgeobuk/oauth/interfaces';
 import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
+import { OAuthException } from '@krgeobuk/oauth/exception';
 
 import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
@@ -233,8 +234,7 @@ export class OAuthService {
             expectedProvider: 'existing_oauth_account',
           });
 
-          // 클라이언트용: 일반화된 에러 (내부 데이터 불일치)
-          throw new Error('OAuth 계정 데이터 불일치 - 관리자에게 문의하세요');
+          throw OAuthException.userSaveFailed(ProviderType);
         }
 
         const oauthAccountAttrs = {
