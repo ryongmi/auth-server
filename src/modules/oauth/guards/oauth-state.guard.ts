@@ -47,7 +47,6 @@ export class GoogleOAuthStateGuard extends BaseOAuthStateGuard {
    * Google OAuth 에러 처리
    * 기본적인 에러 정보만 로깅
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected handleOAuthError(error: string, _query: Record<string, unknown>): void {
     const message = `[GOOGLE_OAUTH_ERROR] Error: ${error}`;
 
