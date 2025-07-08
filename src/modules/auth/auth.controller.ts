@@ -1,7 +1,9 @@
-import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { EntityManager } from 'typeorm';
 
-import { Serialize } from '@krgeobuk/core/decorators';
+import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
+import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 import {
   AuthLoginRequestDto,
   AuthLoginResponseDto,
@@ -83,6 +85,7 @@ export class AuthController {
 
   @Post('/signup')
   @HttpCode(AuthResponse.SIGNUP_SUCCESS.statusCode)
+  @UseInterceptors(TransactionInterceptor)
   @SwaggerApiOperation({ summary: '회원가입' })
   @SwaggerApiBody({
     dto: AuthSignupRequestDto,
@@ -104,9 +107,10 @@ export class AuthController {
   async signup(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: AuthSignupRequestDto
+    @Body() body: AuthSignupRequestDto,
+    @TransactionManager() transactionManager: EntityManager
   ): Promise<AuthLoginResponseDto> {
-    const data = await this.authService.signup(res, body);
+    const data = await this.authService.signup(res, body, transactionManager);
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
     req.user = data.user;

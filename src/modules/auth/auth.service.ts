@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { Request, Response } from 'express';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
@@ -27,7 +27,6 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
@@ -133,7 +132,11 @@ export class AuthService {
     }
   }
 
-  async signup(res: Response, attrs: AuthSignupRequest): Promise<AuthLoginResponse> {
+  async signup(
+    res: Response, 
+    attrs: AuthSignupRequest, 
+    transactionManager: EntityManager
+  ): Promise<AuthLoginResponse> {
     this.logger.log(`${this.signup.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
@@ -145,22 +148,17 @@ export class AuthService {
     const createUserAttrs = { ...attrs, password: hashedPassword };
 
     try {
-      const createdUser = await this.dataSource.transaction(async (manager) => {
-        const createdUser = await this.userService.createUser(createUserAttrs, manager);
+      const createdUser = await this.userService.createUser(createUserAttrs, transactionManager);
 
-        this.logger.log(`${this.signup.name} - 유저생성완료`);
+      this.logger.log(`${this.signup.name} - 유저생성완료`);
 
-        const oauthAccountAttrs = {
-          provider: OAuthAccountProviderType.HOMEPAGE,
-          userId: createdUser.id,
-        };
-        // const oauthAccount = await this.oauthService.createOAuthAccount(oauthAccountAttrs, manager);
-        await this.oauthService.createOAuthAccount(oauthAccountAttrs, manager);
+      const oauthAccountAttrs = {
+        provider: OAuthAccountProviderType.HOMEPAGE,
+        userId: createdUser.id,
+      };
+      await this.oauthService.createOAuthAccount(oauthAccountAttrs, transactionManager);
 
-        this.logger.log(`${this.signup.name} - OAuthAccount 생성완료`);
-
-        return createdUser;
-      });
+      this.logger.log(`${this.signup.name} - OAuthAccount 생성완료`);
 
       const payload = {
         id: createdUser.id,
