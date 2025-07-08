@@ -64,7 +64,9 @@ services:
     #   - mysql
 
 networks:
-  network-auth:
+  auth-network:
     driver: bridge
-  network-shared:
+  msa-network:
+    external: true
+  shared-network:
     external: true

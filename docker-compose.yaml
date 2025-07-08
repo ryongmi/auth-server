@@ -27,7 +27,7 @@ services:
       # - ./config/mysql/my.cnf:/etc/mysql/my.cnf
       # - ./config/mysql/conf.d:/etc/mysql/conf.d
     networks:
-      - network-auth
+      - auth-network
 
   redis:
     image: redis:alpine
@@ -41,7 +41,7 @@ services:
     volumes:
       - ./data/redis:/data
     networks:
-      - network-auth
+      - auth-network
     command: ['redis-server', '--requirepass', '1234qwer']
     depends_on:
       - mysql
@@ -69,13 +69,16 @@ services:
       - /app/dist
       - /app/node_modules # 익명 볼륨
     networks:
-      - network-auth
+      - auth-network
+      - msa-network
     depends_on:
       - redis
       - mysql
 
 networks:
-  network-auth:
+  auth-network:
     driver: bridge
-  network-shared:
+  msa-network:
+    external: true
+  shared-network:
     external: true
