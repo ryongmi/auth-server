@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import { EntityManager } from 'typeorm';
 import { Request, Response } from 'express';
 
@@ -14,11 +15,10 @@ import type {
 } from '@krgeobuk/auth/interfaces';
 import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 
-import { RedisService } from '@database';
+import { RedisService } from '@database/index.js';
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
-
 import { UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
 
@@ -63,7 +63,7 @@ export class AuthService {
         {
           action: 'login',
           reason: 'user_not_found',
-          emailHash: email ? email.substring(0, 3) + '***' : 'unknown' // 이메일 마스킹
+          emailHash: email ? email.substring(0, 3) + '***' : 'unknown', // 이메일 마스킹
         }
       );
       // 클라이언트용: 보안을 위한 일반화된 메시지
@@ -89,7 +89,7 @@ export class AuthService {
           action: 'login',
           reason: 'password_incorrect',
           userId: user.id,
-          emailHash: email ? email.substring(0, 3) + '***' : 'unknown'
+          emailHash: email ? email.substring(0, 3) + '***' : 'unknown',
         }
       );
       // 클라이언트용: 보안을 위한 일반화된 메시지
@@ -116,14 +116,14 @@ export class AuthService {
       // 내부 로그: JWT 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
+
       this.logger.error(
         `[AUTH_LOGIN_JWT_ERROR] JWT 토큰 생성 실패 - Internal: ${internalMessage}`,
         {
           action: 'login',
           userId: payload.id,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
+          stack,
         }
       );
 
@@ -133,8 +133,8 @@ export class AuthService {
   }
 
   async signup(
-    res: Response, 
-    attrs: AuthSignupRequest, 
+    res: Response,
+    attrs: AuthSignupRequest,
     transactionManager: EntityManager
   ): Promise<AuthLoginResponse> {
     this.logger.log(`${this.signup.name} - 시작 되었습니다.`);
@@ -177,16 +177,13 @@ export class AuthService {
       // 내부 로그: 회원가입 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
-      this.logger.error(
-        `[AUTH_SIGNUP_ERROR] 회원가입 실패 - Internal: ${internalMessage}`,
-        {
-          action: 'signup',
-          email: attrs.email ? attrs.email.substring(0, 3) + '***' : 'unknown', // 이메일 마스킹
-          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
-        }
-      );
+
+      this.logger.error(`[AUTH_SIGNUP_ERROR] 회원가입 실패 - Internal: ${internalMessage}`, {
+        action: 'signup',
+        email: attrs.email ? attrs.email.substring(0, 3) + '***' : 'unknown', // 이메일 마스킹
+        errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+        stack,
+      });
 
       // 클라이언트용: 일반화된 에러 메시지
       throw AuthException.signupError();
@@ -206,16 +203,13 @@ export class AuthService {
       // 내부 로그: 토큰 새로고침 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
-      this.logger.error(
-        `[AUTH_REFRESH_ERROR] 토큰 새로고침 실패 - Internal: ${internalMessage}`,
-        {
-          action: 'refresh',
-          userId: payload.id,
-          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
-        }
-      );
+
+      this.logger.error(`[AUTH_REFRESH_ERROR] 토큰 새로고침 실패 - Internal: ${internalMessage}`, {
+        action: 'refresh',
+        userId: payload.id,
+        errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+        stack,
+      });
 
       // 클라이언트용: 일반화된 에러 메시지
       throw AuthException.refreshError();

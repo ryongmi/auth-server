@@ -2,9 +2,8 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { RedisModule } from '@database';
+import { RedisModule } from '@database/index.js';
 import { JwtModule } from '@common/jwt/index.js';
-
 import { UserModule } from '@modules/user/index.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
@@ -27,3 +26,4 @@ import { OAuthRepository } from './oauth.repository.js';
   exports: [OAuthService], // 다른 모듈에서 OAuth 서비스를 사용할 수 있도록 exports에 추가
 })
 export class OAuthModule {}
+

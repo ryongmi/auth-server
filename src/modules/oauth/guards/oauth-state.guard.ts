@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 import { OAuthService } from '../oauth.service.js';
+
 import { BaseOAuthStateGuard } from './base-oauth-state.guard.js';
 
 /**
@@ -22,12 +23,12 @@ export class NaverOAuthStateGuard extends BaseOAuthStateGuard {
   protected handleOAuthError(error: string, query: Record<string, unknown>): void {
     const { error_description } = query;
     const message = `[NAVER_OAUTH_ERROR] Error: ${error}, ErrorMsg: ${error_description || 'No description'}`;
-    
+
     this.logger.error(message, {
       provider: 'NAVER',
       error,
       error_description,
-      action: 'oauth_callback'
+      action: 'oauth_callback',
     });
   }
 }
@@ -49,11 +50,12 @@ export class GoogleOAuthStateGuard extends BaseOAuthStateGuard {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected handleOAuthError(error: string, _query: Record<string, unknown>): void {
     const message = `[GOOGLE_OAUTH_ERROR] Error: ${error}`;
-    
+
     this.logger.error(message, {
       provider: 'GOOGLE',
       error,
-      action: 'oauth_callback'
+      action: 'oauth_callback',
     });
   }
 }
+

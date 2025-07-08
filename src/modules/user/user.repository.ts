@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
@@ -147,3 +148,4 @@ export class UserRepository extends BaseRepository<UserEntity> {
     };
   }
 }
+

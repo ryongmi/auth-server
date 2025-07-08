@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+
 import { lastValueFrom, map } from 'rxjs';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { transformAndValidate } from '@krgeobuk/core/utils';
-
 import { GoogleTokenResponseDto, GoogleUserProfileResponseDto } from '@krgeobuk/oauth/dtos';
 import type { GoogleOAuthCallbackQuery, GoogleInfoResponse } from '@krgeobuk/oauth/interfaces';
 
@@ -88,3 +88,4 @@ export class GoogleOAuthService {
     }
   }
 }
+

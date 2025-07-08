@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
@@ -12,10 +13,10 @@ import type {
 } from '@krgeobuk/oauth/interfaces';
 import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 
-import { RedisService } from '@database';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
+import { RedisService } from '@database/index.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -225,16 +226,13 @@ export class OAuthService {
         const oauth = (await this.findByAnd({ userId: user.id }))[0];
         if (!oauth) {
           // 내부 로그: OAuth 계정 누락 에러
-          this.logger.error(
-            `[OAUTH_ACCOUNT_NOT_FOUND] 사용자 통합 계정 처리 중 OAuth 계정 누락`,
-            {
-              action: 'user_integration',
-              userId: user.id,
-              userEmail: user.email,
-              expectedProvider: 'existing_oauth_account'
-            }
-          );
-          
+          this.logger.error(`[OAUTH_ACCOUNT_NOT_FOUND] 사용자 통합 계정 처리 중 OAuth 계정 누락`, {
+            action: 'user_integration',
+            userId: user.id,
+            userEmail: user.email,
+            expectedProvider: 'existing_oauth_account',
+          });
+
           // 클라이언트용: 일반화된 에러 (내부 데이터 불일치)
           throw new Error('OAuth 계정 데이터 불일치 - 관리자에게 문의하세요');
         }

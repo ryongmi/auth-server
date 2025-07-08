@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 
-import { RedisModule } from '@database';
+import { RedisModule } from '@database/index.js';
 import { JwtModule } from '@common/jwt/index.js';
-
 import { UserModule } from '@modules/user/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
 
@@ -17,3 +16,4 @@ import { AuthService } from './auth.service.js';
   exports: [AuthService], // 다른 모듈에서 User 서비스를 사용할 수 있도록 exports에 추가
 })
 export class AuthModule {}
+

@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import cookieParser from 'cookie-parser';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
@@ -53,3 +54,4 @@ export function setNestApp(
   // const seederService = app.get(SeederService);
   // await seederService.seed();
 }
+

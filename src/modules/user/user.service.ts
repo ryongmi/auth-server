@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import { EntityManager, FindOptionsWhere, UpdateResult } from 'typeorm';
 
 import { UserException } from '@krgeobuk/user/exception';
@@ -97,14 +98,14 @@ export class UserService {
       // 내부 로그: 프로필 업데이트 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
+
       this.logger.error(
         `[USER_PROFILE_UPDATE_ERROR] 프로필 업데이트 실패 - Internal: ${internalMessage}`,
         {
           action: 'updateMyProfile',
           userId: user.id,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
+          stack,
         }
       );
 
@@ -132,14 +133,14 @@ export class UserService {
       // 내부 로그: 비밀번호 변경 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
+
       this.logger.error(
         `[USER_PASSWORD_CHANGE_ERROR] 비밀번호 변경 실패 - Internal: ${internalMessage}`,
         {
           action: 'changePassword',
           userId: id,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
+          stack,
         }
       );
 
@@ -158,14 +159,14 @@ export class UserService {
       // 내부 로그: 계정 삭제 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : '';
-      
+
       this.logger.error(
         `[USER_ACCOUNT_DELETE_ERROR] 계정 삭제 실패 - Internal: ${internalMessage}`,
         {
           action: 'deleteMyAccount',
           userId: id,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
+          stack,
         }
       );
 
@@ -206,3 +207,4 @@ export class UserService {
     return this.userRepo.softDelete(id);
   }
 }
+

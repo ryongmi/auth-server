@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { DataSource, EntityManager } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
@@ -23,3 +24,4 @@ export class OAuthRepository extends BaseRepository<OAuthAccountEntity> {
     return await transactionManager.getRepository(OAuthAccountEntity).save(account);
   }
 }
+
