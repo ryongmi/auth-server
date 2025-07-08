@@ -1,81 +1,59 @@
-import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { OAuthException } from '@krgeobuk/oauth/exception';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 import { OAuthService } from '../oauth.service.js';
+import { BaseOAuthStateGuard } from './base-oauth-state.guard.js';
 
+/**
+ * Naver OAuth State 검증 가드
+ * BaseOAuthStateGuard를 상속받아 Naver 특화 에러 처리를 구현
+ */
 @Injectable()
-export class NaverOAuthStateGuard implements CanActivate {
-  private readonly logger = new Logger(NaverOAuthStateGuard.name);
+export class NaverOAuthStateGuard extends BaseOAuthStateGuard {
+  constructor(oauthService: OAuthService) {
+    super(oauthService, OAuthAccountProviderType.NAVER);
+  }
 
-  constructor(private readonly oauthService: OAuthService) {} // RedisService 주입
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const { error, state } = request.query; // 요청에서 state 값을 가져옴
-
-    // error 값이 있으면 예외 처리
-    if (error) {
-      const { error_description } = request.query;
-      const message = `Error: ${error}, ErrorMsg: ${error_description}`;
-
-      this.logger.error(message);
-
-      throw OAuthException.loginError(OAuthAccountProviderType.NAVER);
-    }
-
-    // state 값이 없으면 예외 처리
-    if (!state) throw OAuthException.stateNotFound(OAuthAccountProviderType.NAVER);
-
-    // state 값이 유효한지 Redis에서 확인
-    const isValidState = await this.oauthService.validateState(
-      state,
-      OAuthAccountProviderType.NAVER
-    );
-
-    if (!isValidState) throw OAuthException.stateExpired(OAuthAccountProviderType.NAVER);
-
-    // 유효성 검사 끝난 state 레디스에서 삭제
-    await this.oauthService.deleteState(state, OAuthAccountProviderType.NAVER);
-
-    return true;
+  /**
+   * Naver OAuth 에러 처리
+   * error_description을 포함한 상세 에러 로깅
+   */
+  protected handleOAuthError(error: string, query: Record<string, unknown>): void {
+    const { error_description } = query;
+    const message = `[NAVER_OAUTH_ERROR] Error: ${error}, ErrorMsg: ${error_description || 'No description'}`;
+    
+    this.logger.error(message, {
+      provider: 'NAVER',
+      error,
+      error_description,
+      action: 'oauth_callback'
+    });
   }
 }
 
+/**
+ * Google OAuth State 검증 가드
+ * BaseOAuthStateGuard를 상속받아 Google 특화 에러 처리를 구현
+ */
 @Injectable()
-export class GoogleOAuthStateGuard implements CanActivate {
-  private readonly logger = new Logger(GoogleOAuthStateGuard.name);
+export class GoogleOAuthStateGuard extends BaseOAuthStateGuard {
+  constructor(oauthService: OAuthService) {
+    super(oauthService, OAuthAccountProviderType.GOOGLE);
+  }
 
-  constructor(private readonly oauthService: OAuthService) {} // RedisService 주입
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const { error, state } = request.query; // 요청에서 state 값을 가져옴
-
-    // error 값이 있으면 예외 처리
-    if (error) {
-      const message = `Error: ${error}`;
-
-      this.logger.error(message);
-
-      throw OAuthException.loginError(OAuthAccountProviderType.GOOGLE);
-    }
-
-    // state 값이 없으면 예외 처리
-    if (!state) throw OAuthException.stateNotFound(OAuthAccountProviderType.GOOGLE);
-
-    // state 값이 유효한지 Redis에서 확인
-    const isValidState = await this.oauthService.validateState(
-      state,
-      OAuthAccountProviderType.GOOGLE
-    );
-
-    if (!isValidState) throw OAuthException.stateExpired(OAuthAccountProviderType.GOOGLE);
-
-    // 유효성 검사 끝난 state 레디스에서 삭제
-    await this.oauthService.deleteState(state, OAuthAccountProviderType.GOOGLE);
-
-    return true;
+  /**
+   * Google OAuth 에러 처리
+   * 기본적인 에러 정보만 로깅
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected handleOAuthError(error: string, _query: Record<string, unknown>): void {
+    const message = `[GOOGLE_OAUTH_ERROR] Error: ${error}`;
+    
+    this.logger.error(message, {
+      provider: 'GOOGLE',
+      error,
+      action: 'oauth_callback'
+    });
   }
 }

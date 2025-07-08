@@ -19,7 +19,7 @@ import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { JwtConfig } from '@common/interfaces/index.js';
 
-import { UserEntity, UserService } from '@modules/user/index.js';
+import { UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
 
 @Injectable()
