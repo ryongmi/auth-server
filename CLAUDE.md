@@ -87,3 +87,6 @@ import 순서 규칙과 Prettier 통합을 포함한 `@krgeobuk/eslint-config`�
 - 단위 테스트: 소스 코드와 함께 `*.spec.ts` 파일
 - E2E 테스트: 별도의 Jest 설정을 가진 `test/` 디렉터리
 - 커버리지 리포트는 `../coverage`에 생성됩니다
+
+## API 응답 포맷
+프로젝트 전체 API 응답 포맷 표준은 메인 CLAUDE.md의 "API 응답 포맷 표준" 섹션을 참조하세요.
