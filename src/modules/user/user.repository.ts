@@ -138,14 +138,18 @@ export class UserRepository extends BaseRepository<UserEntity> {
     }));
 
     const totalPages = Math.ceil(total / limit);
+    const pageInfo = {
+      page,
+      limit,
+      totalItems: total,
+      totalPages,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < totalPages,
+    };
 
     return {
       items,
-      total,
-      page,
-      limit,
-      totalPages,
+      pageInfo,
     };
   }
 }
-

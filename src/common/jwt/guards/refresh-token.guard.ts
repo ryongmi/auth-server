@@ -1,12 +1,13 @@
 import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+
 import { Request } from 'express';
 
 import { JwtException } from '@krgeobuk/jwt/exception';
 
 import { JwtConfig } from '@common/interfaces/index.js';
-import { RedisService } from '@database';
+import { RedisService } from '@database/index.js';
 
 import { JwtTokenService } from '../jwt-token.service.js';
 
@@ -48,14 +49,14 @@ export class RefreshTokenGuard implements CanActivate {
       const internalMessage = error instanceof Error ? error.message : String(error);
       const errorName = error instanceof Error ? error.name : 'UnknownError';
       const stack = error instanceof Error ? error.stack : '';
-      
+
       this.logger.error(
         `[REFRESH_TOKEN_GUARD_ERROR] Refresh Token 검증 실패 - Internal: ${internalMessage}`,
         {
           action: 'refresh_token_validation',
           errorType: errorName,
           tokenPresent: !!refreshToken,
-          stack
+          stack,
         }
       );
 
