@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { EntityManager, FindOptionsWhere, UpdateResult } from 'typeorm';
+import { EntityManager, FindOptionsWhere, UpdateResult, In } from 'typeorm';
 
 import { UserException } from '@krgeobuk/user/exception';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
@@ -28,17 +28,9 @@ export class UserService {
     return this.userRepo.search(query);
   }
 
-  // async getUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
-  //   return this.userRepo.search(query);
-  // }
-
   async findById(id: string): Promise<UserEntity | null> {
     return this.userRepo.findOneById(id);
   }
-
-  // async findUserIds(userIds: string[]): Promise<UserEntity[]> {
-  //   return this.userRepo.find({ where: { userId: In(userIds) } });
-  // }
 
   async findByAnd(filter: UserFilter = {}): Promise<UserEntity[]> {
     const where: FindOptionsWhere<UserEntity> = {};
@@ -206,5 +198,42 @@ export class UserService {
   async deleteUser(id: string): Promise<UpdateResult> {
     return this.userRepo.softDelete(id);
   }
-}
 
+  /**
+   * TCP 컨트롤러용 추가 메서드들
+   */
+
+  async getUserDetailById(id: string): Promise<UserDetail | null> {
+    try {
+      return await this.userRepo.findUserProfile(id);
+    } catch (error) {
+      this.logger.error(`Error getting user detail by ID ${id}:`, error);
+      return null;
+    }
+  }
+
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this.userRepo.findOne({ where: { email } });
+  }
+
+  async findByIds(userIds: string[]): Promise<UserEntity[]> {
+    if (userIds.length === 0) return [];
+    return this.userRepo.find({ where: { id: In(userIds) } });
+  }
+
+  async countUsers(filter?: UserFilter): Promise<number> {
+    if (!filter || Object.keys(filter).length === 0) {
+      return this.userRepo.count();
+    }
+
+    const where: FindOptionsWhere<UserEntity> = {};
+    if (filter.email) where.email = filter.email;
+    if (filter.name) where.name = filter.name;
+    if (filter.nickname) where.nickname = filter.nickname;
+    if (filter.profileImageUrl) where.profileImageUrl = filter.profileImageUrl;
+    if (filter.isEmailVerified !== undefined) where.isEmailVerified = filter.isEmailVerified;
+    if (filter.isIntegrated !== undefined) where.isIntegrated = filter.isIntegrated;
+
+    return this.userRepo.count({ where });
+  }
+}
