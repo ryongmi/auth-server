@@ -1,9 +1,10 @@
-# CLAUDE.md
+# CLAUDE.md - Authentication Server
 
-이 파일은 Claude Code (claude.ai/code)가 이 저장소에서 작업할 때 참고할 수 있는 가이드를 제공합니다.
+이 파일은 auth-server 작업 시 Claude Code의 가이드라인을 제공합니다.
 
-## 프로젝트 개요
-krgeobuk 서비스 생태계를 위한 NestJS 기반 인증 서버(`auth-server`)입니다. 중앙 집중식 인증과 Google, Naver OAuth 통합을 제공합니다.
+## 서비스 개요
+
+auth-server는 krgeobuk 생태계의 인증 서비스로, OAuth 및 JWT 기반의 사용자 인증을 담당합니다.
 
 ## 핵심 명령어
 
@@ -182,5 +183,121 @@ import 순서 규칙과 Prettier 통합을 포함한 `@krgeobuk/eslint-config`�
 - E2E 테스트: 별도의 Jest 설정을 가진 `test/` 디렉터리
 - 커버리지 리포트는 `../coverage`에 생성됩니다
 
-## API 응답 포맷
-프로젝트 전체 API 응답 포맷 표준은 메인 CLAUDE.md의 "API 응답 포맷 표준" 섹션을 참조하세요.
+---
+
+# 🔥 NestJS 공통 개발 표준
+
+> **중요**: auth-server의 NestJS 개발 시 [authz-server/CLAUDE.md](../authz-server/CLAUDE.md)의 **"krgeobuk NestJS 서버 공통 개발 표준"** 섹션을 필수로 참조하세요.
+
+## 공통 표준 적용 영역
+
+- **API 응답 포맷**: SerializerInterceptor, HttpExceptionFilter 표준
+- **컨트롤러 개발 가이드**: 표준화된 엔드포인트 패턴, Swagger 문서화
+- **서비스 계층 설계**: 메서드 구조, 에러 처리, 로깅 표준
+- **TypeScript 코딩 표준**: 타입 안전성, 네이밍 규칙
+- **Repository 최적화**: 쿼리 최적화, 성능 개선
+- **TCP 컨트롤러 표준**: 메시지 패턴, 로깅 최적화
+
+## Auth Server 특화 내용
+
+### OAuth Provider 패턴
+
+auth-server는 OAuth 인증 제공자로서 다음과 같은 특화된 패턴을 사용합니다:
+
+```typescript
+// OAuth Controller 패턴
+@Controller('oauth')
+export class OAuthController {
+  @Get('google')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuth(): Promise<void> {
+    // Google OAuth 리다이렉트
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuthCallback(
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
+    // OAuth 콜백 처리 및 JWT 토큰 발급
+  }
+}
+```
+
+### JWT 토큰 관리 패턴
+
+```typescript
+// JWT Service 패턴
+@Injectable()
+export class AuthService {
+  async login(user: User): Promise<TokenPair> {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, { expiresIn: '15m' }),
+      this.jwtService.signAsync(payload, { expiresIn: '7d' })
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  async refreshToken(refreshToken: string): Promise<TokenPair> {
+    // 리프레시 토큰 검증 및 새 토큰 발급
+  }
+}
+```
+
+### User TCP 엔드포인트 패턴
+
+다른 서비스에서 사용자 정보를 조회할 때의 표준 패턴:
+
+```typescript
+// TCP Controller for User Service
+@Controller()
+export class UserTcpController {
+  @MessagePattern('user.findById')
+  async findById(@Payload() data: { userId: string }): Promise<UserEntity | null> {
+    return this.userService.findById(data.userId);
+  }
+
+  @MessagePattern('user.findByEmail')  
+  async findByEmail(@Payload() data: { email: string }): Promise<UserEntity | null> {
+    return this.userService.findByEmail(data.email);
+  }
+
+  @MessagePattern('user.exists')
+  async exists(@Payload() data: { userId: string }): Promise<boolean> {
+    return this.userService.exists(data.userId);
+  }
+}
+```
+
+### 세션 및 쿠키 관리
+
+```typescript
+// Cookie-based Authentication
+@Injectable()
+export class AuthService {
+  setAuthCookies(res: Response, tokens: TokenPair): void {
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000, // 15분
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+  }
+}
+```
+
+## 개발 워크플로우
+
+1. **표준 참조**: authz-server/CLAUDE.md의 공통 표준 확인
+2. **Auth 특화**: 위 auth-server 특화 패턴 적용
+3. **코드 품질**: `npm run lint-fix` 및 `npm run format` 실행
+4. **타입 검사**: TypeScript 컴파일 확인
+5. **테스트**: 단위/E2E 테스트 실행
+6. **Docker 환경**: 로컬 환경에서 통합 테스트
