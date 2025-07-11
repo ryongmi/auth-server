@@ -28,8 +28,8 @@ export class UserService {
     return this.userRepo.search(query);
   }
 
-  async findById(id: string): Promise<UserEntity | null> {
-    return this.userRepo.findOneById(id);
+  async findById(userId: string): Promise<UserEntity | null> {
+    return this.userRepo.findOneById(userId);
   }
 
   async findByAnd(filter: UserFilter = {}): Promise<UserEntity[]> {
@@ -70,16 +70,16 @@ export class UserService {
     return this.userRepo.find({ where });
   }
 
-  async getUserProfile(id: string): Promise<UserDetail> {
-    return await this.userRepo.findUserProfile(id);
+  async getUserProfile(userId: string): Promise<UserDetail> {
+    return await this.userRepo.findUserProfile(userId);
   }
 
-  async getMyProfile(id: string): Promise<UserDetail> {
-    return await this.userRepo.findUserProfile(id);
+  async getMyProfile(userId: string): Promise<UserDetail> {
+    return await this.userRepo.findUserProfile(userId);
   }
 
-  async updateMyProfile(id: string, attrs: UpdateMyProfile): Promise<void> {
-    const user = await this.findById(id);
+  async updateMyProfile(userId: string, attrs: UpdateMyProfile): Promise<void> {
+    const user = await this.findById(userId);
     if (!user) throw UserException.userNotFound();
 
     Object.assign(user, attrs);
@@ -106,10 +106,10 @@ export class UserService {
     }
   }
 
-  async changePassword(id: string, attrs: ChangePassword): Promise<void> {
+  async changePassword(userId: string, attrs: ChangePassword): Promise<void> {
     const { newPassword, currentPassword } = attrs;
 
-    const user = await this.findById(id);
+    const user = await this.findById(userId);
     if (!user) throw UserException.userNotFound();
 
     const isMatch = isPasswordMatching(currentPassword, user.password ?? '');
@@ -130,7 +130,7 @@ export class UserService {
         `[USER_PASSWORD_CHANGE_ERROR] 비밀번호 변경 실패 - Internal: ${internalMessage}`,
         {
           action: 'changePassword',
-          userId: id,
+          userId: userId,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
           stack,
         }
@@ -141,9 +141,9 @@ export class UserService {
     }
   }
 
-  async deleteMyAccount(id: string): Promise<void> {
+  async deleteMyAccount(userId: string): Promise<void> {
     try {
-      const result = await this.deleteUser(id);
+      const result = await this.deleteUser(userId);
       if (!result.affected || result.affected <= 0) {
         throw new Error('해당 유저 미존재 또는 삭제 실패');
       }
@@ -156,7 +156,7 @@ export class UserService {
         `[USER_ACCOUNT_DELETE_ERROR] 계정 삭제 실패 - Internal: ${internalMessage}`,
         {
           action: 'deleteMyAccount',
-          userId: id,
+          userId: userId,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
           stack,
         }
@@ -195,19 +195,19 @@ export class UserService {
     return this.userRepo.updateEntity(userEntity, transactionManager);
   }
 
-  async deleteUser(id: string): Promise<UpdateResult> {
-    return this.userRepo.softDelete(id);
+  async deleteUser(userId: string): Promise<UpdateResult> {
+    return this.userRepo.softDelete(userId);
   }
 
   /**
    * TCP 컨트롤러용 추가 메서드들
    */
 
-  async getUserDetailById(id: string): Promise<UserDetail | null> {
+  async getUserDetailById(userId: string): Promise<UserDetail | null> {
     try {
-      return await this.userRepo.findUserProfile(id);
+      return await this.userRepo.findUserProfile(userId);
     } catch (error) {
-      this.logger.error(`Error getting user detail by ID ${id}:`, error);
+      this.logger.error(`Error getting user detail by ID ${userId}:`, error);
       return null;
     }
   }

@@ -21,6 +21,7 @@ import {
 } from '@krgeobuk/user/dtos';
 import { UserResponse } from '@krgeobuk/user/response';
 import { UserError } from '@krgeobuk/user/exception';
+import { UserIdParamsDto } from '@krgeobuk/shared/user/dtos';
 import {
   SwaggerApiTags,
   SwaggerApiBearerAuth,
@@ -41,6 +42,28 @@ import { UserService } from './user.service.js';
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @Get()
+  @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '유저 목록 조회' })
+  @SwaggerApiPaginatedResponse({
+    status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
+    description: UserResponse.USER_SEARCH_SUCCESS.message,
+    dto: UserSearchResultDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: UserError.USER_SEARCH_ERROR.statusCode,
+    description: UserError.USER_SEARCH_ERROR.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    dto: UserPaginatedSearchResultDto,
+    ...UserResponse.USER_SEARCH_SUCCESS,
+  })
+  async searchUsers(@Query() query: UserSearchQueryDto): Promise<UserPaginatedSearchResultDto> {
+    return this.userService.searchUsers(query);
+  }
 
   @Get('me')
   @HttpCode(UserResponse.PROFILE_FETCH_SUCCESS.statusCode)
@@ -144,15 +167,15 @@ export class UserController {
     return await this.userService.deleteMyAccount(id);
   }
 
-  @Get(':id')
+  @Get(':userId')
   @HttpCode(UserResponse.USER_FETCH_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '유저 정보 조회' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'userId',
     type: String,
     description: '유저 ID',
     required: true,
-    example: '123',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @SwaggerApiOkResponse({
     status: UserResponse.USER_FETCH_SUCCESS.statusCode,
@@ -168,29 +191,8 @@ export class UserController {
     dto: UserDetailDto,
     ...UserResponse.USER_FETCH_SUCCESS,
   })
-  async getUserById(@Param('id') id: string): Promise<UserDetailDto> {
-    return await this.userService.getUserProfile(id);
-  }
-
-  @Get()
-  @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
-  @SwaggerApiBearerAuth()
-  @SwaggerApiOperation({ summary: '유저 목록 조회' })
-  @SwaggerApiPaginatedResponse({
-    status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
-    description: UserResponse.USER_SEARCH_SUCCESS.message,
-    dto: UserSearchResultDto,
-  })
-  @SwaggerApiErrorResponse({
-    status: UserError.USER_SEARCH_ERROR.statusCode,
-    description: UserError.USER_SEARCH_ERROR.message,
-  })
-  @UseGuards(AccessTokenGuard)
-  @Serialize({
-    dto: UserPaginatedSearchResultDto,
-    ...UserResponse.USER_SEARCH_SUCCESS,
-  })
-  async searchUsers(@Query() query: UserSearchQueryDto): Promise<UserPaginatedSearchResultDto> {
-    return this.userService.searchUsers(query);
+  async getUserById(@Param() params: UserIdParamsDto): Promise<UserDetailDto> {
+    return await this.userService.getUserProfile(params.userId);
   }
 }
+
