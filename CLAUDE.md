@@ -37,9 +37,11 @@ krgeobuk 서비스 생태계를 위한 NestJS 기반 인증 서버(`auth-server`
 - **글로벌 설정**: `src/setNestApp.ts` - 글로벌 파이프, 필터, 인터셉터, CORS 설정
 
 ### 기능 모듈
-- **Auth 모듈** (`src/modules/auth/`) - JWT 인증, 토큰 관리
+- **Auth 모듈** (`src/modules/auth/`) - JWT 인증, 토큰 관리 (HTTP only)
 - **OAuth 모듈** (`src/modules/oauth/`) - Google과 Naver OAuth 통합
 - **User 모듈** (`src/modules/user/`) - 사용자 관리 및 엔티티
+  - `user.controller.ts` - HTTP REST API 엔드포인트
+  - `user-tcp.controller.ts` - TCP 마이크로서비스 메시지 패턴
 
 ### 설정
 - **Config 디렉터리** (`src/config/`) - 환경별 설정
@@ -67,10 +69,102 @@ krgeobuk 서비스 생태계를 위한 NestJS 기반 인증 서버(`auth-server`
 - 서비스 통신을 위한 외부 MSA 네트워크
 
 ### API 구조
-- 글로벌 프리픽스: `/api`
+- **HTTP REST API**: 글로벌 프리픽스 `/api`
+- **TCP 마이크로서비스**: 포트 8010에서 실행
 - 설정된 출처에 대해 CORS 활성화
 - 쿠키 기반 인증
 - 개발 환경에서 Swagger 문서 제공
+
+## TCP 마이크로서비스 통신
+
+### 서버 설정
+auth-server는 HTTP API 서버(포트 8000)와 TCP 마이크로서비스(포트 8010)를 동시에 실행합니다.
+
+```typescript
+// main.ts
+app.connectMicroservice<MicroserviceOptions>({
+  transport: Transport.TCP,
+  options: {
+    host: '0.0.0.0',
+    port: 8010,
+  },
+});
+```
+
+### User TCP 엔드포인트
+
+다른 서비스에서 auth-server:8010으로 TCP 통신하여 사용자 정보를 조회할 수 있습니다.
+
+#### 사용 가능한 메시지 패턴
+
+| 패턴 | 설명 | 요청 데이터 | 응답 타입 |
+|------|------|-------------|-----------|
+| `user.findById` | 사용자 ID로 조회 | `{ userId: string }` | `UserEntity \| null` |
+| `user.getDetailById` | 상세 정보 조회 | `{ userId: string }` | `UserDetail \| null` |
+| `user.findByEmail` | 이메일로 조회 | `{ email: string }` | `UserEntity \| null` |
+| `user.findByIds` | 여러 사용자 조회 | `{ userIds: string[] }` | `UserEntity[]` |
+| `user.findByFilter` | 필터로 조회 | `{ filter: UserFilter }` | `UserEntity[]` |
+| `user.exists` | 존재 여부 확인 | `{ userId: string }` | `boolean` |
+| `user.getStats` | 사용자 통계 | `{}` | `{ totalUsers: number, verifiedUsers: number }` |
+| `user.isEmailVerified` | 이메일 인증 확인 | `{ userId: string }` | `boolean` |
+
+#### 다른 서비스에서 사용 예시
+
+```typescript
+// authz-server에서 auth-server TCP 호출
+@Injectable()
+export class RoleService {
+  constructor(
+    @Inject('AUTH_SERVICE') private authClient: ClientProxy
+  ) {}
+
+  async getRoleWithUsers(roleId: string) {
+    // 역할에 속한 사용자 ID들 조회
+    const userIds = await this.getUserIdsByRole(roleId);
+    
+    // auth-server TCP로 사용자 정보 조회
+    const users = await this.authClient.send('user.findByIds', { userIds }).toPromise();
+    
+    return {
+      role: await this.findById(roleId),
+      users
+    };
+  }
+
+  async getUserDetail(userId: string): Promise<UserDetail | null> {
+    return this.authClient.send('user.getDetailById', { userId }).toPromise();
+  }
+
+  async checkUserExists(userId: string): Promise<boolean> {
+    return this.authClient.send('user.exists', { userId }).toPromise();
+  }
+
+  async refreshToken(refreshToken: string): Promise<TokenPair> {
+    return this.authClient.send('auth.refreshToken', { refreshToken }).toPromise();
+  }
+}
+```
+
+#### 클라이언트 설정 예시
+
+```typescript
+// authz-server app.module.ts
+@Module({
+  imports: [
+    ClientsModule.register([
+      {
+        name: 'AUTH_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'auth-server', // Docker 네트워크에서
+          port: 8010,
+        },
+      },
+    ]),
+  ],
+})
+export class AppModule {}
+```
 
 ## 개발 참고사항
 
