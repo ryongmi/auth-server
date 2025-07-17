@@ -71,6 +71,7 @@ services:
     networks:
       - auth-network
       - msa-network
+      - shared-network
     depends_on:
       - redis
       - mysql
