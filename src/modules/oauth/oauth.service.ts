@@ -40,16 +40,17 @@ export class OAuthService {
   ) {}
 
   // state 값 생성
-  async generateState(type: OAuthAccountProviderType): Promise<string> {
+  async generateState(type: OAuthAccountProviderType, redirectSession?: string): Promise<string> {
     this.logger.log(`${this.generateState.name} - 시작 되었습니다.`);
 
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
       `jwt.${type}StateStore`
-    );
+    )!;
 
-    await this.redisService.setExValue(`${stateStore}${state}`, 300, 'pending'); // Redis에 상태값 저장 (5분 동안 유지)
+    // redirectSession이 있으면 state를 redirectSession으로 사용
+    await this.redisService.setOAuthState(stateStore, state, redirectSession, 300);
 
     this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -62,23 +63,24 @@ export class OAuthService {
 
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
       `jwt.${type}StateStore`
-    );
-    const value = await this.redisService.getValue(`${stateStore}${state}`);
+    )!;
+
+    const value = await this.redisService.getOAuthState(stateStore, state);
 
     this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
 
-    return value === 'pending'; // 'pending' 상태이면 유효한 state
+    return value !== null; // state가 존재하면 유효한 state
   }
 
   // 인증 후 state 삭제
   async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
     this.logger.log(`${this.deleteState.name} - 시작 되었습니다.`);
 
-    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
+    const stateStore = this.configService.get<JwtConfig[`naverStateStore` | 'googleStateStore']>(
       `jwt.${type}StateStore`
-    );
+    )!;
 
-    await this.redisService.deleteValue(`${stateStore}${state}`); // 인증 완료 후 state 삭제
+    await this.redisService.deleteOAuthState(stateStore, state); // 인증 완료 후 state 삭제
 
     this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
   }
@@ -127,7 +129,7 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<AuthLoginResponse> {
+  ): Promise<AuthLoginResponse | string> {
     this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
 
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
@@ -150,6 +152,15 @@ export class OAuthService {
 
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
+    // SSO 리다이렉트 처리
+    if (query.state) {
+      const redirectUrl = await this.handleSSORedirect(query.state, accessToken, refreshToken);
+      if (redirectUrl) {
+        this.logger.log(`${this.loginNaver.name} - SSO 리다이렉트로 종료되었습니다.`);
+        return redirectUrl;
+      }
+    }
+
     this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
 
     return { user, accessToken };
@@ -159,7 +170,7 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<AuthLoginResponse> {
+  ): Promise<AuthLoginResponse | string> {
     this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
 
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
@@ -181,6 +192,15 @@ export class OAuthService {
       await this.jwtService.signAccessTokenAndRefreshToken(payload);
 
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+    // SSO 리다이렉트 처리
+    if (query.state) {
+      const redirectUrl = await this.handleSSORedirect(query.state, accessToken, refreshToken);
+      if (redirectUrl) {
+        this.logger.log(`${this.loginGoogle.name} - SSO 리다이렉트로 종료되었습니다.`);
+        return redirectUrl;
+      }
+    }
 
     this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
 
@@ -276,5 +296,56 @@ export class OAuthService {
     this.logger.log(`${this.oauthLogin.name} - 성공적으로 종료되었습니다.`);
 
     return user;
+  }
+
+  /**
+   * SSO 리다이렉트 처리 (OAuth용)
+   */
+  private async handleSSORedirect(
+    state: string,
+    _accessToken: string,
+    _refreshToken: string
+  ): Promise<string | null> {
+    // Redis에서 state 값 확인 및 redirect session 추출
+    const googleStateStore =
+      this.configService.get<JwtConfig['googleStateStore']>('jwt.googleStateStore');
+    const naverStateStore =
+      this.configService.get<JwtConfig['naverStateStore']>('jwt.naverStateStore');
+
+    // 구글과 네이버 state store에서 redirect session 정보 확인
+    let redirectSessionId: string | null = null;
+
+    if (googleStateStore) {
+      const googleStateValue = await this.redisService.getOAuthState(googleStateStore, state);
+      if (googleStateValue && googleStateValue !== 'pending') {
+        redirectSessionId = googleStateValue;
+      }
+    }
+
+    if (!redirectSessionId && naverStateStore) {
+      const naverStateValue = await this.redisService.getOAuthState(naverStateStore, state);
+      if (naverStateValue && naverStateValue !== 'pending') {
+        redirectSessionId = naverStateValue;
+      }
+    }
+
+    if (!redirectSessionId) return null;
+
+    // redirect session 데이터 확인
+    const sessionData = await this.redisService.getRedirectSession(redirectSessionId);
+
+    if (sessionData) {
+      const { redirectUri } = sessionData;
+
+      // 세션 정리
+      await this.redisService.deleteRedirectSession(redirectSessionId);
+
+      // 원래 서비스로 리다이렉트 (토큰 포함)
+      // const callbackUrl = `${redirectUri}?token=${accessToken}&refresh_token=${refreshToken}`;
+      const callbackUrl = `${redirectUri}`;
+      return callbackUrl;
+    }
+
+    return null;
   }
 }

@@ -27,4 +27,37 @@ export class RedisService {
   async deleteValue(key: string): Promise<void> {
     await this.redisClient.del(key);
   }
+
+  // SSO 세션 관리 메서드
+  async setRedirectSession(sessionId: string, redirectUri: string, ttl: number = 300): Promise<void> {
+    const sessionData = {
+      redirectUri,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
+    };
+    
+    await this.setExValue(`redirect_session:${sessionId}`, ttl, JSON.stringify(sessionData));
+  }
+
+  async getRedirectSession(sessionId: string): Promise<{ redirectUri: string; createdAt: string; expiresAt: string } | null> {
+    const sessionData = await this.getValue(`redirect_session:${sessionId}`);
+    return sessionData ? JSON.parse(sessionData) : null;
+  }
+
+  async deleteRedirectSession(sessionId: string): Promise<void> {
+    await this.deleteValue(`redirect_session:${sessionId}`);
+  }
+
+  async setOAuthState(stateStore: string, state: string, redirectSession?: string, ttl: number = 300): Promise<void> {
+    const stateValue = redirectSession || 'pending';
+    await this.setExValue(`${stateStore}${state}`, ttl, stateValue);
+  }
+
+  async getOAuthState(stateStore: string, state: string): Promise<string | null> {
+    return await this.getValue(`${stateStore}${state}`);
+  }
+
+  async deleteOAuthState(stateStore: string, state: string): Promise<void> {
+    await this.deleteValue(`${stateStore}${state}`);
+  }
 }

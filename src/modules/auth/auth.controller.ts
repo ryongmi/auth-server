@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -40,6 +42,23 @@ import { AuthService } from './auth.service.js';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('/login')
+  @SwaggerApiOperation({ summary: 'SSO 로그인 리다이렉트' })
+  @SwaggerApiOkResponse({
+    status: 302,
+    description: 'Portal Client로 리다이렉트',
+  })
+  @SwaggerApiErrorResponse({
+    status: 400,
+    description: '잘못된 리다이렉트 URI',
+  })
+  async ssoLoginRedirect(
+    @Query('redirect-uri') redirectUri: string,
+    @Res() res: Response
+  ): Promise<void> {
+    return await this.authService.ssoLoginRedirect(redirectUri, res);
+  }
 
   @Post('/logout')
   @HttpCode(AuthResponse.LOGOUT_SUCCESS.statusCode)
@@ -83,14 +102,20 @@ export class AuthController {
   async login(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: AuthLoginRequestDto
-  ): Promise<AuthLoginResponseDto> {
-    const data = await this.authService.login(res, body);
+    @Body() body: AuthLoginRequestDto,
+    @Query('redirect-session') redirectSession?: string
+  ): Promise<AuthLoginResponseDto | void> {
+    const data = await this.authService.login(res, body, redirectSession);
+
+    // SSO 리다이렉트 처리
+    if (redirectSession && typeof data === 'string') {
+      return res.redirect(data);
+    }
 
     // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
-    req.user = data.user;
+    req.user = (data as AuthLoginResponseDto).user;
 
-    return data;
+    return data as AuthLoginResponseDto;
   }
 
   @Post('/signup')
@@ -148,4 +173,5 @@ export class AuthController {
   async refresh(@CurrentJwt() jwt: JwtPayload): Promise<AuthRefreshResponseDto> {
     return await this.authService.refresh(jwt);
   }
+
 }

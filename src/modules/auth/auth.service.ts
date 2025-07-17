@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager } from 'typeorm';
 import { Request, Response } from 'express';
+import { v4 as uuid } from 'uuid';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AuthException } from '@krgeobuk/auth/exception';
@@ -50,7 +51,7 @@ export class AuthService {
     this.logger.log(`${this.logout.name} - 성공적으로 종료되었습니다.`);
   }
 
-  async login(res: Response, attrs: AuthLoginRequest): Promise<AuthLoginResponse> {
+  async login(res: Response, attrs: AuthLoginRequest, redirectSession?: string): Promise<AuthLoginResponse | string> {
     this.logger.log(`${this.login.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
@@ -108,6 +109,15 @@ export class AuthService {
         await this.jwtService.signAccessTokenAndRefreshToken(payload);
 
       this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+      // SSO 리다이렉트 처리
+      if (redirectSession) {
+        const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
+        if (redirectUrl) {
+          this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
+          return redirectUrl;
+        }
+      }
 
       this.logger.log(`${this.login.name} - 성공적으로 종료되었습니다.`);
       // return await this.userService.lastLoginUpdate(user);
@@ -215,4 +225,79 @@ export class AuthService {
       throw AuthException.refreshError();
     }
   }
+
+  /**
+   * SSO 로그인 리다이렉트 처리
+   */
+  async ssoLoginRedirect(redirectUri: string, res: Response): Promise<void> {
+    this.logger.log(`${this.ssoLoginRedirect.name} - 시작 되었습니다.`);
+
+    // 리다이렉트 URI 검증
+    const isValidRedirect = await this.validateRedirectUri(redirectUri);
+    if (!isValidRedirect) {
+      this.logger.warn(`[SSO_REDIRECT_ERROR] 잘못된 리다이렉트 URI: ${redirectUri}`);
+      throw new BadRequestException('Invalid redirect URI');
+    }
+
+    // 리다이렉트 세션 생성
+    const redirectSession = uuid();
+    await this.redisService.setRedirectSession(redirectSession, redirectUri, 300);
+
+    // Portal Client로 리다이렉트
+    const portalLoginUrl = `${this.configService.get('PORTAL_CLIENT_URL')}/auth/login?redirect-session=${redirectSession}`;
+    
+    this.logger.log(`${this.ssoLoginRedirect.name} - Portal Client로 리다이렉트: ${portalLoginUrl}`);
+    res.redirect(portalLoginUrl);
+  }
+
+  /**
+   * SSO 리다이렉트 처리
+   */
+  private async handleSSORedirect(
+    redirectSession: string,
+    accessToken: string,
+    refreshToken: string
+  ): Promise<string | null> {
+    const sessionData = await this.redisService.getRedirectSession(redirectSession);
+    
+    if (sessionData) {
+      const { redirectUri } = sessionData;
+      
+      // 세션 정리
+      await this.redisService.deleteRedirectSession(redirectSession);
+      
+      // 원래 서비스로 리다이렉트 (토큰 포함)
+      const callbackUrl = `${redirectUri}?token=${accessToken}&refresh_token=${refreshToken}`;
+      return callbackUrl;
+    }
+    
+    return null;
+  }
+
+  /**
+   * 리다이렉트 URI 검증
+   */
+  private async validateRedirectUri(redirectUri: string): Promise<boolean> {
+    const allowedDomains = [
+      'localhost',
+      '127.0.0.1',
+      'krgeobuk.com',
+      'service1.krgeobuk.com',
+      'service2.krgeobuk.com',
+      // 허용된 도메인들 추가
+    ];
+
+    try {
+      const url = new URL(redirectUri);
+      const hostname = url.hostname;
+      
+      // 허용된 도메인 확인
+      return allowedDomains.some(domain => 
+        hostname === domain || hostname.endsWith(`.${domain}`)
+      );
+    } catch {
+      return false;
+    }
+  }
+
 }
