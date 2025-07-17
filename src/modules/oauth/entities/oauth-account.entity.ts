@@ -11,7 +11,7 @@ import {
 @Index('IDX_OAUTH_ACCOUNT_USER_ID', ['userId'])
 @Unique(['userId', 'provider'])
 export class OAuthAccountEntity extends BaseEntityUUID {
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   providerId!: string; // OAuth 제공자 고유 ID
 
   @Column({ type: 'enum', enum: OAUTH_ACCOUNT_PROVIDER_TYPE_VALUES })

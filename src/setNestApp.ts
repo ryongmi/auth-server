@@ -26,14 +26,11 @@ export function setNestApp(
     })
   );
 
-  // const allowedOrigins =
-  //   mode === 'production'
-  //     ? ['https://www.krgeobuk.com', 'https://api.krgeobuk.com'] // 배포 도메인
-  //     : ['http://localhost:8000', 'http://127.0.0.1:8000']; // 로컬 개발 도메인
-
   app.enableCors({
     origin: allowedOrigins, // 허용할 도메인
     credentials: true, // 쿠키를 포함한 요청 허용
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }); // cors 활성화
 
   app.use(cookieParser());
@@ -54,4 +51,3 @@ export function setNestApp(
   // const seederService = app.get(SeederService);
   // await seederService.seed();
 }
-
