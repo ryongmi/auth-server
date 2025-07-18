@@ -29,8 +29,17 @@ export function setNestApp(
   app.enableCors({
     origin: allowedOrigins, // 허용할 도메인
     credentials: true, // 쿠키를 포함한 요청 허용
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-request-id',
+      'x-csrf-token',
+      'x-content-type-options',
+      'referrer-policy',
+      'x-xss-protection',
+      'x-frame-options',
+    ],
   }); // cors 활성화
 
   app.use(cookieParser());

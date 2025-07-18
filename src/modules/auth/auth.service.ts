@@ -51,7 +51,11 @@ export class AuthService {
     this.logger.log(`${this.logout.name} - 성공적으로 종료되었습니다.`);
   }
 
-  async login(res: Response, attrs: AuthLoginRequest, redirectSession?: string): Promise<AuthLoginResponse | string> {
+  async login(
+    res: Response,
+    attrs: AuthLoginRequest,
+    redirectSession?: string
+  ): Promise<AuthLoginResponse | string> {
     this.logger.log(`${this.login.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
@@ -112,7 +116,11 @@ export class AuthService {
 
       // SSO 리다이렉트 처리
       if (redirectSession) {
-        const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
+        const redirectUrl = await this.handleSSORedirect(
+          redirectSession,
+          accessToken,
+          refreshToken
+        );
         if (redirectUrl) {
           this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
           return redirectUrl;
@@ -245,8 +253,10 @@ export class AuthService {
 
     // Portal Client로 리다이렉트
     const portalLoginUrl = `${this.configService.get('PORTAL_CLIENT_URL')}/auth/login?redirect-session=${redirectSession}`;
-    
-    this.logger.log(`${this.ssoLoginRedirect.name} - Portal Client로 리다이렉트: ${portalLoginUrl}`);
+
+    this.logger.log(
+      `${this.ssoLoginRedirect.name} - Portal Client로 리다이렉트: ${portalLoginUrl}`
+    );
     res.redirect(portalLoginUrl);
   }
 
@@ -259,18 +269,18 @@ export class AuthService {
     refreshToken: string
   ): Promise<string | null> {
     const sessionData = await this.redisService.getRedirectSession(redirectSession);
-    
+
     if (sessionData) {
       const { redirectUri } = sessionData;
-      
+
       // 세션 정리
       await this.redisService.deleteRedirectSession(redirectSession);
-      
+
       // 원래 서비스로 리다이렉트 (토큰 포함)
       const callbackUrl = `${redirectUri}?token=${accessToken}&refresh_token=${refreshToken}`;
       return callbackUrl;
     }
-    
+
     return null;
   }
 
@@ -290,14 +300,13 @@ export class AuthService {
     try {
       const url = new URL(redirectUri);
       const hostname = url.hostname;
-      
+
       // 허용된 도메인 확인
-      return allowedDomains.some(domain => 
-        hostname === domain || hostname.endsWith(`.${domain}`)
+      return allowedDomains.some(
+        (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
       );
     } catch {
       return false;
     }
   }
-
 }
