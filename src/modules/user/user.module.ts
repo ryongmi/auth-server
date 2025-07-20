@@ -13,7 +13,7 @@ import { UserRepository } from './user.repository.js';
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity]), JwtModule, HttpModule],
   controllers: [UserController, UserTcpController],
-  providers: [UserService, UserRepository], // 서비스를 providers에 추가
-  exports: [UserService], // 다른 모듈에서 User 서비스를 사용할 수 있도록 exports에 추가
+  providers: [UserService, UserRepository],
+  exports: [UserService],
 })
 export class UserModule {}

@@ -1,8 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 
 import { EntityManager, FindOptionsWhere, UpdateResult, In } from 'typeorm';
+import { firstValueFrom } from 'rxjs';
 
 import { UserException } from '@krgeobuk/user/exception';
+import { ServiceTcpPatterns } from '@krgeobuk/service/tcp';
+import { AuthorizationTcpPatterns } from '@krgeobuk/authorization/tcp';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type {
   UserFilter,
@@ -12,6 +16,8 @@ import type {
   UserSearchResult,
   UserDetail,
 } from '@krgeobuk/user/interfaces';
+import type { UserProfile } from '@krgeobuk/user/interfaces';
+import type { Service } from '@krgeobuk/shared/service';
 
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 
@@ -22,7 +28,11 @@ import { UserRepository } from './user.repository.js';
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly userRepo: UserRepository) {}
+  constructor(
+    private readonly userRepo: UserRepository,
+    @Inject('AUTHZ_SERVICE') private readonly authzClient: ClientProxy,
+    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy
+  ) {}
 
   async searchUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
     return this.userRepo.search(query);
@@ -74,8 +84,79 @@ export class UserService {
     return await this.userRepo.findUserProfile(userId);
   }
 
-  async getMyProfile(userId: string): Promise<UserDetail> {
-    return await this.userRepo.findUserProfile(userId);
+  async getMyProfile(userId?: string): Promise<UserProfile> {
+    // 비로그인 사용자인 경우 기본 정보만 반환
+    if (!userId || userId.trim() === '') {
+      this.logger.debug('비로그인 사용자 프로필 요청');
+
+      return await this.getGuestProfile();
+    }
+
+    let baseUser: UserDetail;
+
+    try {
+      // 1. 기본 사용자 정보 조회 (OAuth 포함)
+      baseUser = await this.userRepo.findUserProfile(userId);
+    } catch (error: unknown) {
+      // 내부 에러: 사용자 조회 실패 - 예외 발생
+      this.logger.error('사용자 기본 정보 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      throw UserException.profileFetchError();
+    }
+
+    try {
+      // 2. authz-server에서 권한/역할 정보 조회 (병렬 처리)
+      // TCP 에러는 각 메서드 내부에서 처리되어 빈 배열/null 반환
+      const [roles, permissions, availableServices] = await Promise.all([
+        this.getUserRoles(userId),
+        this.getUserPermissions(userId),
+        this.getAvailableServices(userId),
+      ]);
+
+      // 3. 통합 결과 반환
+      const result: UserProfile = {
+        ...baseUser,
+        authorization: {
+          roles,
+          permissions,
+        },
+        availableServices: availableServices || [],
+      };
+
+      this.logger.log('통합 사용자 프로필 조회 성공', {
+        userId,
+        provider: baseUser.oauthAccount.provider,
+        hasGoogleAccount: baseUser.oauthAccount.provider === 'google',
+        roleCount: roles.length,
+        permissionCount: permissions.length,
+        serviceCount: availableServices?.length || 0,
+        tcpServicesAvailable: {
+          roles: roles.length > 0,
+          permissions: permissions.length > 0,
+          services: availableServices !== null,
+        },
+      });
+
+      return result;
+    } catch (error: unknown) {
+      // 예상치 못한 에러: TCP 호출 중 치명적 에러
+      this.logger.error('통합 사용자 프로필 조회 중 예상치 못한 에러 발생', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // Fallback: 기본 사용자 정보만 반환 (이미 조회 완료)
+      return {
+        ...baseUser,
+        authorization: { roles: [], permissions: [] },
+        availableServices: [],
+      };
+    }
   }
 
   async updateMyProfile(userId: string, attrs: UpdateMyProfile): Promise<void> {
@@ -167,6 +248,84 @@ export class UserService {
     }
   }
 
+  // TCP 통신 헬퍼 메서드
+  private async getUserRoles(userId: string): Promise<string[]> {
+    try {
+      if (!this.authzClient) return [];
+      const result = await firstValueFrom<string[]>(
+        this.authzClient.send('authorization.getUserRoles', { userId })
+      );
+      return result || [];
+    } catch (error: unknown) {
+      this.logger.warn('Authz service unavailable for getUserRoles', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      return [];
+    }
+  }
+
+  private async getUserPermissions(userId: string): Promise<string[]> {
+    try {
+      if (!this.authzClient) return [];
+      const result = await firstValueFrom<string[]>(
+        this.authzClient.send('authorization.getUserPermissions', { userId })
+      );
+      return result || [];
+    } catch (error: unknown) {
+      this.logger.warn('Authz service unavailable for getUserPermissions', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      return [];
+    }
+  }
+
+  private async getAvailableServices(userId: string): Promise<Service[] | null> {
+    try {
+      if (!this.authzClient) return null;
+      const result = await firstValueFrom<Service[]>(
+        this.authzClient.send(AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES, { userId })
+      );
+      return result || [];
+    } catch (error: unknown) {
+      this.logger.warn('Authz service unavailable for getAvailableServices', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * 모든 서비스 목록 조회 (portal-server TCP 통신)
+   */
+  private async getAllServices(): Promise<Service[]> {
+    try {
+      if (!this.portalClient) {
+        this.logger.warn('Portal service client not available, using fallback data');
+        return [];
+      }
+
+      const services = await firstValueFrom<Service[]>(
+        this.portalClient.send(ServiceTcpPatterns.FIND_ALL, {})
+      );
+
+      this.logger.debug('Portal service에서 서비스 목록 조회 성공', {
+        serviceCount: services?.length || 0,
+      });
+
+      return services || [];
+    } catch (error: unknown) {
+      this.logger.warn('portal-server에서 서비스 목록 조회 실패, 임시 데이터 사용', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // 폴백: 임시 데이터 반환
+      return [];
+    }
+  }
+
   // async lastLoginUpdate(id: string) {
   //   // return await this.repo.save(attrs);
   //   // await this.repo
@@ -235,5 +394,84 @@ export class UserService {
     if (filter.isIntegrated !== undefined) where.isIntegrated = filter.isIntegrated;
 
     return this.userRepo.count({ where });
+  }
+
+  /**
+   * 비로그인 사용자(게스트)를 위한 기본 프로필 반환
+   * 사용자 정보 없이 공개 서비스 목록만 제공 (TCP 통신으로 실제 데이터 조회)
+   */
+  private async getGuestProfile(): Promise<UserProfile> {
+    try {
+      // 실제 서비스 데이터를 portal-server에서 TCP 통신으로 조회
+      const allServices = await this.getAllServices();
+
+      // 게스트가 접근 가능한 서비스만 필터링 (isVisible=true && isVisibleByRole=false)
+      const publicServices = allServices.filter(
+        (service) => service.isVisible && !service.isVisibleByRole
+      );
+
+      const guestProfile: UserProfile = {
+        id: '',
+        email: '',
+        name: '',
+        nickname: null,
+        profileImageUrl: null,
+        isIntegrated: false,
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+
+        // OAuth 정보 - 기본값
+        oauthAccount: {
+          provider: 'homePage',
+          providerId: undefined,
+        },
+
+        // 권한 정보 - 빈 배열
+        authorization: {
+          roles: [],
+          permissions: [],
+        },
+
+        // 공개 서비스만 제공 (권한 검사 없이)
+        availableServices: publicServices,
+      };
+
+      this.logger.debug('게스트 프로필 조회 성공', {
+        totalServices: allServices.length,
+        publicServices: publicServices.length,
+        publicServiceNames: publicServices.map((s) => s.name),
+        tcpCallAvoided: true, // TCP 통신 없이 처리됨
+      });
+
+      return guestProfile;
+    } catch (error: unknown) {
+      this.logger.error('게스트 프로필 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // 완전 폴백: 빈 프로필 반환
+      return {
+        id: '',
+        email: '',
+        name: '',
+        nickname: null,
+        profileImageUrl: null,
+        isIntegrated: false,
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        oauthAccount: {
+          provider: 'homePage',
+          providerId: undefined,
+        },
+        authorization: {
+          roles: [],
+          permissions: [],
+        },
+        availableServices: [],
+      };
+    }
   }
 }

@@ -18,6 +18,7 @@ import {
   UserSearchResultDto,
   UserPaginatedSearchResultDto,
   UserDetailDto,
+  UserProfileDto,
 } from '@krgeobuk/user/dtos';
 import { UserResponse } from '@krgeobuk/user/response';
 import { UserError } from '@krgeobuk/user/exception';
@@ -34,7 +35,7 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
-import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AccessTokenGuard, OptionalAccessTokenGuard } from '@krgeobuk/jwt/guards';
 
 import { UserService } from './user.service.js';
 
@@ -67,23 +68,29 @@ export class UserController {
 
   @Get('me')
   @HttpCode(UserResponse.PROFILE_FETCH_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '본인 프로필 조회' })
+  @SwaggerApiOperation({ 
+    summary: '내 프로필 조회',
+    description: '로그인된 사용자는 전체 정보를, 비로그인 사용자는 기본 정보를 조회합니다. 토큰은 선택사항입니다.'
+  })
   @SwaggerApiOkResponse({
     status: UserResponse.PROFILE_FETCH_SUCCESS.statusCode,
     description: UserResponse.PROFILE_FETCH_SUCCESS.message,
-    dto: UserDetailDto,
+    dto: UserProfileDto,
   })
   @SwaggerApiErrorResponse({
     status: UserError.PROFILE_FETCH_ERROR.statusCode,
     description: UserError.PROFILE_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @UseGuards(OptionalAccessTokenGuard)
   @Serialize({
-    dto: UserDetailDto,
+    dto: UserProfileDto,
     ...UserResponse.PROFILE_FETCH_SUCCESS,
   })
-  async getMyProfile(@CurrentJwt() { id }: JwtPayload): Promise<UserDetailDto> {
-    return await this.userService.getMyProfile(id);
+  async getMyProfile(@CurrentJwt() jwt: JwtPayload): Promise<UserProfileDto> {
+    // 로그인된 사용자인지 확인 (토큰이 유효한 경우)
+    const userId = jwt?.id;
+    
+    return await this.userService.getMyProfile(userId);
   }
 
   // 권한 도입하면 체크하는 가드? 하나 넣어야할듯
