@@ -8,6 +8,8 @@ import { winstonConfig } from '@krgeobuk/core/logger';
 
 import { RedisModule, DatabaseModule } from '@database/index.js';
 import { AppConfigModule } from '@config/index.js';
+import { SharedClientsModule } from '@common/clients/shared-clients.module.js';
+import { AuthorizationGuardModule } from '@common/authorization/authorization-guard.module.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
@@ -18,6 +20,10 @@ import { OAuthModule } from '@modules/oauth/index.js';
   imports: [
     WinstonModule.forRoot(winstonConfig),
     AppConfigModule,
+    // TCP 연결 모듈
+    SharedClientsModule,
+    // authorization guard DI 주입 전용 모듈
+    AuthorizationGuardModule,
     // SeederModule,
     DatabaseModule,
     RedisModule,
