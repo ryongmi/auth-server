@@ -124,7 +124,7 @@ export class UserService {
           roles,
           permissions,
         },
-        availableServices: availableServices || [],
+        availableServices: availableServices,
       };
 
       this.logger.log('통합 사용자 프로필 조회 성공', {
@@ -137,7 +137,7 @@ export class UserService {
         tcpServicesAvailable: {
           roles: roles.length > 0,
           permissions: permissions.length > 0,
-          services: availableServices !== null,
+          services: availableServices.length > 0,
         },
       });
 
@@ -281,9 +281,9 @@ export class UserService {
     }
   }
 
-  private async getAvailableServices(userId: string): Promise<Service[] | null> {
+  private async getAvailableServices(userId: string): Promise<Service[]> {
     try {
-      if (!this.authzClient) return null;
+      if (!this.authzClient) return [];
       const result = await firstValueFrom<Service[]>(
         this.authzClient.send(AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES, { userId })
       );
@@ -293,7 +293,7 @@ export class UserService {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId,
       });
-      return null;
+      return [];
     }
   }
 
@@ -418,13 +418,14 @@ export class UserService {
         profileImageUrl: null,
         isIntegrated: false,
         isEmailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
 
         // OAuth 정보 - 기본값
         oauthAccount: {
+          id: '',
           provider: 'homePage',
-          providerId: undefined,
+          providerId: '',
         },
 
         // 권한 정보 - 빈 배열
@@ -460,11 +461,12 @@ export class UserService {
         profileImageUrl: null,
         isIntegrated: false,
         isEmailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         oauthAccount: {
+          id: '',
           provider: 'homePage',
-          providerId: undefined,
+          providerId: '',
         },
         authorization: {
           roles: [],
