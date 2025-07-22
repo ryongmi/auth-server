@@ -26,12 +26,23 @@ export class UserRepository extends BaseRepository<UserEntity> {
     const oauthAccountAlias = 'oauthAccount';
 
     const qb = this.createQueryBuilder(userAlias)
+      .select([
+        `${userAlias}.id AS ${userAlias}_id`,
+        `${userAlias}.email AS email`,
+        `${userAlias}.name AS name`,
+        `${userAlias}.nickname AS nickname`,
+        `${userAlias}.profile_image_url AS profileImageUrl`,
+        `${userAlias}.is_integrated AS isIntegrated`,
+        `${userAlias}.is_email_verified AS isEmailVerified`,
+        `${userAlias}.created_at AS createdAt`,
+      ])
       .leftJoin(
         OAuthAccountEntity,
         oauthAccountAlias,
         `${oauthAccountAlias}.userId = ${userAlias}.id`
       )
-      .addSelect(`${oauthAccountAlias}.provider`)
+      .addSelect(`${oauthAccountAlias}.id AS ${oauthAccountAlias}_id`)
+      .addSelect(`${oauthAccountAlias}.provider AS provider`)
       .andWhere(`${userAlias}.id = :id`, { id });
 
     // const qb = this.createQueryBuilder('user')
@@ -42,15 +53,17 @@ export class UserRepository extends BaseRepository<UserEntity> {
     const row = await qb.getRawOne();
 
     const data = {
-      email: row[`${userAlias}_email`],
-      name: row[`${userAlias}_name`],
-      nickname: row[`${userAlias}_nickname`],
-      profileImageUrl: row[`${userAlias}_profileImageUrl`],
-      isIntegrated: row[`${userAlias}_isIntegrated`],
-      isEmailVerified: row[`${userAlias}_isEmailVerified`],
-      createdAt: row[`${userAlias}_createdAt`],
+      id: row[`${userAlias}_id`],
+      email: row[`email`],
+      name: row[`name`],
+      nickname: row[`nickname`],
+      profileImageUrl: row[`profileImageUrl`],
+      isIntegrated: row[`isIntegrated`],
+      isEmailVerified: row[`isEmailVerified`],
+      createdAt: row[`createdAt`],
       oauthAccount: {
-        provider: row[`${oauthAccountAlias}_provider`],
+        id: row[`${oauthAccountAlias}_id`],
+        provider: row[`provider`],
       },
     };
 
@@ -78,24 +91,36 @@ export class UserRepository extends BaseRepository<UserEntity> {
     const oauthAccountAlias = 'oauthAccount';
 
     const qb = this.createQueryBuilder(userAlias)
+      .select([
+        `${userAlias}.id AS ${userAlias}_id`,
+        `${userAlias}.email AS email`,
+        `${userAlias}.name AS name`,
+        `${userAlias}.nickname AS nickname`,
+        `${userAlias}.profile_image_url AS profileImageUrl`,
+        `${userAlias}.is_integrated AS isIntegrated`,
+        `${userAlias}.is_email_verified AS isEmailVerified`,
+        `${userAlias}.created_at AS createdAt`,
+        `${userAlias}.updated_at AS updatedAt`,
+      ])
       .leftJoin(
         OAuthAccountEntity,
         oauthAccountAlias,
         `${oauthAccountAlias}.userId = ${userAlias}.id`
       )
-      .addSelect(`${oauthAccountAlias}.provider`);
-    // .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
-    // const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(
-    //   `${userAlias}.${oauthAccountAlias}`,
-    //   oauthAccountAlias
-    // );
+      .addSelect(`${oauthAccountAlias}.id AS ${oauthAccountAlias}_id`)
+      .addSelect(`${oauthAccountAlias}.provider AS provider`);
 
-    // const qb = this.createQueryBuilder('user')
-    //   .leftJoin(OAuthAccount, 'oauthAccount', 'oauthAccount.userId = user.id')
-    //   .addSelect(['user.id', 'user.email', 'user.name', 'oauthAccount.provider']);
-
+    // if (email) {
+    //   qb.andWhere(`${userAlias}.email LIKE :email`, { email: `%${email}%` });
+    // }
     if (email) {
-      qb.andWhere(`${userAlias}.email LIKE :email`, { email: `%${email}%` });
+      if (email.includes('@')) {
+        // 정확한 이메일 검색
+        qb.andWhere(`${userAlias}.email = :email`, { email });
+      } else {
+        // 이메일 시작 부분 매칭 (인덱스 활용 가능)
+        qb.andWhere(`${userAlias}.email LIKE :email`, { email: `${email}%` });
+      }
     }
     if (name) {
       qb.andWhere(`${userAlias}.name LIKE :name`, { name: `%${name}%` });
@@ -116,24 +141,23 @@ export class UserRepository extends BaseRepository<UserEntity> {
 
     qb.orderBy(`${userAlias}.${sortBy}`, sortOrder);
 
-    // qb.skip(skip).take(limit);
     qb.offset(skip).limit(limit);
 
     const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
     const items = rows.map((row) => ({
       id: row[`${userAlias}_id`],
-      email: row[`${userAlias}_email`],
-      name: row[`${userAlias}_name`],
-      nickname: row[`${userAlias}_nickname`],
-      profileImageUrl: row[`${userAlias}_profile_image_url`],
-      isIntegrated: row[`${userAlias}_is_integrated`],
-      isEmailVerified: row[`${userAlias}_is_email_verified`],
-      createdAt: row[`${userAlias}_created_at`],
-      updatedAt: row[`${userAlias}_updated_at`],
-      deletedAt: row[`${userAlias}_deleted_at`],
+      email: row[`email`],
+      name: row[`name`],
+      nickname: row[`nickname`],
+      profileImageUrl: row[`profileImageUrl`],
+      isIntegrated: row[`isIntegrated`],
+      isEmailVerified: row[`isEmailVerified`],
+      createdAt: row[`createdAt`],
+      updatedAt: row[`updatedAt`],
       oauthAccount: {
-        provider: row[`${oauthAccountAlias}_provider`],
+        id: row[`${oauthAccountAlias}_id`],
+        provider: row[`provider`],
       },
     }));
 
