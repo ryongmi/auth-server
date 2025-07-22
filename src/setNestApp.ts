@@ -31,14 +31,29 @@ export function setNestApp(
     credentials: true, // 쿠키를 포함한 요청 허용
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
+      // API 기본 헤더
       'Content-Type',
+      'Accept',
+      
+      // 인증 헤더
       'Authorization',
-      'x-request-id',
       'x-csrf-token',
-      'x-content-type-options',
-      'referrer-policy',
-      'x-xss-protection',
-      'x-frame-options',
+      
+      // 추적 헤더
+      'x-request-id',
+      
+      // CORS 필수
+      'Origin',
+      
+      // 브라우저 표준
+      'User-Agent',
+      'Accept-Language',
+      'Accept-Encoding',
+      
+      // 캐시 최적화
+      'Cache-Control',
+      'If-None-Match',
+      'If-Modified-Since',
     ],
   }); // cors 활성화
 
