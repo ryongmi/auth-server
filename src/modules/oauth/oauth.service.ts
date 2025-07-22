@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
@@ -15,7 +14,6 @@ import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 
 import { JwtTokenService } from '@common/jwt/index.js';
-import { JwtConfig } from '@common/interfaces/index.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
 import { RedisService } from '@database/index.js';
 
@@ -30,7 +28,6 @@ export class OAuthService {
 
   constructor(
     // private readonly dataSource: DataSource,
-    private readonly configService: ConfigService,
     private readonly jwtService: JwtTokenService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
@@ -45,12 +42,9 @@ export class OAuthService {
 
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
 
     // redirectSession이 있으면 state를 redirectSession으로 사용
-    await this.redisService.setOAuthState(stateStore, state, redirectSession, 300);
+    await this.redisService.setOAuthState(type, state, redirectSession, 300);
 
     this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -61,11 +55,7 @@ export class OAuthService {
   async validateState(state: string, type: OAuthAccountProviderType): Promise<boolean> {
     this.logger.log(`${this.validateState.name} - 시작 되었습니다.`);
 
-    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
-
-    const value = await this.redisService.getOAuthState(stateStore, state);
+    const value = await this.redisService.getOAuthState(type, state);
 
     this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -76,11 +66,7 @@ export class OAuthService {
   async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
     this.logger.log(`${this.deleteState.name} - 시작 되었습니다.`);
 
-    const stateStore = this.configService.get<JwtConfig[`naverStateStore` | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
-
-    await this.redisService.deleteOAuthState(stateStore, state); // 인증 완료 후 state 삭제
+    await this.redisService.deleteOAuthState(type, state); // 인증 완료 후 state 삭제
 
     this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
   }
@@ -133,12 +119,9 @@ export class OAuthService {
     this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
 
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
+    const providerType = OAuthAccountProviderType.NAVER;
 
-    const user = await this.oauthLogin(
-      naverUserInfo,
-      OAuthAccountProviderType.NAVER,
-      transactionManager
-    );
+    const user = await this.oauthLogin(naverUserInfo, providerType, transactionManager);
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
@@ -153,12 +136,16 @@ export class OAuthService {
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
     // SSO 리다이렉트 처리
-    if (query.state) {
-      const redirectUrl = await this.handleSSORedirect(query.state, accessToken, refreshToken);
-      if (redirectUrl) {
-        this.logger.log(`${this.loginNaver.name} - SSO 리다이렉트로 종료되었습니다.`);
-        return redirectUrl;
-      }
+
+    const redirectUrl = await this.handleSSORedirect(
+      query.state,
+      providerType,
+      accessToken,
+      refreshToken
+    );
+    if (redirectUrl) {
+      this.logger.log(`${this.loginNaver.name} - SSO 리다이렉트로 종료되었습니다.`);
+      return redirectUrl;
     }
 
     this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
@@ -174,12 +161,9 @@ export class OAuthService {
     this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
 
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
+    const providerType = OAuthAccountProviderType.GOOGLE;
 
-    const user = await this.oauthLogin(
-      googleUserInfo,
-      OAuthAccountProviderType.GOOGLE,
-      transactionManager
-    );
+    const user = await this.oauthLogin(googleUserInfo, providerType, transactionManager);
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
@@ -194,12 +178,16 @@ export class OAuthService {
     this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
     // SSO 리다이렉트 처리
-    if (query.state) {
-      const redirectUrl = await this.handleSSORedirect(query.state, accessToken, refreshToken);
-      if (redirectUrl) {
-        this.logger.log(`${this.loginGoogle.name} - SSO 리다이렉트로 종료되었습니다.`);
-        return redirectUrl;
-      }
+
+    const redirectUrl = await this.handleSSORedirect(
+      query.state,
+      providerType,
+      accessToken,
+      refreshToken
+    );
+    if (redirectUrl) {
+      this.logger.log(`${this.loginGoogle.name} - SSO 리다이렉트로 종료되었습니다.`);
+      return redirectUrl;
     }
 
     this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
@@ -303,30 +291,18 @@ export class OAuthService {
    */
   private async handleSSORedirect(
     state: string,
+    type: OAuthAccountProviderType,
     _accessToken: string,
     _refreshToken: string
   ): Promise<string | null> {
     // Redis에서 state 값 확인 및 redirect session 추출
-    const googleStateStore =
-      this.configService.get<JwtConfig['googleStateStore']>('jwt.googleStateStore');
-    const naverStateStore =
-      this.configService.get<JwtConfig['naverStateStore']>('jwt.naverStateStore');
 
     // 구글과 네이버 state store에서 redirect session 정보 확인
     let redirectSessionId: string | null = null;
 
-    if (googleStateStore) {
-      const googleStateValue = await this.redisService.getOAuthState(googleStateStore, state);
-      if (googleStateValue && googleStateValue !== 'pending') {
-        redirectSessionId = googleStateValue;
-      }
-    }
-
-    if (!redirectSessionId && naverStateStore) {
-      const naverStateValue = await this.redisService.getOAuthState(naverStateStore, state);
-      if (naverStateValue && naverStateValue !== 'pending') {
-        redirectSessionId = naverStateValue;
-      }
+    const stateValue = await this.redisService.getOAuthState(type, state);
+    if (stateValue && stateValue !== 'pending') {
+      redirectSessionId = stateValue;
     }
 
     if (!redirectSessionId) return null;
