@@ -8,6 +8,7 @@ export default (): DefaultConfig => {
       mode: undefined,
       port: parseInt(process.env.PORT ?? '8000', 10),
       corsOrigins: process.env.CORS_ORIGINS,
+      oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
     };
   }
 
@@ -15,5 +16,7 @@ export default (): DefaultConfig => {
     mode,
     port: parseInt(process.env.PORT ?? '8000', 10),
     corsOrigins: process.env.CORS_ORIGINS,
+    oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
   };
 };
+

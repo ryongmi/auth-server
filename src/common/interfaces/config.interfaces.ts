@@ -2,6 +2,7 @@ export interface DefaultConfig {
   mode: 'local' | 'development' | 'production' | undefined;
   port: number | undefined;
   corsOrigins: string | undefined;
+  oauthRedirectSessionStore: string | undefined;
 }
 
 export interface MysqlConfig {
@@ -50,3 +51,4 @@ export interface JwtConfig {
   naverStateStore: string | undefined;
   googleStateStore: string | undefined;
 }
+
