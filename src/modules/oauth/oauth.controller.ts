@@ -1,17 +1,8 @@
-import {
-  Controller,
-  Get,
-  HttpCode,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Get, HttpCode, Query, Res, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager } from 'typeorm';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
 import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
@@ -89,22 +80,13 @@ export class OAuthController {
     message: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
   async loginGoogleCallback(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
-  ): Promise<AuthLoginResponseDto | void> {
-    const data = await this.oauthService.loginGoogle(res, transactionManager, query);
+  ): Promise<void> {
+    const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
 
-    // SSO 리다이렉트 처리
-    if (typeof data === 'string') {
-      return res.redirect(data);
-    }
-
-    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
-    req.user = (data as AuthLoginResponseDto).user;
-
-    return data as AuthLoginResponseDto;
+    return res.redirect(redirectUrl);
   }
 
   @Get('/login-naver')
@@ -155,24 +137,13 @@ export class OAuthController {
     message: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
   })
   async loginNaverCallback(
-    @Req() req: Request,
-    // @Res를 사용하면 return data로 보내는게 아니라 res.json()으로 직접 응답값을 명시해야함
-    // 하지만 { passthrough: true } 속성을 사용하면 return data 로 Nestjs에서 자동으로 응답하게 할수있음
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
     @Query() query: NaverOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
-  ): Promise<AuthLoginResponseDto | void> {
-    const data = await this.oauthService.loginNaver(res, transactionManager, query);
+  ): Promise<void> {
+    const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
 
-    // SSO 리다이렉트 처리
-    if (typeof data === 'string') {
-      return res.redirect(data);
-    }
-
-    // 로그인시 로그인여부를 정확히 보내주기 위해 임의로 넣음
-    req.user = (data as AuthLoginResponseDto).user;
-
-    return data as AuthLoginResponseDto;
+    return res.redirect(redirectUrl);
   }
 }
 
