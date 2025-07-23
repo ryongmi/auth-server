@@ -3,6 +3,7 @@ export interface DefaultConfig {
   port: number | undefined;
   corsOrigins: string | undefined;
   oauthRedirectSessionStore: string | undefined;
+  portalClientUrl: string | undefined;
 }
 
 export interface MysqlConfig {

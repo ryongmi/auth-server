@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
@@ -14,6 +15,7 @@ import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 
 import { JwtTokenService } from '@common/jwt/index.js';
+import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
 import { RedisService } from '@database/index.js';
 
@@ -29,6 +31,7 @@ export class OAuthService {
   constructor(
     // private readonly dataSource: DataSource,
     private readonly jwtService: JwtTokenService,
+    private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
@@ -115,7 +118,7 @@ export class OAuthService {
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<AuthLoginResponse | string> {
+  ): Promise<string> {
     this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
 
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
@@ -143,21 +146,15 @@ export class OAuthService {
       accessToken,
       refreshToken
     );
-    if (redirectUrl) {
-      this.logger.log(`${this.loginNaver.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl;
-    }
 
-    this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
-
-    return { user, accessToken };
+    return redirectUrl;
   }
 
   async loginGoogle(
     res: Response,
     transactionManager: EntityManager,
     query: NaverOAuthCallbackQuery
-  ): Promise<AuthLoginResponse | string> {
+  ): Promise<string> {
     this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
 
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
@@ -185,14 +182,10 @@ export class OAuthService {
       accessToken,
       refreshToken
     );
-    if (redirectUrl) {
-      this.logger.log(`${this.loginGoogle.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl;
-    }
 
     this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
 
-    return { user, accessToken };
+    return redirectUrl;
   }
 
   async createOAuthAccount(
@@ -294,8 +287,9 @@ export class OAuthService {
     type: OAuthAccountProviderType,
     _accessToken: string,
     _refreshToken: string
-  ): Promise<string | null> {
-    // Redis에서 state 값 확인 및 redirect session 추출
+  ): Promise<string> {
+    const portalClientUrl =
+      this.configService.get<DefaultConfig['portalClientUrl']>(`portalClientUrl`)!;
 
     // 구글과 네이버 state store에서 redirect session 정보 확인
     let redirectSessionId: string | null = null;
@@ -305,7 +299,7 @@ export class OAuthService {
       redirectSessionId = stateValue;
     }
 
-    if (!redirectSessionId) return null;
+    if (!redirectSessionId) return portalClientUrl;
 
     // redirect session 데이터 확인
     const sessionData = await this.redisService.getRedirectSession(redirectSessionId);
@@ -322,6 +316,6 @@ export class OAuthService {
       return callbackUrl;
     }
 
-    return null;
+    return portalClientUrl;
   }
 }
