@@ -289,7 +289,7 @@ export class OAuthService {
     _refreshToken: string
   ): Promise<string> {
     const portalClientUrl =
-      this.configService.get<DefaultConfig['portalClientUrl']>(`portalClientUrl`)!;
+      this.configService.get<DefaultConfig['authClientUrl']>(`authClientUrl`)!;
 
     // 구글과 네이버 state store에서 redirect session 정보 확인
     let redirectSessionId: string | null = null;

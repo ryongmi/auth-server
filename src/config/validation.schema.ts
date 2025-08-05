@@ -4,6 +4,7 @@ const defaultConfigSchema = {
   NODE_ENV: Joi.string().valid('local', 'development', 'production').required(),
   PORT: Joi.number().default(8000),
   CORS_ORIGINS: Joi.string().required(),
+  AUTH_CLIENT_URL: Joi.string().required(),
   OAUTH_REDIRECT_SESSION_STORE_NAME: Joi.string().required(),
 };
 

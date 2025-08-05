@@ -40,7 +40,7 @@ export class OAuthController {
   })
   async loginGoogle(
     @Res() res: Response,
-    @Query('redirect-session') redirectSession?: string
+    @Query('redirect_session') redirectSession?: string
   ): Promise<void> {
     const state = await this.oauthService.generateState(
       OAuthAccountProviderType.GOOGLE,
@@ -98,7 +98,7 @@ export class OAuthController {
   })
   async loginNaver(
     @Res() res: Response,
-    @Query('redirect-session') redirectSession?: string
+    @Query('redirect_session') redirectSession?: string
   ): Promise<void> {
     const state = await this.oauthService.generateState(
       OAuthAccountProviderType.NAVER,

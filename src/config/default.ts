@@ -9,7 +9,7 @@ export default (): DefaultConfig => {
       port: parseInt(process.env.PORT ?? '8000', 10),
       corsOrigins: process.env.CORS_ORIGINS,
       oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
-      portalClientUrl: process.env.PORTAL_CLIENT_URL,
+      authClientUrl: process.env.AUTH_CLIENT_URL,
     };
   }
 
@@ -18,7 +18,7 @@ export default (): DefaultConfig => {
     port: parseInt(process.env.PORT ?? '8000', 10),
     corsOrigins: process.env.CORS_ORIGINS,
     oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
-    portalClientUrl: process.env.PORTAL_CLIENT_URL,
+    authClientUrl: process.env.AUTH_CLIENT_URL,
   };
 };
 

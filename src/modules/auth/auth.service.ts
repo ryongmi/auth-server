@@ -19,7 +19,7 @@ import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { RedisService } from '@database/index.js';
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
-import { JwtConfig } from '@common/interfaces/index.js';
+import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
 import { UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
 
@@ -252,7 +252,8 @@ export class AuthService {
     await this.redisService.setRedirectSession(redirectSession, redirectUri, 300);
 
     // Portal Client로 리다이렉트
-    const portalLoginUrl = `${this.configService.get('PORTAL_CLIENT_URL')}/auth/login?redirect-session=${redirectSession}`;
+    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
+    const portalLoginUrl = `${authClientUrl}/auth/login?redirect_session=${redirectSession}`;
 
     this.logger.log(
       `${this.ssoLoginRedirect.name} - Portal Client로 리다이렉트: ${portalLoginUrl}`

@@ -47,15 +47,15 @@ export class AuthController {
   @SwaggerApiOperation({ summary: 'SSO 로그인 리다이렉트' })
   @SwaggerApiOkResponse({
     status: 302,
-    description: 'Portal Client로 리다이렉트',
+    description: 'Auth Client로 리다이렉트',
   })
   @SwaggerApiErrorResponse({
     status: 400,
     description: '잘못된 리다이렉트 URI',
   })
   async ssoLoginRedirect(
-    @Query('redirect-uri') redirectUri: string,
-    @Res() res: Response
+    @Query('redirect_uri') redirectUri: string,
+    @Res({ passthrough: true }) res: Response
   ): Promise<void> {
     return await this.authService.ssoLoginRedirect(redirectUri, res);
   }
@@ -103,7 +103,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() body: AuthLoginRequestDto,
-    @Query('redirect-session') redirectSession?: string
+    @Query('redirect_session') redirectSession?: string
   ): Promise<AuthLoginResponseDto | void> {
     const data = await this.authService.login(res, body, redirectSession);
 
