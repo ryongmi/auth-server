@@ -253,12 +253,12 @@ export class AuthService {
 
     // Portal Client로 리다이렉트
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
-    const portalLoginUrl = `${authClientUrl}/auth/login?redirect_session=${redirectSession}`;
+    const authLoginUrl = `${authClientUrl}/login?redirect_session=${redirectSession}`;
 
     this.logger.log(
-      `${this.ssoLoginRedirect.name} - Portal Client로 리다이렉트: ${portalLoginUrl}`
+      `${this.ssoLoginRedirect.name} - Auth Client로 리다이렉트: ${authLoginUrl}`
     );
-    res.redirect(portalLoginUrl);
+    res.redirect(authLoginUrl);
   }
 
   /**
