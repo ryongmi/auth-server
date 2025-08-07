@@ -10,7 +10,6 @@ import { AuthException } from '@krgeobuk/auth/exception';
 import { UserError, UserException } from '@krgeobuk/user/exception';
 import type {
   AuthLoginRequest,
-  AuthLoginResponse,
   AuthSignupRequest,
   AuthRefreshResponse,
 } from '@krgeobuk/auth/interfaces';
@@ -51,11 +50,7 @@ export class AuthService {
     this.logger.log(`${this.logout.name} - 성공적으로 종료되었습니다.`);
   }
 
-  async login(
-    res: Response,
-    attrs: AuthLoginRequest,
-    redirectSession?: string
-  ): Promise<AuthLoginResponse | string> {
+  async login(res: Response, attrs: AuthLoginRequest, redirectSession: string): Promise<string> {
     this.logger.log(`${this.login.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
@@ -114,22 +109,11 @@ export class AuthService {
 
       this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
-      // SSO 리다이렉트 처리
-      if (redirectSession) {
-        const redirectUrl = await this.handleSSORedirect(
-          redirectSession,
-          accessToken,
-          refreshToken
-        );
-        if (redirectUrl) {
-          this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
-          return redirectUrl;
-        }
-      }
+      // SSO 리다이렉트 처리 (필수)
+      const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
-      this.logger.log(`${this.login.name} - 성공적으로 종료되었습니다.`);
-      // return await this.userService.lastLoginUpdate(user);
-      return { user, accessToken };
+      this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
+      return redirectUrl || this.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: JWT 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -153,8 +137,9 @@ export class AuthService {
   async signup(
     res: Response,
     attrs: AuthSignupRequest,
+    redirectSession: string,
     transactionManager: EntityManager
-  ): Promise<AuthLoginResponse> {
+  ): Promise<string> {
     this.logger.log(`${this.signup.name} - 시작 되었습니다.`);
 
     const { email, password } = attrs;
@@ -188,9 +173,11 @@ export class AuthService {
 
       this.jwtService.setRefreshTokenToCookie(res, refreshToken);
 
-      this.logger.log(`${this.signup.name} - 성공적으로 종료되었습니다.`);
+      // SSO 리다이렉트 처리 (필수)
+      const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
-      return { user: createdUser, accessToken };
+      this.logger.log(`${this.signup.name} - SSO 리다이렉트로 종료되었습니다.`);
+      return redirectUrl || this.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: 회원가입 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -237,7 +224,7 @@ export class AuthService {
   /**
    * SSO 로그인 리다이렉트 처리
    */
-  async ssoLoginRedirect(redirectUri: string, res: Response): Promise<void> {
+  async ssoLoginRedirect(redirectUri: string): Promise<string> {
     this.logger.log(`${this.ssoLoginRedirect.name} - 시작 되었습니다.`);
 
     // 리다이렉트 URI 검증
@@ -256,7 +243,8 @@ export class AuthService {
     const authLoginUrl = `${authClientUrl}/login?redirect_session=${redirectSession}`;
 
     this.logger.log(`${this.ssoLoginRedirect.name} - Auth Client로 리다이렉트: ${authLoginUrl}`);
-    res.redirect(authLoginUrl);
+
+    return authLoginUrl;
   }
 
   /**
@@ -264,8 +252,8 @@ export class AuthService {
    */
   private async handleSSORedirect(
     redirectSession: string,
-    accessToken: string,
-    refreshToken: string
+    _accessToken: string,
+    _refreshToken: string
   ): Promise<string | null> {
     const sessionData = await this.redisService.getRedirectSession(redirectSession);
 
@@ -275,8 +263,8 @@ export class AuthService {
       // 세션 정리
       await this.redisService.deleteRedirectSession(redirectSession);
 
-      // 원래 서비스로 리다이렉트 (토큰 포함)
-      const callbackUrl = `${redirectUri}?token=${accessToken}&refresh_token=${refreshToken}`;
+      // 원래 서비스로 리다이렉트
+      const callbackUrl = `${redirectUri}`;
       return callbackUrl;
     }
 
@@ -307,6 +295,14 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * 기본 리다이렉트 URL 반환 (fallback)
+   */
+  private getDefaultRedirectUrl(): string {
+    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
+    return authClientUrl;
   }
 }
 
