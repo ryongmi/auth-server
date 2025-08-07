@@ -6,8 +6,8 @@ const defaultConfigSchema = {
   CORS_ORIGINS: Joi.string().required(),
   AUTH_CLIENT_URL: Joi.string().required(),
   OAUTH_REDIRECT_SESSION_STORE_NAME: Joi.string().required(),
-  ALLOWED_REDIRECT_DOMAINS: Joi.string().required(),
-  ALLOWED_REDIRECT_PROTOCOLS: Joi.string().required(),
+  // ALLOWED_REDIRECT_DOMAINS: Joi.string().required(),
+  // ALLOWED_REDIRECT_PROTOCOLS: Joi.string().required(),
 };
 
 const mysqlConfigSchema = {

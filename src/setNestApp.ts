@@ -49,6 +49,7 @@ export function setNestApp(
       'User-Agent',
       'Accept-Language',
       'Accept-Encoding',
+      'X-Requested-With',
 
       // 캐시 최적화
       'Cache-Control',
