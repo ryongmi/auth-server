@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+
 import type { Request, Response } from 'express';
 
 // import { decodeAccessToken } from '@krgeobuk/jwt/utils';
 import { JwtException } from '@krgeobuk/jwt/exception';
-import type { JwtTokenPair, JwtPayload } from '@krgeobuk/jwt/interfaces';
+import type { JwtTokenPair, JwtPayload, VerifiedJwtPayload } from '@krgeobuk/jwt/interfaces';
 import type { JwtTokenType } from '@krgeobuk/jwt/types';
 // import type { RefreshResponse } from '@krgeobuk/auth/interfaces';
 
@@ -50,16 +51,16 @@ export class JwtTokenService {
       // 내부 로그: 상세한 디버깅 정보
       const internalMessage = error instanceof Error ? error.message : '알 수 없는 에러';
       const stack = error instanceof Error ? error.stack : undefined;
-      
+
       this.logger.error(
         `[JWT_SIGN_FAILURE] ${type} 토큰 서명 실패 - Internal: ${internalMessage}`,
         {
           tokenType: type,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          stack
+          stack,
         }
       );
-      
+
       // 클라이언트용: 일반화된 안전한 메시지
       throw JwtException.signFailure(type);
     }
@@ -91,7 +92,7 @@ export class JwtTokenService {
   // }
 
   // Refresh Token 검증
-  async decodeRefreshToken(token: string): Promise<JwtPayload> {
+  async decodeRefreshToken(token: string): Promise<VerifiedJwtPayload> {
     try {
       const publicKey =
         this.configService.get<JwtConfig['refreshPublicKey']>('jwt.refreshPublicKey');
@@ -106,13 +107,13 @@ export class JwtTokenService {
       const internalMessage = error instanceof Error ? error.message : '알 수 없는 에러';
       const errorName = error instanceof Error ? error.name : 'UnknownError';
       const stack = error instanceof Error ? error.stack : undefined;
-      
+
       this.logger.error(
         `[JWT_VERIFY_FAILURE] refresh 토큰 검증 실패 - Internal: ${internalMessage}`,
         {
           tokenType: 'refresh',
           errorType: errorName,
-          stack
+          stack,
         }
       );
 
@@ -181,3 +182,4 @@ export class JwtTokenService {
     });
   }
 }
+

@@ -33,7 +33,7 @@ import {
   SwaggerApiErrorResponse,
   SwaggerApiPaginatedResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
+import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard, OptionalAccessTokenGuard } from '@krgeobuk/jwt/guards';
 
@@ -47,7 +47,7 @@ export class UserController {
   @Get()
   @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
   @SwaggerApiBearerAuth()
-  @SwaggerApiOperation({ summary: '유저 목록 조회' })
+  @SwaggerApiOperation({ summary: '유저 목록 조회', description: '유저를 검색합니다.' })
   @SwaggerApiPaginatedResponse({
     status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
     description: UserResponse.USER_SEARCH_SUCCESS.message,
@@ -68,9 +68,10 @@ export class UserController {
 
   @Get('me')
   @HttpCode(UserResponse.PROFILE_FETCH_SUCCESS.statusCode)
-  @SwaggerApiOperation({ 
+  @SwaggerApiOperation({
     summary: '내 프로필 조회',
-    description: '로그인된 사용자는 전체 정보를, 비로그인 사용자는 기본 정보를 조회합니다. 토큰은 선택사항입니다.'
+    description:
+      '로그인된 사용자는 전체 정보를, 비로그인 사용자는 기본 정보를 조회합니다. 토큰은 선택사항입니다.',
   })
   @SwaggerApiOkResponse({
     status: UserResponse.PROFILE_FETCH_SUCCESS.statusCode,
@@ -86,10 +87,7 @@ export class UserController {
     dto: UserProfileDto,
     ...UserResponse.PROFILE_FETCH_SUCCESS,
   })
-  async getMyProfile(@CurrentJwt() jwt: JwtPayload): Promise<UserProfileDto> {
-    // 로그인된 사용자인지 확인 (토큰이 유효한 경우)
-    const userId = jwt?.id;
-    
+  async getMyProfile(@CurrentJwt() { userId }: AuthenticatedJwt): Promise<UserProfileDto> {
     return await this.userService.getMyProfile(userId);
   }
 
@@ -114,10 +112,10 @@ export class UserController {
     ...UserResponse.PROFILE_UPDATE_SUCCESS,
   })
   async updateMyProfile(
-    @CurrentJwt() { id }: JwtPayload,
+    @CurrentJwt() { userId }: AuthenticatedJwt,
     @Body() body: UpdateMyProfileDto
   ): Promise<void> {
-    return await this.userService.updateMyProfile(id, body);
+    return await this.userService.updateMyProfile(userId, body);
   }
 
   // 권한 도입하면 체크하는 가드? 하나 넣어야할듯
@@ -149,10 +147,10 @@ export class UserController {
     ...UserResponse.PASSWORD_CHANGE_SUCCESS,
   })
   async changePassword(
-    @CurrentJwt() { id }: JwtPayload,
+    @CurrentJwt() { userId }: AuthenticatedJwt,
     @Body() body: ChangePasswordDto
   ): Promise<void> {
-    return await this.userService.changePassword(id, body);
+    return await this.userService.changePassword(userId, body);
   }
 
   @Delete('me')
@@ -170,8 +168,8 @@ export class UserController {
   @Serialize({
     ...UserResponse.ACCOUNT_DELETE_SUCCESS,
   })
-  async deleteMyAccount(@CurrentJwt() { id }: JwtPayload): Promise<void> {
-    return await this.userService.deleteMyAccount(id);
+  async deleteMyAccount(@CurrentJwt() { userId }: AuthenticatedJwt): Promise<void> {
+    return await this.userService.deleteMyAccount(userId);
   }
 
   @Get(':userId')

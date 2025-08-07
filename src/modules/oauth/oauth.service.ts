@@ -11,7 +11,6 @@ import type {
   NaverUserProfileResponse,
   GoogleUserProfileResponse,
 } from '@krgeobuk/oauth/interfaces';
-import type { AuthLoginResponse } from '@krgeobuk/auth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 
 import { JwtTokenService } from '@common/jwt/index.js';
@@ -128,7 +127,7 @@ export class OAuthService {
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
-      id: user.id,
+      sub: user.id,
       tokenData,
       // provider: ProviderType.NAVER,
     };
@@ -164,7 +163,7 @@ export class OAuthService {
 
     // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
     const payload = {
-      id: user.id,
+      sub: user.id,
       tokenData,
       // provider: ProviderType.GOOGLE,
     };
@@ -319,3 +318,4 @@ export class OAuthService {
     return portalClientUrl;
   }
 }
+

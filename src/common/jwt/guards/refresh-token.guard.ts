@@ -38,10 +38,15 @@ export class RefreshTokenGuard implements CanActivate {
 
     try {
       // 2. Refresh Token 검증
-      const { id, tokenData } = await this.jwtService.decodeRefreshToken(refreshToken);
+      const { sub, tokenData, iat, exp } = await this.jwtService.decodeRefreshToken(refreshToken);
 
       // 3. 검증 성공 시 payload를 request.user에 저장
-      request.jwt = { id, tokenData };
+      request.jwt = {
+        userId: sub,
+        tokenData,
+        iat,
+        exp,
+      };
 
       return true;
     } catch (error: unknown) {
@@ -81,3 +86,4 @@ export class RefreshTokenGuard implements CanActivate {
     }
   }
 }
+

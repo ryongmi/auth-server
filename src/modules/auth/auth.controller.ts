@@ -31,7 +31,7 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
+import { JwtPayload, AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
 import { RefreshTokenGuard } from '@common/jwt/index.js';
@@ -170,8 +170,13 @@ export class AuthController {
     dto: AuthRefreshResponseDto,
     ...AuthResponse.REFRESH_SUCCESS,
   })
-  async refresh(@CurrentJwt() jwt: JwtPayload): Promise<AuthRefreshResponseDto> {
-    return await this.authService.refresh(jwt);
-  }
+  async refresh(@CurrentJwt() jwt: AuthenticatedJwt): Promise<AuthRefreshResponseDto> {
+    const payload: JwtPayload = {
+      sub: jwt.userId,
+      tokenData: jwt.tokenData,
+    };
 
+    return await this.authService.refresh(payload);
+  }
 }
+

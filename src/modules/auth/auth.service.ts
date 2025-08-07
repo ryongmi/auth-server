@@ -105,7 +105,7 @@ export class AuthService {
     // await this.userService.lastLoginUpdate(user.id);
 
     const payload = {
-      id: user.id,
+      sub: user.id,
     };
 
     try {
@@ -139,7 +139,7 @@ export class AuthService {
         `[AUTH_LOGIN_JWT_ERROR] JWT 토큰 생성 실패 - Internal: ${internalMessage}`,
         {
           action: 'login',
-          userId: payload.id,
+          userId: payload.sub,
           errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
           stack,
         }
@@ -179,7 +179,7 @@ export class AuthService {
       this.logger.log(`${this.signup.name} - OAuthAccount 생성완료`);
 
       const payload = {
-        id: createdUser.id,
+        sub: createdUser.id,
         // provider: oauthAccount.provider,
       };
 
@@ -224,7 +224,7 @@ export class AuthService {
 
       this.logger.error(`[AUTH_REFRESH_ERROR] 토큰 새로고침 실패 - Internal: ${internalMessage}`, {
         action: 'refresh',
-        userId: payload.id,
+        userId: payload.sub,
         errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
         stack,
       });
@@ -255,9 +255,7 @@ export class AuthService {
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
     const authLoginUrl = `${authClientUrl}/login?redirect_session=${redirectSession}`;
 
-    this.logger.log(
-      `${this.ssoLoginRedirect.name} - Auth Client로 리다이렉트: ${authLoginUrl}`
-    );
+    this.logger.log(`${this.ssoLoginRedirect.name} - Auth Client로 리다이렉트: ${authLoginUrl}`);
     res.redirect(authLoginUrl);
   }
 
@@ -311,3 +309,4 @@ export class AuthService {
     }
   }
 }
+
