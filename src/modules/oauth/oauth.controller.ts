@@ -5,11 +5,9 @@ import { EntityManager } from 'typeorm';
 import { Response } from 'express';
 
 import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
-import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
+import { TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
-import { AuthLoginResponseDto } from '@krgeobuk/auth/dtos';
-import { OAuthResponse } from '@krgeobuk/oauth/response';
 import { OAuthError } from '@krgeobuk/oauth/exception';
 import {
   SwaggerApiTags,
@@ -32,15 +30,15 @@ export class OAuthController {
   ) {}
 
   @Get('login-google')
-  @HttpCode(200)
-  @SwaggerApiOperation({ summary: '구글 로그인' })
+  @HttpCode(302)
+  @SwaggerApiOperation({ summary: 'Google OAuth SSO 시작' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '구글 로그인 OAuth로 redirect 성공',
+    status: 302,
+    description: 'Google OAuth 인증 페이지로 리다이렉트',
   })
   async loginGoogle(
     @Res() res: Response,
-    @Query('redirect_session') redirectSession?: string
+    @Query('redirect_session') redirectSession: string
   ): Promise<void> {
     const state = await this.oauthService.generateState(
       OAuthAccountProviderType.GOOGLE,
@@ -61,12 +59,11 @@ export class OAuthController {
   }
 
   @Get('login-google/callback')
-  @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '구글 OAuth 정보 가져오기' })
+  @HttpCode(302)
+  @SwaggerApiOperation({ summary: 'Google OAuth SSO 콜백 처리' })
   @SwaggerApiOkResponse({
-    status: OAuthResponse.LOGIN_SUCCESS.statusCode,
-    description: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
-    dto: AuthLoginResponseDto,
+    status: 302,
+    description: 'Google 로그인 성공 후 원래 서비스로 리다이렉트',
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -74,31 +71,25 @@ export class OAuthController {
   })
   @UseGuards(GoogleOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
-  @Serialize({
-    dto: AuthLoginResponseDto,
-    code: OAuthResponse.LOGIN_SUCCESS.code,
-    message: `Google ${OAuthResponse.LOGIN_SUCCESS.message}`,
-  })
   async loginGoogleCallback(
     @Res() res: Response,
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
     const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
-
     return res.redirect(redirectUrl);
   }
 
   @Get('/login-naver')
-  @HttpCode(200)
-  @SwaggerApiOperation({ summary: '네이버 로그인' })
+  @HttpCode(302)
+  @SwaggerApiOperation({ summary: 'Naver OAuth SSO 시작' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '네이버 로그인 OAuth로 redirect 성공',
+    status: 302,
+    description: 'Naver OAuth 인증 페이지로 리다이렉트',
   })
   async loginNaver(
     @Res() res: Response,
-    @Query('redirect_session') redirectSession?: string
+    @Query('redirect_session') redirectSession: string
   ): Promise<void> {
     const state = await this.oauthService.generateState(
       OAuthAccountProviderType.NAVER,
@@ -118,12 +109,11 @@ export class OAuthController {
   }
 
   @Get('/login-naver/callback')
-  @HttpCode(OAuthResponse.LOGIN_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '네이버 OAuth 정보 가져오기' })
+  @HttpCode(302)
+  @SwaggerApiOperation({ summary: 'Naver OAuth SSO 콜백 처리' })
   @SwaggerApiOkResponse({
-    status: OAuthResponse.LOGIN_SUCCESS.statusCode,
-    description: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
-    dto: AuthLoginResponseDto,
+    status: 302,
+    description: 'Naver 로그인 성공 후 원래 서비스로 리다이렉트',
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -131,18 +121,12 @@ export class OAuthController {
   })
   @UseGuards(NaverOAuthStateGuard)
   @UseInterceptors(TransactionInterceptor)
-  @Serialize({
-    dto: AuthLoginResponseDto,
-    code: OAuthResponse.LOGIN_SUCCESS.code,
-    message: `Naver ${OAuthResponse.LOGIN_SUCCESS.message}`,
-  })
   async loginNaverCallback(
     @Res() res: Response,
     @Query() query: NaverOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
     const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
-
     return res.redirect(redirectUrl);
   }
 }
