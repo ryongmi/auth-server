@@ -11,4 +11,3 @@ import { SeederService } from './seeder.service.js';
   exports: [SeederService],
 })
 export class SeederModule {}
-

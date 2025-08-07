@@ -24,4 +24,3 @@ export class OAuthRepository extends BaseRepository<OAuthAccountEntity> {
     return await transactionManager.getRepository(OAuthAccountEntity).save(account);
   }
 }
-

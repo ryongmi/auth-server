@@ -9,6 +9,7 @@ import { TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { OAuthError } from '@krgeobuk/oauth/exception';
+import { OAuthResponse } from '@krgeobuk/oauth/response';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -30,11 +31,11 @@ export class OAuthController {
   ) {}
 
   @Get('login-google')
-  @HttpCode(302)
+  @HttpCode(OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'Google OAuth SSO 시작' })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: 'Google OAuth 인증 페이지로 리다이렉트',
+    status: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode,
+    description: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.message,
   })
   async loginGoogle(
     @Res() res: Response,
@@ -59,11 +60,11 @@ export class OAuthController {
   }
 
   @Get('login-google/callback')
-  @HttpCode(302)
+  @HttpCode(OAuthResponse.GOOGLE_SSO_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'Google OAuth SSO 콜백 처리' })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: 'Google 로그인 성공 후 원래 서비스로 리다이렉트',
+    status: OAuthResponse.GOOGLE_SSO_REDIRECT.statusCode,
+    description: OAuthResponse.GOOGLE_SSO_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -81,11 +82,11 @@ export class OAuthController {
   }
 
   @Get('/login-naver')
-  @HttpCode(302)
+  @HttpCode(OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'Naver OAuth SSO 시작' })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: 'Naver OAuth 인증 페이지로 리다이렉트',
+    status: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode,
+    description: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.message,
   })
   async loginNaver(
     @Res() res: Response,
@@ -109,11 +110,11 @@ export class OAuthController {
   }
 
   @Get('/login-naver/callback')
-  @HttpCode(302)
+  @HttpCode(OAuthResponse.NAVER_SSO_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'Naver OAuth SSO 콜백 처리' })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: 'Naver 로그인 성공 후 원래 서비스로 리다이렉트',
+    status: OAuthResponse.NAVER_SSO_REDIRECT.statusCode,
+    description: OAuthResponse.NAVER_SSO_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
     status: OAuthError.LOGIN_ERROR.statusCode,
@@ -130,4 +131,3 @@ export class OAuthController {
     return res.redirect(redirectUrl);
   }
 }
-

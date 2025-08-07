@@ -16,4 +16,3 @@ export const jwtConfig = registerAs('jwt', () => ({
   naverStateStore: process.env.JWT_NAVER_STATE_STORE_NAME,
   googleStateStore: process.env.JWT_GOOGLE_STATE_STORE_NAME,
 }));
-

@@ -318,4 +318,3 @@ export class OAuthService {
     return portalClientUrl;
   }
 }
-

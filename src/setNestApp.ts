@@ -34,22 +34,22 @@ export function setNestApp(
       // API 기본 헤더
       'Content-Type',
       'Accept',
-      
+
       // 인증 헤더
       'Authorization',
       'x-csrf-token',
-      
+
       // 추적 헤더
       'x-request-id',
-      
+
       // CORS 필수
       'Origin',
-      
+
       // 브라우저 표준
       'User-Agent',
       'Accept-Language',
       'Accept-Encoding',
-      
+
       // 캐시 최적화
       'Cache-Control',
       'If-None-Match',

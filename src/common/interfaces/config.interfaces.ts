@@ -4,6 +4,8 @@ export interface DefaultConfig {
   corsOrigins: string | undefined;
   oauthRedirectSessionStore: string | undefined;
   authClientUrl: string | undefined;
+  allowedRedirectDomains: string | undefined;
+  allowedRedirectProtocols: string | undefined;
 }
 
 export interface MysqlConfig {
@@ -52,4 +54,3 @@ export interface JwtConfig {
   naverStateStore: string | undefined;
   googleStateStore: string | undefined;
 }
-

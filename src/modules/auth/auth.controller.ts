@@ -43,10 +43,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('/login')
+  @HttpCode(AuthResponse.SSO_LOGIN_START_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'SSO 로그인 리다이렉트' })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: 'Auth Client로 리다이렉트',
+    status: AuthResponse.SSO_LOGIN_START_REDIRECT.statusCode,
+    description: AuthResponse.SSO_LOGIN_START_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
     status: 400,
@@ -54,9 +55,10 @@ export class AuthController {
   })
   async ssoLoginRedirect(
     @Query('redirect_uri') redirectUri: string,
-    @Res() res: Response
+    @Res() res: Response,
+    @Req() req: Request
   ): Promise<void> {
-    const redirectUrl = await this.authService.ssoLoginRedirect(redirectUri);
+    const redirectUrl = await this.authService.ssoLoginRedirect(redirectUri, req);
     return res.redirect(redirectUrl);
   }
 
@@ -80,15 +82,15 @@ export class AuthController {
   }
 
   @Post('/login')
-  @HttpCode(302)
+  @HttpCode(AuthResponse.SSO_LOGIN_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'SSO 로그인 처리' })
   @SwaggerApiBody({
     dto: AuthLoginRequestDto,
     description: 'SSO 로그인시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: '로그인 성공 후 원래 서비스로 리다이렉트',
+    status: AuthResponse.SSO_LOGIN_REDIRECT.statusCode,
+    description: AuthResponse.SSO_LOGIN_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
     status: AuthError.LOGIN_ERROR.statusCode,
@@ -104,7 +106,7 @@ export class AuthController {
   }
 
   @Post('/signup')
-  @HttpCode(302)
+  @HttpCode(AuthResponse.SSO_SIGNUP_REDIRECT.statusCode)
   @UseInterceptors(TransactionInterceptor)
   @SwaggerApiOperation({ summary: 'SSO 회원가입 처리' })
   @SwaggerApiBody({
@@ -112,8 +114,8 @@ export class AuthController {
     description: 'SSO 회원가입시 필요한 BODY값',
   })
   @SwaggerApiOkResponse({
-    status: 302,
-    description: '회원가입 성공 후 자동 로그인 및 원래 서비스로 리다이렉트',
+    status: AuthResponse.SSO_SIGNUP_REDIRECT.statusCode,
+    description: AuthResponse.SSO_SIGNUP_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
     status: AuthError.SIGNUP_ERROR.statusCode,
@@ -125,7 +127,12 @@ export class AuthController {
     @Query('redirect_session') redirectSession: string,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    const redirectUrl = await this.authService.signup(res, body, redirectSession, transactionManager);
+    const redirectUrl = await this.authService.signup(
+      res,
+      body,
+      redirectSession,
+      transactionManager
+    );
     return res.redirect(redirectUrl);
   }
 
@@ -155,4 +162,3 @@ export class AuthController {
     return await this.authService.refresh(payload);
   }
 }
-

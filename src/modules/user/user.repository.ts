@@ -177,4 +177,3 @@ export class UserRepository extends BaseRepository<UserEntity> {
     };
   }
 }
-
