@@ -1,6 +1,6 @@
-import { registerAs } from '@nestjs/config';
-
 import * as fs from 'fs';
+
+import { registerAs } from '@nestjs/config';
 
 export const jwtConfig = registerAs('jwt', () => ({
   accessPrivateKey: fs.readFileSync(process.env.JWT_ACCESS_PRIVATE_KEY_PATH!, 'utf-8'),
@@ -16,3 +16,4 @@ export const jwtConfig = registerAs('jwt', () => ({
   naverStateStore: process.env.JWT_NAVER_STATE_STORE_NAME,
   googleStateStore: process.env.JWT_GOOGLE_STATE_STORE_NAME,
 }));
+
