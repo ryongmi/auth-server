@@ -4,7 +4,15 @@
 
 ## 서비스 개요
 
-auth-server는 krgeobuk 생태계의 인증 서비스로, OAuth 및 JWT 기반의 사용자 인증을 담당합니다.
+auth-server는 krgeobuk 생태계의 핵심 인증 서비스로, OAuth 및 JWT 기반의 사용자 인증을 담당합니다. 
+
+### MVP 완료 상태
+- **HTTP API 서버** (포트 8000) - REST API 제공
+- **TCP 마이크로서비스** (포트 8010) - 서비스 간 통신
+- **OAuth 통합** - Google, Naver 소셜 로그인
+- **JWT 토큰 관리** - Access/Refresh Token 체계
+- **완전한 사용자 관리** - 가입, 인증, 권한 처리
+- **프로덕션 준비** - Docker, 로깅, 모니터링 완비
 
 ## 핵심 명령어
 
@@ -49,13 +57,17 @@ auth-server는 krgeobuk 생태계의 인증 서비스로, OAuth 및 JWT 기반�
 - **Database 모듈** (`src/database/`) - TypeORM 및 Redis 설정
 - **JWT 모듈** (`src/common/jwt/`) - JWT 토큰 처리 및 가드
 
-### 외부 의존성
-프로젝트는 공유 기능을 위해 여러 `@krgeobuk/*` 패키지를 사용합니다:
+### 공유 라이브러리 의존성
+krgeobuk 생태계 표준화를 위한 `@krgeobuk/*` 패키지들:
 - `@krgeobuk/core` - 핵심 유틸리티, 인터셉터, 필터
-- `@krgeobuk/jwt` - JWT 토큰 서비스
-- `@krgeobuk/oauth` - OAuth 제공자
-- `@krgeobuk/swagger` - API 문서
-- `@krgeobuk/database-config` - 데이터베이스 설정
+- `@krgeobuk/jwt` - JWT 토큰 서비스 및 가드
+- `@krgeobuk/oauth` - OAuth 제공자 (Google, Naver)
+- `@krgeobuk/swagger` - API 문서화 설정
+- `@krgeobuk/database-config` - TypeORM 및 Redis 설정
+- `@krgeobuk/auth` - 인증 관련 DTO, 인터페이스
+- `@krgeobuk/user` - 사용자 관리 기능
+- `@krgeobuk/shared` - 공유 타입 및 유틸리티
+- `@krgeobuk/service` - 서비스 등록 관리
 
 ### 데이터베이스 설정
 - **MySQL**: 기본 데이터베이스 (Docker에서 포트 3307)
@@ -167,21 +179,89 @@ export class RoleService {
 export class AppModule {}
 ```
 
-## 개발 참고사항
+## 개발 가이드라인
 
-### 환경 파일
-환경 설정은 `./envs/` 디렉터리에 저장되고 docker-compose를 통해 로드됩니다.
+### 환경 설정
+```bash
+# 서버 설정
+NODE_ENV=development
+PORT=8000
+TCP_PORT=8010
+APP_NAME=auth-server
+
+# 클라이언트 URL
+AUTH_CLIENT_URL=http://localhost:3000
+PORTAL_CLIENT_URL=http://localhost:3200
+
+# MySQL 데이터베이스 (Docker 컨테이너)
+MYSQL_HOST=auth-mysql
+MYSQL_PORT=3306              # 내부 통신 포트
+MYSQL_OPEN_PORT=3307         # 외부 접근 포트
+MYSQL_USER=krgeobuk
+MYSQL_PASSWORD=your-mysql-password
+MYSQL_DATABASE=auth
+
+# Redis 세션 저장소 (Docker 컨테이너)
+REDIS_HOST=auth-redis
+REDIS_PORT=6379              # 내부 통신 포트
+REDIS_OPEN_PORT=6380         # 외부 접근 포트
+REDIS_PASSWORD=your-redis-password
+
+# JWT 공개키/개인키 방식 (RSA)
+JWT_ACCESS_PRIVATE_KEY_PATH=./keys/access-private.key
+JWT_ACCESS_PUBLIC_KEY_PATH=./keys/access-public.key
+JWT_REFRESH_PRIVATE_KEY_PATH=./keys/refresh-private.key
+JWT_REFRESH_PUBLIC_KEY_PATH=./keys/refresh-public.key
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URL=http://localhost:8000/api/oauth/login-google/callback
+
+# Naver OAuth 2.0
+NAVER_CLIENT_ID=your-naver-client-id
+NAVER_CLIENT_SECRET=your-naver-client-secret  
+NAVER_REDIRECT_URL=http://localhost:8000/api/oauth/login-naver/callback
+```
 
 ### Import 경로 별칭
-프로젝트는 깔끔한 import를 위해 `tsconfig.json`에 설정된 TypeScript 경로 별칭을 사용합니다 (예: `@modules`, `@config`, `@database`).
+```typescript
+// tsconfig.json에 설정된 경로 별칭
+import { UserService } from '@modules/user/user.service';
+import { DatabaseConfig } from '@config/database';
+import { RedisService } from '@database/redis/redis.service';
+import { JwtTokenService } from '@common/jwt/jwt-token.service';
+```
 
-### ESLint 설정
-import 순서 규칙과 Prettier 통합을 포함한 `@krgeobuk/eslint-config`를 사용합니다.
+### 코드 품질 관리
+```bash
+# 린팅 및 포맷팅 (필수 실행)
+npm run lint-fix    # ESLint 자동 수정
+npm run format      # Prettier 포맷팅
+
+# 빌드 및 타입 검사
+npm run build       # TypeScript 컴파일
+npm run build:watch # 감시 모드 빌드
+```
 
 ### 테스트 전략
-- 단위 테스트: 소스 코드와 함께 `*.spec.ts` 파일
-- E2E 테스트: 별도의 Jest 설정을 가진 `test/` 디렉터리
-- 커버리지 리포트는 `../coverage`에 생성됩니다
+```bash
+# 단위 테스트
+npm run test        # Jest 테스트 실행
+npm run test:watch  # 감시 모드
+npm run test:cov    # 커버리지 포함
+
+# 통합 테스트
+npm run test:e2e    # 엔드투엔드 테스트
+```
+
+### 로깅 시스템
+- **Winston** 기반 구조화된 로깅
+- **개발환경**: 콘솔 출력
+- **프로덕션**: 파일 로깅 + 일별 로테이션
+- **로그 레벨**: error, warn, info, debug
 
 ---
 
@@ -293,11 +373,81 @@ export class AuthService {
 }
 ```
 
+## API 엔드포인트
+
+### HTTP REST API (포트 8000)
+
+#### 인증 관련 (`/api/auth`)
+```bash
+POST /api/auth/login          # 로그인
+POST /api/auth/signup         # 회원가입  
+POST /api/auth/logout         # 로그아웃
+POST /api/auth/refresh        # 토큰 갱신
+POST /api/auth/forgot-password # 비밀번호 찾기
+POST /api/auth/reset-password  # 비밀번호 재설정
+```
+
+#### OAuth 관련 (`/api/oauth`)
+```bash
+GET  /api/oauth/login-google   # Google OAuth 시작
+GET  /api/oauth/callback/google # Google OAuth 콜백
+GET  /api/oauth/login-naver    # Naver OAuth 시작
+GET  /api/oauth/callback/naver  # Naver OAuth 콜백
+```
+
+#### 사용자 관리 (`/api/user`)
+```bash
+GET    /api/user/profile      # 사용자 프로필 조회
+PUT    /api/user/profile      # 사용자 프로필 수정
+DELETE /api/user/account      # 계정 삭제
+POST   /api/user/verify-email # 이메일 인증
+```
+
+### TCP 마이크로서비스 (포트 8010)
+
+#### 사용자 조회 패턴
+```typescript
+// 다른 서비스에서 TCP 호출 예시
+const user = await client.send('user.findById', { userId }).toPromise();
+const users = await client.send('user.findByIds', { userIds }).toPromise();
+const exists = await client.send('user.exists', { userId }).toPromise();
+```
+
 ## 개발 워크플로우
 
-1. **표준 참조**: authz-server/CLAUDE.md의 공통 표준 확인
-2. **Auth 특화**: 위 auth-server 특화 패턴 적용
-3. **코드 품질**: `npm run lint-fix` 및 `npm run format` 실행
-4. **타입 검사**: TypeScript 컴파일 확인
-5. **테스트**: 단위/E2E 테스트 실행
-6. **Docker 환경**: 로컬 환경에서 통합 테스트
+### 1. 개발 환경 설정
+```bash
+# 1. 환경 파일 복사 및 설정
+cp envs/.env.example envs/.env.local
+# .env.local에서 실제 값으로 수정
+
+# 2. JWT 키 파일 생성
+bash script/generate-jwt-keys.sh
+
+# 3. Docker 인프라 시작
+npm run docker:local:up
+
+# 4. 개발 서버 시작 (핫 리로드)
+npm run start:debug
+
+# 5. 코드 품질 확인
+npm run lint-fix && npm run format
+
+# 6. 테스트 실행
+npm run test
+```
+
+### 2. 기능 개발 순서
+1. **타입 정의**: `@krgeobuk/*` 공유 타입 활용
+2. **엔티티 설계**: TypeORM 엔티티 생성
+3. **Repository 구현**: 데이터 접근 계층
+4. **서비스 로직**: 비즈니스 로직 구현
+5. **컨트롤러 개발**: HTTP/TCP 엔드포인트
+6. **Swagger 문서화**: API 문서 자동 생성
+7. **테스트 작성**: 단위/통합 테스트
+
+### 3. 배포 준비
+- **린팅**: `npm run lint` 통과 필수
+- **빌드**: `npm run build` 성공 확인
+- **테스트**: `npm run test:e2e` 통과
+- **Docker**: `npm run docker:prod:up` 배포 테스트
