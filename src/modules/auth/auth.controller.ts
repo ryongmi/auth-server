@@ -20,6 +20,8 @@ import {
   AuthLoginRequestDto,
   AuthSignupRequestDto,
   AuthRefreshResponseDto,
+  AuthLoginResponseDto,
+  AuthSignupResponseDto,
 } from '@krgeobuk/auth/dtos';
 import { AuthError } from '@krgeobuk/auth/exception';
 import { AuthResponse } from '@krgeobuk/auth/response';
@@ -82,7 +84,7 @@ export class AuthController {
   }
 
   @Post('/login')
-  @HttpCode(AuthResponse.SSO_LOGIN_REDIRECT.statusCode)
+  // @HttpCode(AuthResponse.SSO_LOGIN_REDIRECT.statusCode)
   @SwaggerApiOperation({ summary: 'SSO 로그인 처리' })
   @SwaggerApiBody({
     dto: AuthLoginRequestDto,
@@ -96,13 +98,18 @@ export class AuthController {
     status: AuthError.LOGIN_ERROR.statusCode,
     description: AuthError.LOGIN_ERROR.message,
   })
+  @Serialize({
+    ...AuthResponse.SSO_LOGIN_REDIRECT,
+    dto: AuthLoginResponseDto,
+    // message: '로그아웃 성공',
+  })
   async login(
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
     @Body() body: AuthLoginRequestDto,
     @Query('redirect_session') redirectSession: string
-  ): Promise<void> {
+  ): Promise<AuthLoginResponseDto> {
     const redirectUrl = await this.authService.login(res, body, redirectSession);
-    return res.redirect(redirectUrl);
+    return { redirectUrl };
   }
 
   @Post('/signup')
@@ -121,19 +128,24 @@ export class AuthController {
     status: AuthError.SIGNUP_ERROR.statusCode,
     description: AuthError.SIGNUP_ERROR.message,
   })
+  @Serialize({
+    ...AuthResponse.SSO_SIGNUP_REDIRECT,
+    dto: AuthSignupResponseDto,
+    // message: '회원가입 성공',
+  })
   async signup(
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
     @Body() body: AuthSignupRequestDto,
     @Query('redirect_session') redirectSession: string,
     @TransactionManager() transactionManager: EntityManager
-  ): Promise<void> {
+  ): Promise<AuthSignupResponseDto> {
     const redirectUrl = await this.authService.signup(
       res,
       body,
       redirectSession,
       transactionManager
     );
-    return res.redirect(redirectUrl);
+    return { redirectUrl };
   }
 
   @Post('refresh')
