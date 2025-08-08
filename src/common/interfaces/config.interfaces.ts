@@ -1,6 +1,7 @@
 export interface DefaultConfig {
   mode: 'local' | 'development' | 'production' | undefined;
   port: number | undefined;
+  tcpPort: number | undefined;
   corsOrigins: string | undefined;
   oauthRedirectSessionStore: string | undefined;
   authClientUrl: string | undefined;
