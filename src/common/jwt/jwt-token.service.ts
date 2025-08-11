@@ -158,7 +158,8 @@ export class JwtTokenService {
     res.cookie(refreshTokenStore, refreshToken, {
       httpOnly: true,
       secure: mode === 'production',
-      sameSite: 'strict',
+      // sameSite: 'strict',
+      sameSite: 'lax', // 'strict'는 서브 도메인 및 모바일 앱에서 문제가 발생할 수 있어 'lax'로 설정
       path: cookiePath,
       maxAge: refreshMaxAge, // 예: 7일
     });
@@ -177,7 +178,8 @@ export class JwtTokenService {
     res.clearCookie(refreshTokenStore, {
       httpOnly: true,
       secure: mode === 'production',
-      sameSite: 'strict',
+      // sameSite: 'strict',
+      sameSite: 'lax', // 'strict'는 서브 도메인 및 모바일 앱에서 문제가 발생할 수 있어 'lax'로 설정
       path: cookiePath,
     });
   }
