@@ -10,6 +10,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 import { Request, Response } from 'express';
 import { EntityManager } from 'typeorm';
@@ -36,6 +37,7 @@ import { JwtPayload, AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
 import { RefreshTokenGuard } from '@common/jwt/index.js';
+import { OriginValidationGuard } from '@common/guards/origin-validation.guard.js';
 
 import { AuthService } from './auth.service.js';
 
@@ -160,7 +162,8 @@ export class AuthController {
     status: AuthError.REFRESH_ERROR.statusCode,
     description: AuthError.REFRESH_ERROR.message,
   })
-  @UseGuards(RefreshTokenGuard)
+  @UseGuards(ThrottlerGuard, RefreshTokenGuard, OriginValidationGuard)
+  @Throttle({ short: { ttl: 1000, limit: 2 } }) // 1초에 2번으로 제한
   @Serialize({
     dto: AuthRefreshResponseDto,
     ...AuthResponse.REFRESH_SUCCESS,

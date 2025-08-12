@@ -50,6 +50,8 @@ const jwtConfigSchema = {
   JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
   JWT_SESSION_COOKIE_PATH: Joi.string().required(),
   JWT_REFRESH_MAX_AGE: Joi.number().required(),
+  JWT_COOKIE_DOMAIN: Joi.string().allow('').optional(),
+  JWT_COOKIE_DOMAIN_DEV: Joi.string().allow('').optional(),
   JWT_REFRESH_STORE_NAME: Joi.string().required(),
   JWT_BLACKLIST_STORE_NAME: Joi.string().required(),
   JWT_NAVER_STATE_STORE_NAME: Joi.string().required(),

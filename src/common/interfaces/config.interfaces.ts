@@ -50,6 +50,8 @@ export interface JwtConfig {
   refreshExpiresIn: string | undefined;
   sessionCookiePath: string | undefined;
   refreshMaxAge: number | undefined;
+  cookieDomain: string | undefined;
+  cookieDomainDev: string | undefined;
   refreshStore: string | undefined;
   blackListStore: string | undefined;
   naverStateStore: string | undefined;
