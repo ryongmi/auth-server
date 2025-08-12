@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { WinstonModule } from 'nest-winston';
 
@@ -19,6 +20,25 @@ import { OAuthModule } from '@modules/oauth/index.js';
   imports: [
     WinstonModule.forRoot(winstonConfig),
     AppConfigModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'short',
+          ttl: 1000,  // 1초
+          limit: 3,   // 1초에 3번
+        },
+        {
+          name: 'medium', 
+          ttl: 10000, // 10초
+          limit: 20,  // 10초에 20번
+        },
+        {
+          name: 'long',
+          ttl: 60000, // 1분
+          limit: 100, // 1분에 100번
+        },
+      ],
+    }),
     // TCP 연결 모듈
     SharedClientsModule,
     // SeederModule,
