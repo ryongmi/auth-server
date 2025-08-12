@@ -149,17 +149,27 @@ export class JwtTokenService {
     const mode = this.configService.get<DefaultConfig['mode']>('mode');
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
+    const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
+    const cookieDomainDev = this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !refreshMaxAge || !cookiePath) {
       throw JwtException.configMissing('refresh');
     }
     if (!refreshToken) throw JwtException.notFound('refresh');
 
+    // 환경별 도메인 설정
+    let domain: string | undefined;
+    if (mode === 'production') {
+      domain = cookieDomain || undefined;
+    } else {
+      domain = cookieDomainDev || undefined;
+    }
+
     res.cookie(refreshTokenStore, refreshToken, {
       httpOnly: true,
-      secure: mode === 'production',
-      // sameSite: 'strict',
-      sameSite: 'lax', // 'strict'는 서브 도메인 및 모바일 앱에서 문제가 발생할 수 있어 'lax'로 설정
+      secure: mode === 'production', // 로컬 환경에서는 false 허용
+      sameSite: 'none', // 모든 환경에서 크로스 사이트 요청 지원 (Origin 검증으로 CSRF 보호)
+      domain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
       maxAge: refreshMaxAge, // 예: 7일
     });
@@ -170,16 +180,26 @@ export class JwtTokenService {
     const mode = this.configService.get<DefaultConfig['mode']>('mode');
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
+    const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
+    const cookieDomainDev = this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !cookiePath) {
       throw JwtException.configMissing('refresh');
     }
 
+    // 환경별 도메인 설정
+    let domain: string | undefined;
+    if (mode === 'production') {
+      domain = cookieDomain || undefined;
+    } else {
+      domain = cookieDomainDev || undefined;
+    }
+
     res.clearCookie(refreshTokenStore, {
       httpOnly: true,
-      secure: mode === 'production',
-      // sameSite: 'strict',
-      sameSite: 'lax', // 'strict'는 서브 도메인 및 모바일 앱에서 문제가 발생할 수 있어 'lax'로 설정
+      secure: mode === 'production', // 로컬 환경에서는 false 허용
+      sameSite: 'none', // 모든 환경에서 크로스 사이트 요청 지원 (Origin 검증으로 CSRF 보호)
+      domain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
     });
   }
