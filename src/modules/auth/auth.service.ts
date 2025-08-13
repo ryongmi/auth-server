@@ -238,7 +238,7 @@ export class AuthService {
     const redirectSession = uuid();
     await this.redisService.setRedirectSession(redirectSession, redirectUri, 300);
 
-    // Portal Client로 리다이렉트
+    // Auth Client로 리다이렉트
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
     const authLoginUrl = `${authClientUrl}/login?redirect_session=${redirectSession}`;
 
@@ -292,7 +292,8 @@ export class AuthService {
 
       // 도메인:포트 검증
       const hostWithPort = url.port ? `${url.hostname}:${url.port}` : url.hostname;
-
+      console.log('url', url);
+      console.log('allowedDomains', allowedDomains);
       const isAllowed = allowedDomains.some((allowedDomain) => {
         // 1. 정확한 매치 (포트 포함) - 개발환경용
         if (hostWithPort === allowedDomain) return true;
