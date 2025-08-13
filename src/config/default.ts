@@ -7,7 +7,7 @@ export default (): DefaultConfig => {
     return {
       mode: undefined,
       port: parseInt(process.env.PORT ?? '8000', 10),
-      tcpPort: parseInt(process.env.PORT ?? '8010', 10),
+      tcpPort: parseInt(process.env.TCP_PORT ?? '8010', 10),
       corsOrigins: process.env.CORS_ORIGINS,
       oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
       authClientUrl: process.env.AUTH_CLIENT_URL,
@@ -19,7 +19,7 @@ export default (): DefaultConfig => {
   return {
     mode,
     port: parseInt(process.env.PORT ?? '8000', 10),
-    tcpPort: parseInt(process.env.PORT ?? '8010', 10),
+    tcpPort: parseInt(process.env.TCP_PORT ?? '8010', 10),
     corsOrigins: process.env.CORS_ORIGINS,
     oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
     authClientUrl: process.env.AUTH_CLIENT_URL,
