@@ -150,7 +150,8 @@ export class JwtTokenService {
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
-    const cookieDomainDev = this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
+    const cookieDomainDev =
+      this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !refreshMaxAge || !cookiePath) {
       throw JwtException.configMissing('refresh');
@@ -181,7 +182,8 @@ export class JwtTokenService {
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
-    const cookieDomainDev = this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
+    const cookieDomainDev =
+      this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !cookiePath) {
       throw JwtException.configMissing('refresh');

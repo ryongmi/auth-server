@@ -24,13 +24,13 @@ import { OAuthModule } from '@modules/oauth/index.js';
       throttlers: [
         {
           name: 'short',
-          ttl: 1000,  // 1초
-          limit: 3,   // 1초에 3번
+          ttl: 1000, // 1초
+          limit: 3, // 1초에 3번
         },
         {
-          name: 'medium', 
+          name: 'medium',
           ttl: 10000, // 10초
-          limit: 20,  // 10초에 20번
+          limit: 20, // 10초에 20번
         },
         {
           name: 'long',
