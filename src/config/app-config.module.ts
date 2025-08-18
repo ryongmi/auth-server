@@ -6,6 +6,7 @@ import { mysqlConfig, redisConfig } from './database.js';
 import { naverConfig } from './naver.js';
 import { googleConfig } from './google.js';
 import { jwtConfig } from './jwt.js';
+import { clientConfig } from './client.js';
 import { validationSchema } from './validation.schema.js';
 
 @Module({
@@ -13,7 +14,15 @@ import { validationSchema } from './validation.schema.js';
     ConfigModule.forRoot({
       isGlobal: true,
       // envFilePath: [`.env.${process.env.NODE_ENV}.local`],
-      load: [defaultConfig, mysqlConfig, redisConfig, googleConfig, naverConfig, jwtConfig],
+      load: [
+        defaultConfig,
+        clientConfig,
+        mysqlConfig,
+        redisConfig,
+        googleConfig,
+        naverConfig,
+        jwtConfig,
+      ],
       validationSchema,
     }),
   ],

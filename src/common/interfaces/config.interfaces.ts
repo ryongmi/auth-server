@@ -9,6 +9,13 @@ export interface DefaultConfig {
   allowedRedirectProtocols: string | undefined;
 }
 
+export interface ClientConfig {
+  authzServiceHost: string | undefined;
+  authzServicePort: number | undefined;
+  portalServiceHost: string | undefined;
+  portalServicePort: number | undefined;
+}
+
 export interface MysqlConfig {
   host: string | undefined;
   port: number | undefined;
