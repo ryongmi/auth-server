@@ -60,7 +60,7 @@ export class UserController {
     description: UserError.USER_SEARCH_ERROR.message,
   })
   @UseGuards(AccessTokenGuard)
-  @RequireRole(GLOBAL_ROLES.SUPER_ADMIN)
+  @RequireRole(GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN)
   @Serialize({
     dto: UserPaginatedSearchResultDto,
     ...UserResponse.USER_SEARCH_SUCCESS,
@@ -94,7 +94,6 @@ export class UserController {
     return await this.userService.getMyProfile(userId);
   }
 
-  // 권한 도입하면 체크하는 가드? 하나 넣어야할듯
   @Patch('me')
   @HttpCode(UserResponse.PROFILE_UPDATE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '본인 프로필 수정' })
@@ -121,7 +120,6 @@ export class UserController {
     return await this.userService.updateMyProfile(userId, body);
   }
 
-  // 권한 도입하면 체크하는 가드? 하나 넣어야할듯
   @Patch('password')
   @HttpCode(UserResponse.PASSWORD_CHANGE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '본인 비밀번호 수정' })
@@ -195,7 +193,7 @@ export class UserController {
     description: UserError.USER_FETCH_ERROR.message,
   })
   @UseGuards(AccessTokenGuard)
-  @RequireRole(GLOBAL_ROLES.SUPER_ADMIN)
+  @RequireRole(GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN)
   @Serialize({
     dto: UserDetailDto,
     ...UserResponse.USER_FETCH_SUCCESS,
