@@ -5,6 +5,7 @@ export interface DefaultConfig {
   corsOrigins: string | undefined;
   oauthRedirectSessionStore: string | undefined;
   authClientUrl: string | undefined;
+  portalClientUrl: string | undefined;
   allowedRedirectDomains: string | undefined;
   allowedRedirectProtocols: string | undefined;
 }

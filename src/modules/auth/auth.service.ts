@@ -354,7 +354,7 @@ export class AuthService {
 
     if (!domainsConfig) {
       // 기본값 (개발환경용)
-      return ['localhost:3000', 'localhost:3001', '127.0.0.1:3000'];
+      return ['krgeobuk.local:3000', 'krgeobuk.local:3001', 'localhost:3000', 'localhost:3001', '127.0.0.1:3000'];
     }
 
     return domainsConfig.split(',').map((domain: string) => domain.trim());
@@ -380,7 +380,7 @@ export class AuthService {
    * 기본 리다이렉트 URL 반환 (fallback)
    */
   private getDefaultRedirectUrl(): string {
-    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
-    return authClientUrl;
+    const portalClientUrl = this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
+    return portalClientUrl;
   }
 }

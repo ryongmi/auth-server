@@ -11,6 +11,7 @@ export default (): DefaultConfig => {
       corsOrigins: process.env.CORS_ORIGINS,
       oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
       authClientUrl: process.env.AUTH_CLIENT_URL,
+      portalClientUrl: process.env.PORTAL_CLIENT_URL,
       allowedRedirectDomains: process.env.ALLOWED_REDIRECT_DOMAINS,
       allowedRedirectProtocols: process.env.ALLOWED_REDIRECT_PROTOCOLS,
     };
@@ -23,6 +24,7 @@ export default (): DefaultConfig => {
     corsOrigins: process.env.CORS_ORIGINS,
     oauthRedirectSessionStore: process.env.OAUTH_REDIRECT_SESSION_STORE_NAME,
     authClientUrl: process.env.AUTH_CLIENT_URL,
+    portalClientUrl: process.env.PORTAL_CLIENT_URL,
     allowedRedirectDomains: process.env.ALLOWED_REDIRECT_DOMAINS,
     allowedRedirectProtocols: process.env.ALLOWED_REDIRECT_PROTOCOLS,
   };
