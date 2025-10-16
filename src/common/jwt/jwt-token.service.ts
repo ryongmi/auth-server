@@ -169,7 +169,7 @@ export class JwtTokenService {
     res.cookie(refreshTokenStore, refreshToken, {
       httpOnly: true,
       secure: mode === 'production', // 로컬 환경에서는 false 허용
-      sameSite: 'none', // 모든 환경에서 크로스 사이트 요청 지원 (Origin 검증으로 CSRF 보호)
+      sameSite: mode === 'production' ? 'none' : 'lax', // 개발: lax (서브도메인 공유), 프로덕션: none (크로스 도메인)
       domain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
       maxAge: refreshMaxAge, // 예: 7일
@@ -200,7 +200,7 @@ export class JwtTokenService {
     res.clearCookie(refreshTokenStore, {
       httpOnly: true,
       secure: mode === 'production', // 로컬 환경에서는 false 허용
-      sameSite: 'none', // 모든 환경에서 크로스 사이트 요청 지원 (Origin 검증으로 CSRF 보호)
+      sameSite: mode === 'production' ? 'none' : 'lax', // 개발: lax (서브도메인 공유), 프로덕션: none (크로스 도메인)
       domain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
     });
