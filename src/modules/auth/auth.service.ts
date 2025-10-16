@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager } from 'typeorm';
@@ -12,6 +12,7 @@ import type {
   AuthLoginRequest,
   AuthSignupRequest,
   AuthRefreshResponse,
+  AuthInitializeResponse,
 } from '@krgeobuk/auth/interfaces';
 import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 
@@ -221,6 +222,36 @@ export class AuthService {
     }
   }
 
+  async initialize(payload: JwtPayload): Promise<AuthInitializeResponse> {
+    this.logger.log(`${this.initialize.name} - 시작 되었습니다.`);
+
+    try {
+      // AccessToken 재발급
+      const accessToken = await this.jwtService.signToken(payload, 'access');
+
+      // 사용자 프로필 정보 조회
+      const user = await this.userService.getMyProfile(payload.sub);
+
+      this.logger.log(`${this.initialize.name} - 성공적으로 종료되었습니다.`);
+
+      return { accessToken, user };
+    } catch (error: unknown) {
+      // 내부 로그: 초기화 에러 상세 정보
+      const internalMessage = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : '';
+
+      this.logger.error(`[AUTH_INITIALIZE_ERROR] 초기화 실패 - Internal: ${internalMessage}`, {
+        action: 'initialize',
+        userId: payload.sub,
+        errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+        stack,
+      });
+
+      // 클라이언트용: 일반화된 에러 메시지
+      throw AuthException.refreshError();
+    }
+  }
+
   /**
    * SSO 로그인 리다이렉트 처리
    */
@@ -231,7 +262,7 @@ export class AuthService {
     const isValidRedirect = await this.validateRedirectUri(redirectUri, req);
     if (!isValidRedirect) {
       this.logger.warn(`[SSO_REDIRECT_ERROR] 잘못된 리다이렉트 URI: ${redirectUri}`);
-      throw new BadRequestException('Invalid redirect URI');
+      throw AuthException.invalidRedirectUri();
     }
 
     // 리다이렉트 세션 생성

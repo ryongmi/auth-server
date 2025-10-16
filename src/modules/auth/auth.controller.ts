@@ -23,6 +23,7 @@ import {
   AuthRefreshResponseDto,
   AuthLoginResponseDto,
   AuthSignupResponseDto,
+  AuthInitializeResponseDto,
 } from '@krgeobuk/auth/dtos';
 import { AuthError } from '@krgeobuk/auth/exception';
 import { AuthResponse } from '@krgeobuk/auth/response';
@@ -54,8 +55,8 @@ export class AuthController {
     description: AuthResponse.SSO_LOGIN_START_REDIRECT.message,
   })
   @SwaggerApiErrorResponse({
-    status: 400,
-    description: '잘못된 리다이렉트 URI',
+    status: AuthError.INVALID_REDIRECT_URI.statusCode,
+    description: AuthError.INVALID_REDIRECT_URI.message,
   })
   async ssoLoginRedirect(
     @Query('redirect_uri') redirectUri: string,
@@ -175,5 +176,32 @@ export class AuthController {
     };
 
     return await this.authService.refresh(payload);
+  }
+
+  @Post('initialize')
+  @HttpCode(AuthResponse.INITIALIZE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '클라이언트 초기화 (RefreshToken으로 AccessToken 및 사용자 정보 반환)' })
+  @SwaggerApiOkResponse({
+    status: AuthResponse.INITIALIZE_SUCCESS.statusCode,
+    description: AuthResponse.INITIALIZE_SUCCESS.message,
+    dto: AuthInitializeResponseDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: AuthError.REFRESH_ERROR.statusCode,
+    description: AuthError.REFRESH_ERROR.message,
+  })
+  @UseGuards(ThrottlerGuard, RefreshTokenGuard, OriginValidationGuard)
+  @Throttle({ short: { ttl: 1000, limit: 3 } }) // 1초에 3번으로 제한
+  @Serialize({
+    dto: AuthInitializeResponseDto,
+    ...AuthResponse.INITIALIZE_SUCCESS,
+  })
+  async initialize(@CurrentJwt() jwt: AuthenticatedJwt): Promise<AuthInitializeResponseDto> {
+    const payload: JwtPayload = {
+      sub: jwt.userId,
+      tokenData: jwt.tokenData,
+    };
+
+    return await this.authService.initialize(payload);
   }
 }
