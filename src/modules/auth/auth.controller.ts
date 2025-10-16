@@ -115,7 +115,7 @@ export class AuthController {
   }
 
   @Post('/signup')
-  @HttpCode(AuthResponse.SSO_SIGNUP_REDIRECT.statusCode)
+  // @HttpCode(AuthResponse.SSO_SIGNUP_REDIRECT.statusCode)
   @UseInterceptors(TransactionInterceptor)
   @SwaggerApiOperation({ summary: 'SSO 회원가입 처리' })
   @SwaggerApiBody({
