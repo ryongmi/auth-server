@@ -253,8 +253,9 @@ export class UserService {
     try {
       if (!this.authzClient) return [];
       const result = await firstValueFrom<string[]>(
-        this.authzClient.send('authorization.getUserRoles', { userId })
+        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_ROLES, { userId })
       );
+
       return result || [];
     } catch (error: unknown) {
       this.logger.warn('Authz service unavailable for getUserRoles', {
@@ -269,8 +270,9 @@ export class UserService {
     try {
       if (!this.authzClient) return [];
       const result = await firstValueFrom<string[]>(
-        this.authzClient.send('authorization.getUserPermissions', { userId })
+        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_PERMISSIONS, { userId })
       );
+
       return result || [];
     } catch (error: unknown) {
       this.logger.warn('Authz service unavailable for getUserPermissions', {
