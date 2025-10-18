@@ -223,6 +223,7 @@ export class OAuthService {
         user.profileImageUrl ||=
           'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
         user.isIntegrated = true;
+        user.isEmailVerified = true;
 
         const oauth = (await this.findByAnd({ userId: user.id }))[0];
         if (!oauth) {
@@ -259,6 +260,7 @@ export class OAuthService {
         nickname: 'nickname' in userInfo ? userInfo.nickname : userInfo.name,
         profileImageUrl: 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture,
         isIntegrated: true,
+        isEmailVerified: true,
       };
 
       // 이메일이 존재하지 않는 경우 새 사용자 생성
