@@ -227,7 +227,8 @@ export class AuthService {
 
     try {
       // AccessToken 재발급
-      const accessToken = await this.jwtService.signToken(payload, 'access');
+      const accessToken =
+        payload.sub === '' ? '' : await this.jwtService.signToken(payload, 'access');
 
       // 사용자 프로필 정보 조회
       const user = await this.userService.getMyProfile(payload.sub);
@@ -323,7 +324,7 @@ export class AuthService {
 
       // 도메인:포트 검증
       const hostWithPort = url.port ? `${url.hostname}:${url.port}` : url.hostname;
-      
+
       const isAllowed = allowedDomains.some((allowedDomain) => {
         // 1. 정확한 매치 (포트 포함) - 개발환경용
         if (hostWithPort === allowedDomain) return true;
@@ -410,7 +411,8 @@ export class AuthService {
    * 기본 리다이렉트 URL 반환 (fallback)
    */
   private getDefaultRedirectUrl(): string {
-    const portalClientUrl = this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
+    const portalClientUrl =
+      this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
     return portalClientUrl;
   }
 }

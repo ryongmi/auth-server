@@ -37,7 +37,7 @@ import {
 import { JwtPayload, AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
-import { RefreshTokenGuard } from '@common/jwt/index.js';
+import { RefreshTokenGuard, OptionalRefreshTokenGuard } from '@common/jwt/index.js';
 import { OriginValidationGuard } from '@common/guards/origin-validation.guard.js';
 
 import { AuthService } from './auth.service.js';
@@ -180,7 +180,9 @@ export class AuthController {
 
   @Post('initialize')
   @HttpCode(AuthResponse.INITIALIZE_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '클라이언트 초기화 (RefreshToken으로 AccessToken 및 사용자 정보 반환)' })
+  @SwaggerApiOperation({
+    summary: '클라이언트 초기화 (RefreshToken으로 AccessToken 및 사용자 정보 반환)',
+  })
   @SwaggerApiOkResponse({
     status: AuthResponse.INITIALIZE_SUCCESS.statusCode,
     description: AuthResponse.INITIALIZE_SUCCESS.message,
@@ -190,7 +192,7 @@ export class AuthController {
     status: AuthError.REFRESH_ERROR.statusCode,
     description: AuthError.REFRESH_ERROR.message,
   })
-  @UseGuards(ThrottlerGuard, RefreshTokenGuard, OriginValidationGuard)
+  @UseGuards(ThrottlerGuard, OptionalRefreshTokenGuard, OriginValidationGuard)
   @Throttle({ short: { ttl: 1000, limit: 3 } }) // 1초에 3번으로 제한
   @Serialize({
     dto: AuthInitializeResponseDto,
