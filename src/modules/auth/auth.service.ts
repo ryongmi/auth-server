@@ -384,7 +384,7 @@ export class AuthService {
 
     if (!domainsConfig) {
       // 기본값 (개발환경용)
-      return ['krgeobuk.local:3000', 'krgeobuk.local:3001', 'localhost:3000', 'localhost:3001', '127.0.0.1:3000'];
+      return ['localhost:3000', 'localhost:3200', 'localhost:3210', '127.0.0.1:3000'];
     }
 
     return domainsConfig.split(',').map((domain: string) => domain.trim());
