@@ -12,7 +12,6 @@ export const jwtConfig = registerAs('jwt', () => ({
   sessionCookiePath: process.env.JWT_SESSION_COOKIE_PATH,
   refreshMaxAge: process.env.JWT_REFRESH_MAX_AGE,
   cookieDomain: process.env.JWT_COOKIE_DOMAIN,
-  cookieDomainDev: process.env.JWT_COOKIE_DOMAIN_DEV,
   refreshStore: process.env.JWT_REFRESH_STORE_NAME,
   blackListStore: process.env.JWT_BLACKLIST_STORE_NAME,
   naverStateStore: process.env.JWT_NAVER_STATE_STORE_NAME,

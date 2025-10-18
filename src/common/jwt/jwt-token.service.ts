@@ -150,27 +150,17 @@ export class JwtTokenService {
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
-    const cookieDomainDev =
-      this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !refreshMaxAge || !cookiePath) {
       throw JwtException.configMissing('refresh');
     }
     if (!refreshToken) throw JwtException.notFound('refresh');
 
-    // 환경별 도메인 설정
-    let domain: string | undefined;
-    if (mode === 'production') {
-      domain = cookieDomain || undefined;
-    } else {
-      domain = cookieDomainDev || undefined;
-    }
-
     res.cookie(refreshTokenStore, refreshToken, {
       httpOnly: true,
       secure: mode === 'production', // 로컬 환경에서는 false 허용
       sameSite: mode === 'production' ? 'none' : 'lax', // 개발: lax (서브도메인 공유), 프로덕션: none (크로스 도메인)
-      domain, // 서브도메인 공유를 위한 도메인 설정
+      domain: cookieDomain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
       maxAge: refreshMaxAge, // 예: 7일
     });
@@ -182,26 +172,16 @@ export class JwtTokenService {
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
-    const cookieDomainDev =
-      this.configService.get<JwtConfig['cookieDomainDev']>('jwt.cookieDomainDev');
 
     if (!refreshTokenStore || !mode || !cookiePath) {
       throw JwtException.configMissing('refresh');
-    }
-
-    // 환경별 도메인 설정
-    let domain: string | undefined;
-    if (mode === 'production') {
-      domain = cookieDomain || undefined;
-    } else {
-      domain = cookieDomainDev || undefined;
     }
 
     res.clearCookie(refreshTokenStore, {
       httpOnly: true,
       secure: mode === 'production', // 로컬 환경에서는 false 허용
       sameSite: mode === 'production' ? 'none' : 'lax', // 개발: lax (서브도메인 공유), 프로덕션: none (크로스 도메인)
-      domain, // 서브도메인 공유를 위한 도메인 설정
+      domain: cookieDomain, // 서브도메인 공유를 위한 도메인 설정
       path: cookiePath,
     });
   }
