@@ -1,6 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
+import { UserTcpPatterns } from '@krgeobuk/user/tcp';
 import type { UserDetail, UserFilter } from '@krgeobuk/user/interfaces';
 
 import { UserService } from './user.service.js';
@@ -19,7 +20,7 @@ export class UserTcpController {
   /**
    * 사용자 ID로 사용자 정보 조회
    */
-  @MessagePattern('user.findById')
+  @MessagePattern(UserTcpPatterns.FIND_BY_ID)
   async findUserById(@Payload() data: { userId: string }): Promise<UserEntity | null> {
     this.logger.log(`TCP: Finding user by ID: ${data.userId}`);
 
@@ -64,7 +65,7 @@ export class UserTcpController {
   /**
    * 여러 사용자 ID로 사용자 목록 조회
    */
-  @MessagePattern('user.findByIds')
+  @MessagePattern(UserTcpPatterns.FIND_BY_IDS)
   async findUsersByIds(@Payload() data: { userIds: string[] }): Promise<UserEntity[]> {
     this.logger.log(`TCP: Finding users by IDs: ${data.userIds.join(', ')}`);
 
@@ -94,7 +95,7 @@ export class UserTcpController {
   /**
    * 사용자 존재 여부 확인
    */
-  @MessagePattern('user.exists')
+  @MessagePattern(UserTcpPatterns.EXISTS)
   async checkUserExists(@Payload() data: { userId: string }): Promise<boolean> {
     this.logger.log(`TCP: Checking if user exists: ${data.userId}`);
 
