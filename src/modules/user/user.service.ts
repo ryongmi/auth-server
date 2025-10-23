@@ -253,7 +253,7 @@ export class UserService {
     try {
       if (!this.authzClient) return [];
       const result = await firstValueFrom<string[]>(
-        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_ROLES, { userId })
+        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_ROLE_NAMES, { userId })
       );
 
       return result || [];
@@ -270,7 +270,7 @@ export class UserService {
     try {
       if (!this.authzClient) return [];
       const result = await firstValueFrom<string[]>(
-        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_PERMISSIONS, { userId })
+        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_PERMISSION_ACTIONS, { userId })
       );
 
       return result || [];
