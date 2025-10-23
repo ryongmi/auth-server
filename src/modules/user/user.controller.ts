@@ -36,7 +36,8 @@ import {
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard, OptionalAccessTokenGuard } from '@krgeobuk/jwt/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
 import { GLOBAL_ROLES } from '@krgeobuk/core/constants';
 
 import { UserService } from './user.service.js';
@@ -59,8 +60,11 @@ export class UserController {
     status: UserError.USER_SEARCH_ERROR.statusCode,
     description: UserError.USER_SEARCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
-  @RequireRole(GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN)
+  @UseGuards(AccessTokenGuard, AuthorizationGuard)
+  @RequireAccess({
+    roles: [GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN],
+    roleOperator: 'OR',
+  })
   @Serialize({
     dto: UserPaginatedSearchResultDto,
     ...UserResponse.USER_SEARCH_SUCCESS,
@@ -192,8 +196,11 @@ export class UserController {
     status: UserError.USER_FETCH_ERROR.statusCode,
     description: UserError.USER_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
-  @RequireRole(GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN)
+  @UseGuards(AccessTokenGuard, AuthorizationGuard)
+  @RequireAccess({
+    roles: [GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN],
+    roleOperator: 'OR',
+  })
   @Serialize({
     dto: UserDetailDto,
     ...UserResponse.USER_FETCH_SUCCESS,
