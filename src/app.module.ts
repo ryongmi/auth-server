@@ -13,6 +13,7 @@ import { SharedClientsModule } from '@common/clients/shared-clients.module.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
+import { ImageModule } from '@modules/image/image.module.js';
 
 // import { SeederModule } from './seeder/seeder.module';
 
@@ -47,6 +48,7 @@ import { OAuthModule } from '@modules/oauth/index.js';
     UserModule,
     AuthModule,
     OAuthModule,
+    ImageModule,
     // RouterModule.register([
     //   {
     //     path: 'api',
