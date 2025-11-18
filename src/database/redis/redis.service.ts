@@ -106,4 +106,33 @@ export class RedisService {
 
     await this.deleteValue(`${stateStore}${state}`);
   }
+
+  // ==================== 비밀번호 재설정 토큰 관리 ====================
+
+  /**
+   * 비밀번호 재설정 토큰 저장
+   * @param token UUID v4 토큰
+   * @param userId 사용자 ID
+   * @param ttl TTL (기본값: 3600초 = 1시간)
+   */
+  async setPasswordResetToken(token: string, userId: string, ttl: number = 3600): Promise<void> {
+    await this.setExValue(`password_reset:${token}`, ttl, userId);
+  }
+
+  /**
+   * 비밀번호 재설정 토큰으로 사용자 ID 조회
+   * @param token UUID v4 토큰
+   * @returns 사용자 ID 또는 null
+   */
+  async getPasswordResetToken(token: string): Promise<string | null> {
+    return await this.getValue(`password_reset:${token}`);
+  }
+
+  /**
+   * 비밀번호 재설정 토큰 삭제 (일회성)
+   * @param token UUID v4 토큰
+   */
+  async deletePasswordResetToken(token: string): Promise<void> {
+    await this.deleteValue(`password_reset:${token}`);
+  }
 }
