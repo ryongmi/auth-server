@@ -20,6 +20,18 @@ export class OAuthAccountEntity extends BaseEntityUUID {
   // @Column({ type: 'varchar', length: 255 })
   // email!: string; // OAuth에서 받은 이메일, 통합 판단 시 참고용
 
+  @Column({ type: 'text', nullable: true })
+  accessToken?: string | null; // OAuth access token (encrypted)
+
+  @Column({ type: 'text', nullable: true })
+  refreshToken?: string | null; // OAuth refresh token (encrypted)
+
+  @Column({ type: 'timestamp', nullable: true })
+  tokenExpiresAt?: Date | null; // Access token 만료 시간
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  scopes?: string | null; // OAuth 권한 범위 (쉼표로 구분)
+
   @Column({ type: 'uuid' })
   userId!: string; // FK 없이 userId 저장해서 직접 조회
 }

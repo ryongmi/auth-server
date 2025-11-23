@@ -10,8 +10,11 @@ import type {
   NaverOAuthCallbackQuery,
   NaverUserProfileResponse,
   GoogleUserProfileResponse,
+  GoogleTokenResponse,
+  NaverTokenResponse,
 } from '@krgeobuk/oauth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
+import { OauthStateMode } from '@krgeobuk/oauth/enum';
 
 import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
@@ -28,7 +31,6 @@ export class OAuthService {
   private readonly logger = new Logger(OAuthService.name);
 
   constructor(
-    // private readonly dataSource: DataSource,
     private readonly jwtService: JwtTokenService,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
@@ -39,14 +41,13 @@ export class OAuthService {
   ) {}
 
   // state 값 생성
-  async generateState(type: OAuthAccountProviderType, redirectSession?: string): Promise<string> {
+  async generateState(type: OAuthAccountProviderType, stateData?: string): Promise<string> {
     this.logger.log(`${this.generateState.name} - 시작 되었습니다.`);
 
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
 
-    // redirectSession이 있으면 state를 redirectSession으로 사용
-    await this.redisService.setOAuthState(type, state, redirectSession, 300);
+    await this.redisService.setOAuthState(type, state, stateData, 300);
 
     this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -62,6 +63,33 @@ export class OAuthService {
     this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
 
     return value !== null; // state가 존재하면 유효한 state
+  }
+
+  // state에서 데이터 파싱 (mode, userId, returnUrl 등)
+  async getStateData(
+    state: string,
+    type: OAuthAccountProviderType
+  ): Promise<{
+    mode?: string;
+    userId?: string;
+    redirectSession?: string;
+  } | null> {
+    this.logger.log(`${this.getStateData.name} - 시작 되었습니다.`);
+
+    const value = await this.redisService.getOAuthState(type, state);
+
+    if (!value) return null;
+
+    // JSON 형식인 경우 파싱
+    try {
+      const parsed = JSON.parse(value);
+      this.logger.log(`${this.getStateData.name} - 성공적으로 종료되었습니다.`);
+      return parsed;
+    } catch {
+      // JSON이 아닌 경우 null 반환
+      this.logger.log(`${this.getStateData.name} - 성공적으로 종료되었습니다.`);
+      return null;
+    }
   }
 
   // 인증 후 state 삭제
@@ -123,30 +151,70 @@ export class OAuthService {
     const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
     const providerType = OAuthAccountProviderType.NAVER;
 
-    const user = await this.oauthLogin(naverUserInfo, providerType, transactionManager);
+    // state에서 mode 파싱
+    const stateData = await this.getStateData(query.state, providerType);
 
-    // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    const payload = {
-      sub: user.id,
-      tokenData,
-      // provider: ProviderType.NAVER,
-    };
+    if (!stateData?.mode) {
+      throw OAuthException.invalidState();
+    }
 
-    const { accessToken, refreshToken } =
-      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+    this.deleteState(query.state, providerType);
 
-    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+    // 계정 연동 모드인 경우
+    if (stateData.mode === OauthStateMode.LINK) {
+      await this.linkOAuthAccount(
+        stateData.userId!,
+        providerType,
+        naverUserInfo,
+        tokenData,
+        transactionManager
+      );
 
-    // SSO 리다이렉트 처리
+      // 연동 완료 후 계정 설정 페이지로 리다이렉트
+      const authClientUrl = this.configService.get('authClientUrl')!;
 
-    const redirectUrl = await this.handleSSORedirect(
-      query.state,
-      providerType,
-      accessToken,
-      refreshToken
-    );
+      return `${authClientUrl}/settings/accounts?linked=true&provider=${providerType}`;
+    }
 
-    return redirectUrl;
+    // 일반 로그인 모드
+    if (stateData.mode === OauthStateMode.LOGIN) {
+      const user = await this.oauthLogin(
+        naverUserInfo,
+        providerType,
+        tokenData,
+        transactionManager
+      );
+
+      // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
+      const payload = {
+        sub: user.id,
+        tokenData,
+      };
+
+      const { refreshToken } = await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+      // SSO 리다이렉트 처리
+      if (stateData.redirectSession) {
+        const sessionData = await this.redisService.getRedirectSession(stateData.redirectSession);
+        if (sessionData) {
+          await this.redisService.deleteRedirectSession(stateData.redirectSession);
+          this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
+          return sessionData.redirectUri;
+        }
+      }
+
+      const portalClientUrl =
+        this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
+
+      this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
+
+      return portalClientUrl;
+    }
+
+    // 잘못된 mode
+    throw OAuthException.invalidState();
   }
 
   async loginGoogle(
@@ -159,32 +227,71 @@ export class OAuthService {
     const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
     const providerType = OAuthAccountProviderType.GOOGLE;
 
-    const user = await this.oauthLogin(googleUserInfo, providerType, transactionManager);
+    // state에서 mode 파싱
+    const stateData = await this.getStateData(query.state, providerType);
 
-    // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-    const payload = {
-      sub: user.id,
-      tokenData,
-      // provider: ProviderType.GOOGLE,
-    };
+    if (!stateData?.mode) {
+      throw OAuthException.invalidState();
+    }
 
-    const { accessToken, refreshToken } =
-      await this.jwtService.signAccessTokenAndRefreshToken(payload);
+    this.deleteState(query.state, providerType);
 
-    this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+    // 계정 연동 모드인 경우
+    if (stateData.mode === OauthStateMode.LINK) {
+      await this.linkOAuthAccount(
+        stateData.userId!,
+        providerType,
+        googleUserInfo,
+        tokenData,
+        transactionManager
+      );
 
-    // SSO 리다이렉트 처리
+      // 연동 완료 후 계정 설정 페이지로 리다이렉트
+      const authClientUrl =
+        this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
 
-    const redirectUrl = await this.handleSSORedirect(
-      query.state,
-      providerType,
-      accessToken,
-      refreshToken
-    );
+      return `${authClientUrl}/settings/accounts?linked=true&provider=${providerType}`;
+    }
 
-    this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
+    // 일반 로그인 모드
+    if (stateData.mode === OauthStateMode.LOGIN) {
+      const user = await this.oauthLogin(
+        googleUserInfo,
+        providerType,
+        tokenData,
+        transactionManager
+      );
 
-    return redirectUrl;
+      // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
+      const payload = {
+        sub: user.id,
+        tokenData,
+      };
+
+      const { refreshToken } = await this.jwtService.signAccessTokenAndRefreshToken(payload);
+
+      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
+
+      // SSO 리다이렉트 처리
+      if (stateData.redirectSession) {
+        const sessionData = await this.redisService.getRedirectSession(stateData.redirectSession);
+        if (sessionData) {
+          await this.redisService.deleteRedirectSession(stateData.redirectSession);
+          this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
+          return sessionData.redirectUri;
+        }
+      }
+
+      const portalClientUrl =
+        this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
+
+      this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
+
+      return portalClientUrl;
+    }
+
+    // 잘못된 mode
+    throw OAuthException.invalidState();
   }
 
   async createOAuthAccount(
@@ -205,9 +312,98 @@ export class OAuthService {
     return this.oauthRepo.updateEntity(oauthAccountEntity, transactionManager);
   }
 
+  /**
+   * 사용자가 연동한 OAuth 계정 목록 조회
+   */
+  async getLinkedAccounts(userId: string): Promise<OAuthAccountEntity[]> {
+    this.logger.log(`${this.getLinkedAccounts.name} - userId: ${userId}`);
+    return this.findByAnd({ userId });
+  }
+
+  /**
+   * OAuth 계정 연동 해제
+   * 최소 1개의 로그인 방식은 유지되어야 함
+   */
+  async unlinkOAuthAccount(userId: string, provider: OAuthAccountProviderType): Promise<void> {
+    this.logger.log(`${this.unlinkOAuthAccount.name} - userId: ${userId}, provider: ${provider}`);
+
+    // provider 검증
+    if (!Object.values(OAuthAccountProviderType).includes(provider)) {
+      throw OAuthException.unsupportedProvider(provider);
+    }
+
+    // 1. 현재 연동된 계정 개수 확인
+    const linkedAccounts = await this.getLinkedAccounts(userId);
+
+    if (linkedAccounts.length <= 1) {
+      throw OAuthException.cannotUnlinkLastAccount();
+    }
+
+    // 2. 해당 provider 연동 해제
+    const targetAccount = linkedAccounts.find((acc) => acc.provider === provider);
+
+    if (!targetAccount) {
+      throw OAuthException.providerNotLinked(provider);
+    }
+
+    await this.oauthRepo.delete(targetAccount.id);
+
+    this.logger.log(`${this.unlinkOAuthAccount.name} - 성공적으로 종료되었습니다.`);
+  }
+
+  /**
+   * OAuth 계정 연동 (이미 로그인된 사용자가 추가 OAuth provider 연결)
+   */
+  async linkOAuthAccount(
+    userId: string,
+    provider: OAuthAccountProviderType,
+    userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
+    tokenData: NaverTokenResponse | GoogleTokenResponse,
+    transactionManager?: EntityManager
+  ): Promise<OAuthAccountEntity> {
+    this.logger.log(`${this.linkOAuthAccount.name} - userId: ${userId}, provider: ${provider}`);
+
+    // 1. 이미 해당 provider가 다른 유저에게 연동되어 있는지 확인
+    const existingOAuth = await this.findByAnd({ providerId: userInfo.id, provider });
+
+    if (existingOAuth.length > 0 && existingOAuth[0]?.userId !== userId) {
+      throw OAuthException.alreadyLinkedToAnotherAccount(provider);
+    }
+
+    // 2. 이미 현재 유저에게 연동되어 있는지 확인
+    // const alreadyLinked = await this.findByAnd({ userId, provider });
+
+    // if (alreadyLinked.length > 0) {
+    //   throw OAuthException.providerAlreadyLinked(provider);
+    // }
+    if (existingOAuth.length > 0 && existingOAuth[0]?.userId === userId) {
+      throw OAuthException.providerAlreadyLinked(provider);
+    }
+
+    // 3. OAuth 계정 연동
+    const oauthAccountAttrs: Partial<OAuthAccountEntity> = {
+      userId,
+      provider,
+      providerId: userInfo.id,
+      accessToken: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken ?? null,
+      tokenExpiresAt: tokenData.expiresIn
+        ? new Date(Date.now() + tokenData.expiresIn * 1000)
+        : null,
+      scopes: 'scope' in tokenData ? tokenData.scope : null,
+    };
+
+    const linkedAccount = await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
+
+    this.logger.log(`${this.linkOAuthAccount.name} - 성공적으로 종료되었습니다.`);
+
+    return linkedAccount;
+  }
+
   private async oauthLogin(
     userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
-    ProviderType: OAuthAccountProviderType,
+    provider: OAuthAccountProviderType,
+    tokenData: NaverTokenResponse | GoogleTokenResponse,
     transactionManager: EntityManager
   ): Promise<UserEntity> {
     this.logger.log(`${this.oauthLogin.name} - 시작 되었습니다.`);
@@ -215,33 +411,33 @@ export class OAuthService {
     let user = (await this.userService.findByAnd({ email: userInfo.email }))[0];
 
     if (user) {
-      // 이메일이 이미 존재하는 경우 계정 병합
-      if (!user.isIntegrated) {
-        // 처음 병합할 경우 필요한 정보 업데이트
-        user.name ||= userInfo.name;
-        user.nickname ||= 'nickname' in userInfo ? userInfo.nickname : userInfo.name;
-        user.profileImageUrl ||=
-          'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture;
-        user.isIntegrated = true;
-        user.isEmailVerified = true;
+      // 이메일이 이미 존재하는 경우 계정 연동
 
-        const oauth = (await this.findByAnd({ userId: user.id }))[0];
-        if (!oauth) {
-          // 내부 로그: OAuth 계정 누락 에러
-          this.logger.error(`[OAUTH_ACCOUNT_NOT_FOUND] 사용자 통합 계정 처리 중 OAuth 계정 누락`, {
-            action: 'user_integration',
-            userId: user.id,
-            userEmail: user.email,
-            expectedProvider: 'existing_oauth_account',
-          });
-
-          throw OAuthException.userSaveFailed(ProviderType);
-        }
-
+      const oauth = (
+        await this.findByAnd({ userId: user.id, provider, providerId: userInfo.id })
+      )[0];
+      if (!oauth) {
         const oauthAccountAttrs = {
           providerId: userInfo.id,
-          provider: ProviderType,
+          provider,
           userId: user.id,
+          accessToken: tokenData.accessToken,
+          refreshToken: tokenData.refreshToken ?? null,
+          tokenExpiresAt: tokenData.expiresIn
+            ? new Date(Date.now() + tokenData.expiresIn * 1000)
+            : null,
+          scopes: 'scope' in tokenData ? tokenData.scope : null,
+        };
+
+        await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
+      } else {
+        const oauthAccountAttrs = {
+          accessToken: tokenData.accessToken,
+          refreshToken: tokenData.refreshToken ?? null,
+          tokenExpiresAt: tokenData.expiresIn
+            ? new Date(Date.now() + tokenData.expiresIn * 1000)
+            : null,
+          scopes: 'scope' in tokenData ? tokenData.scope : null,
         };
 
         Object.assign(oauth, oauthAccountAttrs);
@@ -252,7 +448,7 @@ export class OAuthService {
       // 마지막 접속일 업데이트
       // user.lastLogin = new Date();
 
-      await this.userService.updateUser(user, transactionManager);
+      // await this.userService.updateUser(user, transactionManager);
     } else {
       const userAttrs = {
         email: userInfo.email,
@@ -268,8 +464,14 @@ export class OAuthService {
 
       const oauthAccountAttrs = {
         providerId: userInfo.id,
-        provider: ProviderType,
+        provider,
         userId: user.id,
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken ?? null,
+        tokenExpiresAt: tokenData.expiresIn
+          ? new Date(Date.now() + tokenData.expiresIn * 1000)
+          : null,
+        scopes: 'scope' in tokenData ? tokenData.scope : null,
       };
 
       await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
@@ -278,45 +480,5 @@ export class OAuthService {
     this.logger.log(`${this.oauthLogin.name} - 성공적으로 종료되었습니다.`);
 
     return user;
-  }
-
-  /**
-   * SSO 리다이렉트 처리 (OAuth용)
-   */
-  private async handleSSORedirect(
-    state: string,
-    type: OAuthAccountProviderType,
-    _accessToken: string,
-    _refreshToken: string
-  ): Promise<string> {
-    const portalClientUrl =
-      this.configService.get<DefaultConfig['portalClientUrl']>(`portalClientUrl`)!;
-
-    // 구글과 네이버 state store에서 redirect session 정보 확인
-    let redirectSessionId: string | null = null;
-
-    const stateValue = await this.redisService.getOAuthState(type, state);
-    if (stateValue && stateValue !== 'pending') {
-      redirectSessionId = stateValue;
-    }
-
-    if (!redirectSessionId) return portalClientUrl;
-
-    // redirect session 데이터 확인
-    const sessionData = await this.redisService.getRedirectSession(redirectSessionId);
-
-    if (sessionData) {
-      const { redirectUri } = sessionData;
-
-      // 세션 정리
-      await this.redisService.deleteRedirectSession(redirectSessionId);
-
-      // 원래 서비스로 리다이렉트 (토큰 포함)
-      // const callbackUrl = `${redirectUri}?token=${accessToken}&refresh_token=${refreshToken}`;
-      const callbackUrl = `${redirectUri}`;
-      return callbackUrl;
-    }
-
-    return portalClientUrl;
   }
 }

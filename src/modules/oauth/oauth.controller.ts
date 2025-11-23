@@ -10,14 +10,20 @@ import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeob
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { OAuthError } from '@krgeobuk/oauth/exception';
 import { OAuthResponse } from '@krgeobuk/oauth/response';
+import { OauthStateMode } from '@krgeobuk/oauth/enum';
+import '@krgeobuk/core/interfaces/express';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
+  SwaggerApiBearerAuth,
 } from '@krgeobuk/swagger/decorators';
+import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
+import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
 import { GoogleConfig, NaverConfig } from '@common/interfaces/index.js';
+import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
 
 import { NaverOAuthStateGuard, GoogleOAuthStateGuard } from './guards/oauth-state.guard.js';
 import { OAuthService } from './oauth.service.js';
@@ -41,10 +47,11 @@ export class OAuthController {
     @Res() res: Response,
     @Query('redirect_session') redirectSession: string
   ): Promise<void> {
-    const state = await this.oauthService.generateState(
-      OAuthAccountProviderType.GOOGLE,
-      redirectSession
-    );
+    const stateData = JSON.stringify({
+      mode: OauthStateMode.LOGIN,
+      redirectSession,
+    });
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.GOOGLE, stateData);
     const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
     const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
 
@@ -92,10 +99,11 @@ export class OAuthController {
     @Res() res: Response,
     @Query('redirect_session') redirectSession: string
   ): Promise<void> {
-    const state = await this.oauthService.generateState(
-      OAuthAccountProviderType.NAVER,
-      redirectSession
-    );
+    const stateData = JSON.stringify({
+      mode: OauthStateMode.LOGIN,
+      redirectSession,
+    });
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.NAVER, stateData);
     const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
     const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
 
@@ -129,5 +137,77 @@ export class OAuthController {
   ): Promise<void> {
     const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
     return res.redirect(redirectUrl);
+  }
+
+  /**
+   * OAuth 계정 연동 엔드포인트
+   * 로그인된 사용자가 추가 OAuth provider를 연결할 때 사용
+   */
+
+  @Get('link-google')
+  @HttpCode(OAuthResponse.GOOGLE_LINK_START_REDIRECT.statusCode)
+  @SwaggerApiBearerAuth()
+  @UseGuards(RefreshTokenGuard)
+  @SwaggerApiOperation({ summary: 'Google OAuth 계정 연동 시작' })
+  @SwaggerApiOkResponse({
+    status: OAuthResponse.GOOGLE_LINK_START_REDIRECT.statusCode,
+    description: OAuthResponse.GOOGLE_LINK_START_REDIRECT.message,
+  })
+  async linkGoogle(
+    @Res() res: Response,
+    @CurrentJwt() { userId }: AuthenticatedJwt
+  ): Promise<void> {
+    // state에 mode와 userId만 포함
+    const stateData = JSON.stringify({
+      mode: OauthStateMode.LINK,
+      userId,
+    });
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.GOOGLE, stateData);
+
+    const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
+    const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
+
+    const url =
+      'https://accounts.google.com/o/oauth2/v2/auth' +
+      `?client_id=${clientId}` +
+      `&redirect_uri=${redirectUrl}` +
+      '&response_type=code' +
+      '&scope=email profile' +
+      `&state=${state}`;
+
+    return res.redirect(url);
+  }
+
+  @Get('link-naver')
+  @HttpCode(OAuthResponse.NAVER_LINK_START_REDIRECT.statusCode)
+  @SwaggerApiBearerAuth()
+  @UseGuards(RefreshTokenGuard)
+  @SwaggerApiOperation({ summary: 'Naver OAuth 계정 연동 시작' })
+  @SwaggerApiOkResponse({
+    status: OAuthResponse.NAVER_LINK_START_REDIRECT.statusCode,
+    description: OAuthResponse.NAVER_LINK_START_REDIRECT.message,
+  })
+  async linkNaver(
+    @Res() res: Response,
+    @CurrentJwt() { userId }: AuthenticatedJwt
+  ): Promise<void> {
+    // state에 mode와 userId만 포함
+    const stateData = JSON.stringify({
+      mode: OauthStateMode.LINK,
+      userId,
+    });
+    const state = await this.oauthService.generateState(OAuthAccountProviderType.NAVER, stateData);
+
+    const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
+    const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
+
+    const url =
+      'https://nid.naver.com/oauth2.0/authorize' +
+      `?client_id=${clientId}` +
+      `&redirect_uri=${redirectUrl}` +
+      '&response_type=code' +
+      `&state=${state}`;
+
+    return res.redirect(url);
   }
 }

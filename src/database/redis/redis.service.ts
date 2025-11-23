@@ -80,13 +80,13 @@ export class RedisService {
   async setOAuthState(
     type: OAuthAccountProviderType,
     state: string,
-    redirectSession?: string,
+    stateData?: string,
     ttl: number = 300
   ): Promise<void> {
     const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
       `jwt.${type}StateStore`
     )!;
-    const stateValue = redirectSession || 'pending';
+    const stateValue = stateData || 'pending';
 
     await this.setExValue(`${stateStore}${state}`, ttl, stateValue);
   }

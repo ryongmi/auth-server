@@ -41,8 +41,8 @@ export abstract class BaseOAuthStateGuard implements CanActivate {
       throw OAuthException.stateExpired(this.providerType);
     }
 
-    // 4. 검증 완료된 State 삭제
-    await this.oauthService.deleteState(state, this.providerType);
+    // 4. 검증 완료된 State 삭제 - state에 redirectUrl, mode 추가로 삭제 안함
+    // await this.oauthService.deleteState(state, this.providerType);
 
     return true;
   }
