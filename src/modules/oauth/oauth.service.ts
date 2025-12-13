@@ -15,6 +15,7 @@ import type {
 } from '@krgeobuk/oauth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { OauthStateMode } from '@krgeobuk/oauth/enum';
+import { UserException } from '@krgeobuk/user/exception';
 
 import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
@@ -158,7 +159,7 @@ export class OAuthService {
       throw OAuthException.invalidState();
     }
 
-    this.deleteState(query.state, providerType);
+    // this.deleteState(query.state, providerType);
 
     // 계정 연동 모드인 경우
     if (stateData.mode === OauthStateMode.LINK) {
@@ -234,7 +235,7 @@ export class OAuthService {
       throw OAuthException.invalidState();
     }
 
-    this.deleteState(query.state, providerType);
+    // this.deleteState(query.state, providerType);
 
     // 계정 연동 모드인 경우
     if (stateData.mode === OauthStateMode.LINK) {
@@ -408,60 +409,59 @@ export class OAuthService {
   ): Promise<UserEntity> {
     this.logger.log(`${this.oauthLogin.name} - 시작 되었습니다.`);
 
-    let user = (await this.userService.findByAnd({ email: userInfo.email }))[0];
+    // ✅ OAuth ID 우선 조회 (가장 신뢰할 수 있는 식별자)
+    const oauth = (await this.findByAnd({ provider, providerId: userInfo.id }))[0];
 
-    if (user) {
-      // 이메일이 이미 존재하는 경우 계정 연동
+    let user: UserEntity | null;
 
-      const oauth = (
-        await this.findByAnd({ userId: user.id, provider, providerId: userInfo.id })
-      )[0];
-      if (!oauth) {
-        const oauthAccountAttrs = {
-          providerId: userInfo.id,
-          provider,
-          userId: user.id,
-          accessToken: tokenData.accessToken,
-          refreshToken: tokenData.refreshToken ?? null,
-          tokenExpiresAt: tokenData.expiresIn
-            ? new Date(Date.now() + tokenData.expiresIn * 1000)
-            : null,
-          scopes: 'scope' in tokenData ? tokenData.scope : null,
-        };
+    if (oauth) {
+      // 🔹 기존 OAuth 계정 발견 - userId로 사용자 조회
+      this.logger.log(
+        `${this.oauthLogin.name} - 기존 OAuth 계정 발견. provider: ${provider}, providerId: ${userInfo.id}`
+      );
 
-        await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
-      } else {
-        const oauthAccountAttrs = {
-          accessToken: tokenData.accessToken,
-          refreshToken: tokenData.refreshToken ?? null,
-          tokenExpiresAt: tokenData.expiresIn
-            ? new Date(Date.now() + tokenData.expiresIn * 1000)
-            : null,
-          scopes: 'scope' in tokenData ? tokenData.scope : null,
-        };
+      user = await this.userService.findById(oauth.userId);
 
-        Object.assign(oauth, oauthAccountAttrs);
-
-        await this.updateOAuthAccount(oauth, transactionManager);
+      if (!user) {
+        // OAuth는 존재하는데 User가 없는 경우 (데이터 정합성 오류)
+        this.logger.error(
+          `${this.oauthLogin.name} - OAuth 계정은 존재하나 User를 찾을 수 없습니다. userId: ${oauth.userId}`
+        );
+        throw UserException.userNotFound();
       }
 
-      // 마지막 접속일 업데이트
-      // user.lastLogin = new Date();
+      // OAuth 토큰 정보 업데이트
+      const oauthAccountAttrs = {
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken ?? null,
+        tokenExpiresAt: tokenData.expiresIn
+          ? new Date(Date.now() + tokenData.expiresIn * 1000)
+          : null,
+        scopes: 'scope' in tokenData ? tokenData.scope : null,
+      };
 
-      // await this.userService.updateUser(user, transactionManager);
+      Object.assign(oauth, oauthAccountAttrs);
+      await this.updateOAuthAccount(oauth, transactionManager);
+
+      this.logger.log(`${this.oauthLogin.name} - OAuth 토큰 업데이트 완료. userId: ${user.id}`);
     } else {
+      // 🔹 새로운 OAuth 계정 - 신규 회원가입
+      this.logger.log(
+        `${this.oauthLogin.name} - 신규 OAuth 계정. provider: ${provider}, providerId: ${userInfo.id}`
+      );
+
       const userAttrs = {
         email: userInfo.email,
         name: userInfo.name,
         nickname: 'nickname' in userInfo ? userInfo.nickname : userInfo.name,
         profileImageUrl: 'profileImage' in userInfo ? userInfo.profileImage : userInfo.picture,
-        isIntegrated: true,
         isEmailVerified: true,
       };
 
-      // 이메일이 존재하지 않는 경우 새 사용자 생성
+      // 새 사용자 생성
       user = await this.userService.createUser(userAttrs, transactionManager);
 
+      // OAuth 계정 생성
       const oauthAccountAttrs = {
         providerId: userInfo.id,
         provider,
@@ -475,6 +475,10 @@ export class OAuthService {
       };
 
       await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
+
+      this.logger.log(
+        `${this.oauthLogin.name} - 신규 회원가입 완료. userId: ${user.id}, email: ${user.email}`
+      );
     }
 
     this.logger.log(`${this.oauthLogin.name} - 성공적으로 종료되었습니다.`);

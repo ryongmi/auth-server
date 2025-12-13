@@ -1,4 +1,13 @@
-import { Controller, Get, HttpCode, Query, Res, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpException,
+  Query,
+  Res,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager } from 'typeorm';
@@ -35,6 +44,24 @@ export class OAuthController {
     private configService: ConfigService,
     private oauthService: OAuthService
   ) {}
+
+  /**
+   * OAuth 에러 발생 시 적절한 페이지로 리다이렉트
+   * @param mode - OAuth 모드 (LOGIN 또는 LINK)
+   * @param errorCode - 에러 코드 (예: 'OAUTH_101')
+   * @returns 리다이렉트할 URL
+   */
+  private getErrorRedirectUrl(mode: OauthStateMode | string, errorCode: string): string {
+    const authClientUrl = this.configService.get('authClientUrl') || 'http://localhost:3000';
+
+    if (mode === OauthStateMode.LINK) {
+      // LINK 모드: 계정 설정 페이지로 리다이렉트
+      return `${authClientUrl}/settings/accounts?error=${errorCode}`;
+    } else {
+      // LOGIN 모드: 로그인 페이지로 리다이렉트
+      return `${authClientUrl}/login?error=${errorCode}`;
+    }
+  }
 
   @Get('login-google')
   @HttpCode(OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode)
@@ -84,8 +111,37 @@ export class OAuthController {
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
-    return res.redirect(redirectUrl);
+    try {
+      const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      // 에러 코드 추출
+      let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        if (typeof response === 'object' && response !== null && 'code' in response) {
+          errorCode = (response as { code: string }).code;
+        }
+      }
+
+      // stateData에서 mode 추출 (에러 상황에서도 state를 읽을 수 있다면)
+      let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
+      try {
+        const stateData = await this.oauthService.getStateData(
+          query.state,
+          OAuthAccountProviderType.GOOGLE
+        );
+        if (stateData?.mode) {
+          mode = stateData.mode as OauthStateMode;
+        }
+      } catch {
+        // state 조회 실패 시 기본값 사용
+      }
+
+      // 에러 코드를 포함한 URL로 리다이렉트
+      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode);
+      return res.redirect(redirectUrl);
+    }
   }
 
   @Get('/login-naver')
@@ -135,8 +191,37 @@ export class OAuthController {
     @Query() query: NaverOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
-    return res.redirect(redirectUrl);
+    try {
+      const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      // 에러 코드 추출
+      let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        if (typeof response === 'object' && response !== null && 'code' in response) {
+          errorCode = (response as { code: string }).code;
+        }
+      }
+
+      // stateData에서 mode 추출
+      let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
+      try {
+        const stateData = await this.oauthService.getStateData(
+          query.state,
+          OAuthAccountProviderType.NAVER
+        );
+        if (stateData?.mode) {
+          mode = stateData.mode as OauthStateMode;
+        }
+      } catch {
+        // state 조회 실패 시 기본값 사용
+      }
+
+      // 에러 코드를 포함한 URL로 리다이렉트
+      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode);
+      return res.redirect(redirectUrl);
+    }
   }
 
   /**

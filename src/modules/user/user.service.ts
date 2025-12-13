@@ -51,7 +51,6 @@ export class UserService {
     if (filter.nickname) where.nickname = filter.nickname;
     if (filter.profileImageUrl) where.profileImageUrl = filter.profileImageUrl;
     if (filter.isEmailVerified) where.isEmailVerified = filter.isEmailVerified;
-    if (filter.isIntegrated) where.isIntegrated = filter.isIntegrated;
 
     // ✅ 필터 없으면 전체 조회
     if (Object.keys(where).length === 0) {
@@ -62,7 +61,7 @@ export class UserService {
   }
 
   async findByOr(filter: UserFilter = {}): Promise<UserEntity[]> {
-    const { email, name, nickname, profileImageUrl, isEmailVerified, isIntegrated } = filter;
+    const { email, name, nickname, profileImageUrl, isEmailVerified } = filter;
 
     const where: FindOptionsWhere<UserEntity>[] = [];
 
@@ -71,7 +70,6 @@ export class UserService {
     if (nickname) where.push({ nickname });
     if (profileImageUrl) where.push({ profileImageUrl });
     if (isEmailVerified) where.push({ isEmailVerified });
-    if (isIntegrated) where.push({ isIntegrated });
 
     // ✅ 필터 없으면 전체 조회
     if (where.length === 0) {
@@ -402,7 +400,6 @@ export class UserService {
     if (filter.nickname) where.nickname = filter.nickname;
     if (filter.profileImageUrl) where.profileImageUrl = filter.profileImageUrl;
     if (filter.isEmailVerified !== undefined) where.isEmailVerified = filter.isEmailVerified;
-    if (filter.isIntegrated !== undefined) where.isIntegrated = filter.isIntegrated;
 
     return this.userRepo.count({ where });
   }
@@ -427,7 +424,6 @@ export class UserService {
         name: '',
         nickname: null,
         profileImageUrl: null,
-        isIntegrated: false,
         isEmailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -470,7 +466,6 @@ export class UserService {
         name: '',
         nickname: null,
         profileImageUrl: null,
-        isIntegrated: false,
         isEmailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date(),

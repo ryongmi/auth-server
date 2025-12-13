@@ -27,6 +27,12 @@ export abstract class BaseOAuthStateGuard implements CanActivate {
     // 1. OAuth 에러 처리
     if (error) {
       this.handleOAuthError(error, request.query);
+
+      // 사용자 취소 감지: access_denied는 사용자가 OAuth 권한을 거부한 경우
+      if (error === 'access_denied') {
+        throw OAuthException.cancelled(this.providerType);
+      }
+
       throw OAuthException.loginError(this.providerType);
     }
 

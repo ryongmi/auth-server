@@ -22,7 +22,4 @@ export class UserEntity extends BaseEntityUUID {
 
   @Column({ default: false })
   isEmailVerified!: boolean;
-
-  @Column({ default: false })
-  isIntegrated!: boolean; // 홈페이지 + OAuth 통합 여부
 }

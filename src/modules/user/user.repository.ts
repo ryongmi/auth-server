@@ -32,7 +32,6 @@ export class UserRepository extends BaseRepository<UserEntity> {
         `${userAlias}.name AS name`,
         `${userAlias}.nickname AS nickname`,
         `${userAlias}.profile_image_url AS profileImageUrl`,
-        `${userAlias}.is_integrated AS isIntegrated`,
         `${userAlias}.is_email_verified AS isEmailVerified`,
         `${userAlias}.created_at AS createdAt`,
       ])
@@ -58,7 +57,6 @@ export class UserRepository extends BaseRepository<UserEntity> {
       name: row[`name`],
       nickname: row[`nickname`],
       profileImageUrl: row[`profileImageUrl`],
-      isIntegrated: row[`isIntegrated`],
       isEmailVerified: row[`isEmailVerified`],
       createdAt: row[`createdAt`],
       oauthAccount: {
@@ -97,7 +95,6 @@ export class UserRepository extends BaseRepository<UserEntity> {
         `${userAlias}.name AS name`,
         `${userAlias}.nickname AS nickname`,
         `${userAlias}.profile_image_url AS profileImageUrl`,
-        `${userAlias}.is_integrated AS isIntegrated`,
         `${userAlias}.is_email_verified AS isEmailVerified`,
         `${userAlias}.created_at AS createdAt`,
         `${userAlias}.updated_at AS updatedAt`,
@@ -151,7 +148,6 @@ export class UserRepository extends BaseRepository<UserEntity> {
       name: row[`name`],
       nickname: row[`nickname`],
       profileImageUrl: row[`profileImageUrl`],
-      isIntegrated: row[`isIntegrated`],
       isEmailVerified: row[`isEmailVerified`],
       createdAt: row[`createdAt`],
       updatedAt: row[`updatedAt`],
