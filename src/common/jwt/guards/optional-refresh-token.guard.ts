@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
 import { JwtConfig } from '@common/interfaces/index.js';
-import { RedisService } from '@database/index.js';
+import { RedisService } from '@database/redis/redis.service.js';
 
 import { JwtTokenService } from '../jwt-token.service.js';
 

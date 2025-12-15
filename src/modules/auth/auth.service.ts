@@ -19,7 +19,7 @@ import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { EmailService } from '@krgeobuk/email/services';
 import type { EmailConfig } from '@krgeobuk/email/interfaces';
 
-import { RedisService } from '@database/index.js';
+import { RedisService } from '@database/redis/redis.service.js';
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';

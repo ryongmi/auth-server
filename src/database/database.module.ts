@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { createTypeOrmConfig } from '@krgeobuk/database-config'; // 공통 패키지에서 import
+import { createTypeOrmConfig } from '@krgeobuk/database-config';
 
 // ESM에서 __filename, __dirname 대체
 const __filename = fileURLToPath(import.meta.url);

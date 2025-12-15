@@ -4,7 +4,7 @@
     "noEmit": false,
     "outDir": "./dist", // 프로젝트별로 필요시 오버라이드
     "baseUrl": "./", // 프로젝트별로 필요시 오버라이드
-    "types": ["node", "express"],
+    "types": ["node", "express", "jest"],
     "typeRoots": ["node_modules/@types", "node_modules/@krgeobuk/core/interfaces/express"],
     // "skipLibCheck": false, // true로 되어있다면 false로 변경
     "paths": {
@@ -12,7 +12,7 @@
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"],
       "@database/*": ["src/database/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src"],

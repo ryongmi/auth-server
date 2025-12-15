@@ -20,7 +20,7 @@ import { UserException } from '@krgeobuk/user/exception';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
-import { RedisService } from '@database/index.js';
+import { RedisService } from '@database/redis/redis.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { GoogleOAuthService } from './google.service.js';
@@ -445,11 +445,37 @@ export class OAuthService {
 
       this.logger.log(`${this.oauthLogin.name} - OAuth 토큰 업데이트 완료. userId: ${user.id}`);
     } else {
-      // 🔹 새로운 OAuth 계정 - 신규 회원가입
+      // 🔹 새로운 OAuth 계정 - 이메일 중복 체크 필요
       this.logger.log(
         `${this.oauthLogin.name} - 신규 OAuth 계정. provider: ${provider}, providerId: ${userInfo.id}`
       );
 
+      // ✅ 1. 이메일로 기존 사용자 조회
+      const existingUser = await this.userService.findByEmail(userInfo.email);
+
+      if (existingUser) {
+        // ✅ 2. 기존 사용자가 있으면 연동된 OAuth 제공자 조회
+        const linkedOAuthAccounts = await this.findByAnd({ userId: existingUser.id });
+        const linkedProviders = linkedOAuthAccounts.map((acc) => acc.provider);
+
+        this.logger.warn(`${this.oauthLogin.name} - OAuth 이메일 중복 감지`, {
+          email: userInfo.email,
+          attemptedProvider: provider,
+          existingUserId: existingUser.id,
+          hasPassword: !!existingUser.password,
+          linkedProviders,
+        });
+
+        // ✅ 3. 에러 발생
+        throw OAuthException.emailAlreadyInUse({
+          email: userInfo.email,
+          provider,
+          hasPassword: !!existingUser.password,
+          hasOAuthProviders: linkedProviders,
+        });
+      }
+
+      // ✅ 4. 이메일 중복 없으면 신규 가입 진행
       const userAttrs = {
         email: userInfo.email,
         name: userInfo.name,
