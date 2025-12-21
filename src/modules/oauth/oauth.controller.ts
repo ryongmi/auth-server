@@ -49,18 +49,42 @@ export class OAuthController {
    * OAuth 에러 발생 시 적절한 페이지로 리다이렉트
    * @param mode - OAuth 모드 (LOGIN 또는 LINK)
    * @param errorCode - 에러 코드 (예: 'OAUTH_101')
+   * @param errorDetails - OAUTH_205 등 상세 정보가 필요한 에러의 추가 데이터
    * @returns 리다이렉트할 URL
    */
-  private getErrorRedirectUrl(mode: OauthStateMode | string, errorCode: string): string {
-    const authClientUrl = this.configService.get('authClientUrl') || 'http://localhost:3000';
-
-    if (mode === OauthStateMode.LINK) {
-      // LINK 모드: 계정 설정 페이지로 리다이렉트
-      return `${authClientUrl}/settings/accounts?error=${errorCode}`;
-    } else {
-      // LOGIN 모드: 로그인 페이지로 리다이렉트
-      return `${authClientUrl}/login?error=${errorCode}`;
+  private getErrorRedirectUrl(
+    mode: OauthStateMode | string,
+    errorCode: string,
+    errorDetails?: {
+      email?: string;
+      attemptedProvider?: string;
+      availableLoginMethods?: string[];
+      suggestion?: string;
     }
+  ): string {
+    const authClientUrl = this.configService.get('authClientUrl') || 'http://localhost:3000';
+    const basePath = mode === OauthStateMode.LINK ? '/settings/accounts' : '/login';
+
+    // 기본 파라미터
+    const params = new URLSearchParams({ error: errorCode });
+
+    // OAUTH_205 (이메일 중복) 에러는 상세 정보 추가
+    if (errorCode === 'OAUTH_205' && errorDetails) {
+      if (errorDetails.attemptedProvider) {
+        params.append('provider', errorDetails.attemptedProvider);
+      }
+      if (errorDetails.email) {
+        params.append('email', errorDetails.email);
+      }
+      if (errorDetails.availableLoginMethods && errorDetails.availableLoginMethods.length > 0) {
+        params.append('methods', errorDetails.availableLoginMethods.join(','));
+      }
+      if (errorDetails.suggestion) {
+        params.append('suggestion', errorDetails.suggestion);
+      }
+    }
+
+    return `${authClientUrl}${basePath}?${params.toString()}`;
   }
 
   @Get('login-google')
@@ -115,12 +139,22 @@ export class OAuthController {
       const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
       return res.redirect(redirectUrl);
     } catch (error) {
-      // 에러 코드 추출
+      // 에러 코드 및 상세 정보 추출
       let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
+      let errorDetails;
+
       if (error instanceof HttpException) {
         const response = error.getResponse();
         if (typeof response === 'object' && response !== null && 'code' in response) {
           errorCode = (response as { code: string }).code;
+
+          // OAUTH_205 에러의 상세 정보 추출
+          if (errorCode === 'OAUTH_205' && 'details' in response) {
+            errorDetails = {
+              ...(response as any).details,
+              attemptedProvider: 'google',
+            };
+          }
         }
       }
 
@@ -138,8 +172,8 @@ export class OAuthController {
         // state 조회 실패 시 기본값 사용
       }
 
-      // 에러 코드를 포함한 URL로 리다이렉트
-      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode);
+      // 에러 코드 및 상세 정보를 포함한 URL로 리다이렉트
+      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode, errorDetails);
       return res.redirect(redirectUrl);
     }
   }
@@ -195,12 +229,22 @@ export class OAuthController {
       const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
       return res.redirect(redirectUrl);
     } catch (error) {
-      // 에러 코드 추출
+      // 에러 코드 및 상세 정보 추출
       let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
+      let errorDetails;
+
       if (error instanceof HttpException) {
         const response = error.getResponse();
         if (typeof response === 'object' && response !== null && 'code' in response) {
           errorCode = (response as { code: string }).code;
+
+          // OAUTH_205 에러의 상세 정보 추출
+          if (errorCode === 'OAUTH_205' && 'details' in response) {
+            errorDetails = {
+              ...(response as any).details,
+              attemptedProvider: 'naver',
+            };
+          }
         }
       }
 
@@ -218,8 +262,8 @@ export class OAuthController {
         // state 조회 실패 시 기본값 사용
       }
 
-      // 에러 코드를 포함한 URL로 리다이렉트
-      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode);
+      // 에러 코드 및 상세 정보를 포함한 URL로 리다이렉트
+      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode, errorDetails);
       return res.redirect(redirectUrl);
     }
   }
