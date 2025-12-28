@@ -60,8 +60,11 @@ export function setNestApp(
 
   app.use(cookieParser());
 
-  // 모든 엔드포인트에 api 추가
-  app.setGlobalPrefix('api');
+  // 모든 엔드포인트에 서비스별 프리픽스 추가
+  // health 엔드포인트는 k8s 헬스체크를 위해 제외
+  app.setGlobalPrefix('auth', {
+    exclude: ['health', 'health/ready'],
+  });
 
   // winston 설정
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));

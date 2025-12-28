@@ -14,6 +14,7 @@ import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
 import { ImageModule } from '@modules/image/image.module.js';
+import { HealthModule } from '@modules/health/index.js';
 
 // import { SeederModule } from './seeder/seeder.module';
 
@@ -45,6 +46,7 @@ import { ImageModule } from '@modules/image/image.module.js';
     // SeederModule,
     DatabaseModule,
     RedisModule,
+    HealthModule,
     UserModule,
     AuthModule,
     OAuthModule,
