@@ -5,6 +5,7 @@ const defaultConfigSchema = {
   PORT: Joi.number().required(),
   TCP_PORT: Joi.number().required(),
   CORS_ORIGINS: Joi.string().required(),
+  AUTH_SERVER_URL: Joi.string().required(),
   AUTH_CLIENT_URL: Joi.string().required(),
   PORTAL_CLIENT_URL: Joi.string().required(),
   OAUTH_REDIRECT_SESSION_STORE_NAME: Joi.string().required(),

@@ -1,51 +1,14 @@
 # version: '3.8'
+#
+# auth-server는 중앙 집중식 인프라(krgeobuk-infrastructure)를 사용합니다.
+# MySQL과 Redis는 krgeobuk-infrastructure/docker-compose/docker-compose.yaml에서 제공됩니다.
+#
+# 실행 순서:
+# 1. krgeobuk-infrastructure 먼저 시작: cd ../../krgeobuk-infrastructure/docker-compose/ && docker-compose up -d
+# 2. auth-server 시작: npm run docker:local:up
+#
+
 services:
-  # nginx:
-  #   build:
-  #     context: ./nginx
-  #     dockerfile: Dockerfile.dev
-  #   restart: always
-  #   ports:
-  #     - "3050:80"
-  #   depends_on:
-  #     - backend
-  #     - frontend
-  mysql:
-    image: mysql:8
-    container_name: auth-mysql
-    ports:
-      - 3307:3306
-    env_file:
-      - ./envs/.env.local
-    environment:
-      - MYSQL_CHARSET=utf8mb4
-      - MYSQL_COLLATION=utf8mb4_general_ci
-      - MYSQL_TIMEZONE=Asia/Seoul
-      - TZ=Asia/Seoul
-    volumes:
-      - ./data/mysql:/var/lib/mysql
-      # - ./config/mysql/my.cnf:/etc/mysql/my.cnf
-      # - ./config/mysql/conf.d:/etc/mysql/conf.d
-    networks:
-      - auth-network
-
-  redis:
-    image: redis:alpine
-    container_name: auth-redis
-    ports:
-      - 6380:6379
-    env_file:
-      - ./envs/.env.local
-    environment:
-      - TZ=Asia/Seoul
-    volumes:
-      - ./data/redis:/data
-    networks:
-      - auth-network
-    command: ['redis-server', '--requirepass', '1234qwer']
-    depends_on:
-      - mysql
-
   server:
     image: krgeobuk/auth-server:local
     container_name: auth-server
@@ -70,16 +33,15 @@ services:
       - /app/dist
       - /app/node_modules # 익명 볼륨
     networks:
-      - auth-network
-      - msa-network
-      - shared-network
-    depends_on:
-      - redis
-      - mysql
+      - krgeobuk-network # 중앙 인프라 접근 (MySQL, Redis)
+      - msa-network # 마이크로서비스 간 통신
+      - shared-network # 공유 리소스 접근
+    restart: unless-stopped
 
 networks:
-  auth-network:
-    driver: bridge
+  krgeobuk-network:
+    external: true
+    name: krgeobuk-network
   msa-network:
     external: true
   shared-network:

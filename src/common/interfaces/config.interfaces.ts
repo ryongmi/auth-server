@@ -6,6 +6,7 @@ export interface DefaultConfig {
   tcpPort: number | undefined;
   corsOrigins: string | undefined;
   oauthRedirectSessionStore: string | undefined;
+  authServerUrl: string | undefined;
   authClientUrl: string | undefined;
   portalClientUrl: string | undefined;
   allowedRedirectDomains: string | undefined;
