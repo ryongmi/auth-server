@@ -18,6 +18,8 @@ export interface ClientConfig {
   authzServicePort: number | undefined;
   portalServiceHost: string | undefined;
   portalServicePort: number | undefined;
+  mypickServiceHost: string | undefined;
+  mypickServicePort: number | undefined;
 }
 
 export interface MysqlConfig {

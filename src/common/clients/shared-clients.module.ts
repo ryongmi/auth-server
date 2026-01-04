@@ -30,6 +30,17 @@ import { ClientConfig } from '@common/interfaces/config.interfaces.js';
           },
         }),
       },
+      {
+        name: 'MYPICK_SERVICE',
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService): ClientOptions => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get<ClientConfig['mypickServiceHost']>('client.mypickServiceHost')!,
+            port: configService.get<ClientConfig['mypickServicePort']>('client.mypickServicePort')!,
+          },
+        }),
+      },
     ]),
   ],
   exports: [ClientsModule],

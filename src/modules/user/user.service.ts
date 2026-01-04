@@ -363,8 +363,22 @@ export class UserService {
     return this.userRepo.updateEntity(userEntity, transactionManager);
   }
 
+  /**
+   * 사용자 삭제 (소프트 삭제)
+   * deletedAt 타임스탬프 설정
+   */
   async deleteUser(userId: string): Promise<UpdateResult> {
+    this.logger.log(`Deleting user: ${userId}`);
     return this.userRepo.softDelete(userId);
+  }
+
+  /**
+   * 삭제된 사용자 복원
+   * deletedAt을 null로 설정하여 복원
+   */
+  async restoreUser(userId: string): Promise<UpdateResult> {
+    this.logger.log(`Restoring user: ${userId}`);
+    return this.userRepo.restore(userId);
   }
 
   /**

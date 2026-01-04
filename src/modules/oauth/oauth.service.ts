@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
@@ -14,8 +15,9 @@ import type {
   NaverTokenResponse,
 } from '@krgeobuk/oauth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
-import { OauthStateMode } from '@krgeobuk/oauth/enum';
+import { OauthStateMode, AccountMergeStatus } from '@krgeobuk/oauth/enum';
 import { UserException } from '@krgeobuk/user/exception';
+import { EmailService } from '@krgeobuk/email';
 
 import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
@@ -23,9 +25,11 @@ import { UserEntity, UserService } from '@modules/user/index.js';
 import { RedisService } from '@database/redis/redis.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
+import { AccountMergeRequestEntity } from './entities/account-merge-request.entity.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
+import { AccountMergeRequestRepository } from './account-merge-request.repository.js';
 
 @Injectable()
 export class OAuthService {
@@ -38,7 +42,9 @@ export class OAuthService {
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
-    private readonly oauthRepo: OAuthRepository
+    private readonly oauthRepo: OAuthRepository,
+    private readonly emailService: EmailService,
+    private readonly mergeRequestRepo: AccountMergeRequestRepository
   ) {}
 
   // state 값 생성
@@ -368,6 +374,18 @@ export class OAuthService {
     const existingOAuth = await this.findByAnd({ providerId: userInfo.id, provider });
 
     if (existingOAuth.length > 0 && existingOAuth[0]?.userId !== userId) {
+      const existingAccount = existingOAuth[0];
+      if (existingAccount) {
+        // 병합 요청 생성 (예외 발생 대신)
+        await this.createMergeRequest(
+          userId,                      // targetUserId (User A - 유지할 계정)
+          existingAccount.userId,      // sourceUserId (User B - 삭제될 계정)
+          provider,
+          userInfo.id                  // providerId
+        );
+      }
+
+      // 병합 요청 생성 후 특별한 예외를 던져서 클라이언트에 알림
       throw OAuthException.alreadyLinkedToAnotherAccount(provider);
     }
 
@@ -510,5 +528,158 @@ export class OAuthService {
     this.logger.log(`${this.oauthLogin.name} - 성공적으로 종료되었습니다.`);
 
     return user;
+  }
+
+  // ==================== 계정 병합 관련 메서드 ====================
+
+  /**
+   * 계정 병합 요청 생성
+   * User A가 User B의 OAuth 계정을 자신에게 연결하려고 할 때 병합 요청 생성
+   *
+   * @param targetUserId - User A (유지할 계정)
+   * @param sourceUserId - User B (삭제될 계정)
+   * @param provider - OAuth 제공자
+   * @param providerId - OAuth 제공자의 사용자 ID
+   * @returns 생성된 병합 요청 엔티티
+   */
+  async createMergeRequest(
+    targetUserId: string,
+    sourceUserId: string,
+    provider: OAuthAccountProviderType,
+    providerId: string
+  ): Promise<AccountMergeRequestEntity> {
+    this.logger.log('Creating account merge request', {
+      targetUserId,
+      sourceUserId,
+      provider,
+      providerId,
+    });
+
+    // 병합 요청 엔티티 생성
+    const mergeRequest = this.mergeRequestRepo.create({
+      targetUserId,
+      sourceUserId,
+      provider,
+      providerId,
+      status: AccountMergeStatus.PENDING_EMAIL_VERIFICATION,
+    });
+
+    await this.mergeRequestRepo.save(mergeRequest);
+
+    this.logger.log('Merge request created', { requestId: mergeRequest.id });
+
+    // 토큰 생성 및 이메일 발송
+    await this.sendMergeConfirmationEmail(mergeRequest);
+
+    return mergeRequest;
+  }
+
+  /**
+   * OAuth 계정 이전
+   * sourceUser의 OAuth 계정을 targetUser로 이전
+   *
+   * @param sourceUserId - 원본 사용자 ID
+   * @param targetUserId - 대상 사용자 ID
+   * @param provider - OAuth 제공자
+   * @param providerId - OAuth 제공자의 사용자 ID
+   */
+  async transferOAuthAccount(
+    sourceUserId: string,
+    targetUserId: string,
+    provider: OAuthAccountProviderType,
+    providerId: string
+  ): Promise<void> {
+    this.logger.log('Transferring OAuth account', {
+      from: sourceUserId,
+      to: targetUserId,
+      provider,
+      providerId,
+    });
+
+    const result = await this.oauthRepo.update(
+      { userId: sourceUserId, provider, providerId },
+      { userId: targetUserId }
+    );
+
+    if (result.affected === 0) {
+      throw new Error('OAuth account not found for transfer');
+    }
+
+    this.logger.log('OAuth account transferred successfully');
+  }
+
+  /**
+   * 병합 확인 이메일 발송
+   * User B에게 병합 확인 이메일 발송
+   *
+   * @param mergeRequest - 병합 요청 엔티티
+   */
+  private async sendMergeConfirmationEmail(
+    mergeRequest: AccountMergeRequestEntity
+  ): Promise<void> {
+    this.logger.log('Sending merge confirmation email', {
+      requestId: mergeRequest.id,
+      sourceUserId: mergeRequest.sourceUserId,
+    });
+
+    // User A와 User B 정보 조회
+    const [targetUser, sourceUser] = await Promise.all([
+      this.userService.findById(mergeRequest.targetUserId),
+      this.userService.findById(mergeRequest.sourceUserId),
+    ]);
+
+    if (!targetUser || !sourceUser) {
+      throw new Error('User not found for merge confirmation email');
+    }
+
+    // 확인 토큰 생성 (24시간 유효) - 랜덤 바이트 기반
+    const confirmToken = randomBytes(32).toString('hex');
+
+    // Redis에 토큰 저장 (24시간 TTL)
+    await this.redisService.setExValue(
+      `merge:token:${mergeRequest.id}`,
+      86400, // 24시간 (60 * 60 * 24)
+      confirmToken
+    );
+
+    // 확인 URL 생성
+    const authClientUrl = this.configService.get<DefaultConfig>('default')?.authClientUrl;
+    const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
+
+    // 만료 시간 계산 (24시간 후)
+    const expiresAt = new Date(Date.now() + 86400000).toLocaleString('ko-KR');
+
+    // 이메일 발송
+    await this.emailService.sendAccountMergeEmail({
+      to: sourceUser.email,
+      name: sourceUser.name || sourceUser.email,
+      targetUserEmail: targetUser.email,
+      provider: mergeRequest.provider,
+      providerId: mergeRequest.providerId,
+      confirmUrl,
+      expiresAt,
+    });
+
+    this.logger.log('Merge confirmation email sent', {
+      to: sourceUser.email,
+      requestId: mergeRequest.id,
+    });
+  }
+
+  /**
+   * OAuth 계정 복원
+   * 보상 트랜잭션에서 사용 - 병합 실패 시 OAuth 계정 복원
+   *
+   * @param account - 복원할 OAuth 계정 정보
+   */
+  async restore(account: Partial<OAuthAccountEntity>): Promise<void> {
+    this.logger.log('Restoring OAuth account', {
+      userId: account.userId,
+      provider: account.provider,
+    });
+
+    await this.oauthRepo.save(account);
+
+    this.logger.log('OAuth account restored');
   }
 }
