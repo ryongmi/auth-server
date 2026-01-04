@@ -15,7 +15,7 @@ export class AccountMergeRequestRepository extends BaseRepository<AccountMergeRe
   /**
    * 병합 요청 ID로 조회
    */
-  async findMergeRequestById(requestId: string): Promise<AccountMergeRequestEntity | null> {
+  async findMergeRequestById(requestId: number): Promise<AccountMergeRequestEntity | null> {
     return await this.dataSource
       .getRepository(AccountMergeRequestEntity)
       .findOne({ where: { id: requestId } });
