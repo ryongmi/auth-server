@@ -12,8 +12,7 @@
       "@modules/*": ["src/modules/*"],
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"],
-      "@database/*": ["src/database/*"],
-      "@utils/*": ["src/utils/*"]
+      "@database/*": ["src/database/*"]
     }
   },
   "include": ["src"],

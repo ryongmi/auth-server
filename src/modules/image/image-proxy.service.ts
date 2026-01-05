@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import axios from 'axios';
+
+import type { DefaultConfig } from '@common/interfaces/index.js';
 
 /**
  * 이미지 프록시 서비스
@@ -9,6 +12,7 @@ import axios from 'axios';
 @Injectable()
 export class ImageProxyService {
   private readonly logger = new Logger(ImageProxyService.name);
+  private readonly authServerUrl: string;
 
   // 허용된 이미지 도메인 화이트리스트
   private readonly ALLOWED_DOMAINS = [
@@ -17,6 +21,48 @@ export class ImageProxyService {
     'ssl.pstatic.net', // Naver OAuth
     'k.kakaocdn.net', // Kakao OAuth (향후 대비)
   ];
+
+  constructor(private readonly configService: ConfigService) {
+    // 초기화 시 한 번만 환경변수 읽기
+    this.authServerUrl = this.configService.get<DefaultConfig['authServerUrl']>('authServerUrl')!;
+  }
+
+  /**
+   * 외부 이미지 URL을 프록시 URL로 변환
+   *
+   * @param externalUrl 외부 이미지 URL (예: https://lh3.googleusercontent.com/...)
+   * @returns 프록시 URL (예: http://localhost:8000/api/proxy/image?url=...)
+   *
+   * @example
+   * // 개발 환경
+   * convertToProxyUrl('https://lh3.googleusercontent.com/a/example')
+   * // => 'http://localhost:8000/api/proxy/image?url=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2Fexample'
+   *
+   * @example
+   * // null/undefined 처리
+   * convertToProxyUrl(null) // => null
+   * convertToProxyUrl(undefined) // => null
+   *
+   * @example
+   * // 이미 프록시 URL인 경우
+   * convertToProxyUrl('http://localhost:8000/api/proxy/image?url=...')
+   * // => 'http://localhost:8000/api/proxy/image?url=...' (그대로 반환)
+   */
+  convertToProxyUrl(externalUrl: string | null | undefined): string | null {
+    // null/undefined 처리
+    if (!externalUrl) {
+      return null;
+    }
+
+    // 이미 프록시 URL인 경우 그대로 반환
+    if (externalUrl.startsWith(this.authServerUrl)) {
+      return externalUrl;
+    }
+
+    // 외부 URL을 프록시 URL로 변환
+    const encodedUrl = encodeURIComponent(externalUrl);
+    return `${this.authServerUrl}/proxy/image?url=${encodedUrl}`;
+  }
 
   /**
    * 외부 이미지 URL 다운로드 및 반환
