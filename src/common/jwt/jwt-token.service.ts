@@ -11,6 +11,7 @@ import type { JwtTokenType } from '@krgeobuk/jwt/types';
 // import type { RefreshResponse } from '@krgeobuk/auth/interfaces';
 
 import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
+import { RedisService } from '@database/redis/redis.service.js';
 
 @Injectable()
 export class JwtTokenService {
@@ -18,7 +19,8 @@ export class JwtTokenService {
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly redisService: RedisService
   ) {}
 
   async signAccessTokenAndRefreshToken(payload: JwtPayload): Promise<JwtTokenPair> {
@@ -134,8 +136,7 @@ export class JwtTokenService {
   }
 
   getRefreshTokenToCookie(req: Request): string {
-    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
-    if (!refreshTokenStore) throw JwtException.configMissing('refresh');
+    const refreshTokenStore = this.redisService.getRefreshStoreName();
 
     const refreshToken = req.cookies[refreshTokenStore] as string | undefined;
     if (!refreshToken) throw JwtException.notFound('refresh');
@@ -144,14 +145,14 @@ export class JwtTokenService {
   }
 
   setRefreshTokenToCookie(res: Response, refreshToken: string): void {
-    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
+    const refreshTokenStore = this.redisService.getRefreshStoreName();
     const refreshMaxAge = this.configService.get<JwtConfig['refreshMaxAge']>('jwt.refreshMaxAge');
     const mode = this.configService.get<DefaultConfig['mode']>('mode');
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
 
-    if (!refreshTokenStore || !mode || !refreshMaxAge || !cookiePath) {
+    if (!mode || !refreshMaxAge || !cookiePath) {
       throw JwtException.configMissing('refresh');
     }
     if (!refreshToken) throw JwtException.notFound('refresh');
@@ -167,13 +168,13 @@ export class JwtTokenService {
   }
 
   clearRefreshTokenCookie(res: Response): void {
-    const refreshTokenStore = this.configService.get<JwtConfig['refreshStore']>('jwt.refreshStore');
+    const refreshTokenStore = this.redisService.getRefreshStoreName();
     const mode = this.configService.get<DefaultConfig['mode']>('mode');
     const cookiePath =
       this.configService.get<JwtConfig['sessionCookiePath']>('jwt.sessionCookiePath');
     const cookieDomain = this.configService.get<JwtConfig['cookieDomain']>('jwt.cookieDomain');
 
-    if (!refreshTokenStore || !mode || !cookiePath) {
+    if (!mode || !cookiePath) {
       throw JwtException.configMissing('refresh');
     }
 

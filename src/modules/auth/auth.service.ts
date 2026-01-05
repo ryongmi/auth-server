@@ -43,12 +43,9 @@ export class AuthService {
     this.logger.log(`${this.logout.name} - 시작 되었습니다.`);
 
     const refreshToken = this.jwtService.getRefreshTokenToCookie(req);
-
-    const blackListStore =
-      this.configService.get<JwtConfig['blackListStore']>('jwt.blackListStore')!;
     const refreshMaxAge = this.configService.get<JwtConfig['refreshMaxAge']>('jwt.refreshMaxAge')!;
 
-    await this.redisService.setExValue(`${blackListStore}${refreshToken}`, refreshMaxAge, 1); // Redis에 블랙리스트 지정
+    await this.redisService.addToBlacklist(refreshToken, refreshMaxAge); // Redis에 블랙리스트 지정
 
     this.jwtService.clearRefreshTokenCookie(res);
 
@@ -469,7 +466,7 @@ export class AuthService {
     this.logger.log(`${this.verifyEmail.name} - 시작되었습니다.`);
 
     // Redis에서 토큰 조회
-    const userId = await this.redisService.getValue(`email_verify:${token}`);
+    const userId = await this.redisService.getEmailVerificationToken(token);
     if (!userId) {
       throw EmailException.verificationTokenInvalid();
     }
@@ -483,7 +480,7 @@ export class AuthService {
     // 이미 인증된 경우
     if (user.isEmailVerified) {
       // 토큰 삭제
-      await this.redisService.deleteValue(`email_verify:${token}`);
+      await this.redisService.deleteEmailVerificationToken(token);
       throw EmailException.alreadyVerified();
     }
 
@@ -493,7 +490,7 @@ export class AuthService {
     await this.userService.updateUser(user);
 
     // 토큰 삭제 (일회성)
-    await this.redisService.deleteValue(`email_verify:${token}`);
+    await this.redisService.deleteEmailVerificationToken(token);
 
     this.logger.log(`${this.verifyEmail.name} - 이메일 인증 완료`, { userId });
   }
@@ -513,7 +510,7 @@ export class AuthService {
     const verificationUrl = `${emailConfig?.verification?.baseUrl}/email-verify?token=${token}`;
 
     // Redis에 토큰 저장
-    await this.redisService.setExValue(`email_verify:${token}`, expiresIn, userId);
+    await this.redisService.setEmailVerificationToken(token, userId, expiresIn);
 
     // 이메일 발송
     try {
@@ -525,7 +522,7 @@ export class AuthService {
       this.logger.log(`sendVerificationEmail - 이메일 발송 성공`, { email, userId });
     } catch (error) {
       // 이메일 발송 실패 시 토큰 삭제
-      await this.redisService.deleteValue(`email_verify:${token}`);
+      await this.redisService.deleteEmailVerificationToken(token);
 
       this.logger.error(`sendVerificationEmail - 이메일 발송 실패`, {
         email,

@@ -54,7 +54,15 @@ export class OAuthService {
     // const state = randomBytes(16).toString('hex');
     const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
 
-    await this.redisService.setOAuthState(type, state, stateData, 300);
+    const data = stateData || 'pending';
+
+    if (type === OAuthAccountProviderType.NAVER) {
+      await this.redisService.setNaverState(state, data, 300);
+    } else if (type === OAuthAccountProviderType.GOOGLE) {
+      await this.redisService.setGoogleState(state, data, 300);
+    } else {
+      throw new Error(`Unsupported OAuth provider: ${type}`);
+    }
 
     this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -65,7 +73,15 @@ export class OAuthService {
   async validateState(state: string, type: OAuthAccountProviderType): Promise<boolean> {
     this.logger.log(`${this.validateState.name} - 시작 되었습니다.`);
 
-    const value = await this.redisService.getOAuthState(type, state);
+    let value: string | null;
+
+    if (type === OAuthAccountProviderType.NAVER) {
+      value = await this.redisService.getNaverState(state);
+    } else if (type === OAuthAccountProviderType.GOOGLE) {
+      value = await this.redisService.getGoogleState(state);
+    } else {
+      throw new Error(`Unsupported OAuth provider: ${type}`);
+    }
 
     this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
 
@@ -83,7 +99,15 @@ export class OAuthService {
   } | null> {
     this.logger.log(`${this.getStateData.name} - 시작 되었습니다.`);
 
-    const value = await this.redisService.getOAuthState(type, state);
+    let value: string | null;
+
+    if (type === OAuthAccountProviderType.NAVER) {
+      value = await this.redisService.getNaverState(state);
+    } else if (type === OAuthAccountProviderType.GOOGLE) {
+      value = await this.redisService.getGoogleState(state);
+    } else {
+      throw new Error(`Unsupported OAuth provider: ${type}`);
+    }
 
     if (!value) return null;
 
@@ -103,7 +127,13 @@ export class OAuthService {
   async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
     this.logger.log(`${this.deleteState.name} - 시작 되었습니다.`);
 
-    await this.redisService.deleteOAuthState(type, state); // 인증 완료 후 state 삭제
+    if (type === OAuthAccountProviderType.NAVER) {
+      await this.redisService.deleteNaverState(state);
+    } else if (type === OAuthAccountProviderType.GOOGLE) {
+      await this.redisService.deleteGoogleState(state);
+    } else {
+      throw new Error(`Unsupported OAuth provider: ${type}`);
+    }
 
     this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
   }
@@ -378,10 +408,10 @@ export class OAuthService {
       if (existingAccount) {
         // 병합 요청 생성 (예외 발생 대신)
         await this.createMergeRequest(
-          userId,                      // targetUserId (User A - 유지할 계정)
-          existingAccount.userId,      // sourceUserId (User B - 삭제될 계정)
+          userId, // targetUserId (User A - 유지할 계정)
+          existingAccount.userId, // sourceUserId (User B - 삭제될 계정)
           provider,
-          userInfo.id                  // providerId
+          userInfo.id // providerId
         );
       }
 
@@ -614,9 +644,7 @@ export class OAuthService {
    *
    * @param mergeRequest - 병합 요청 엔티티
    */
-  private async sendMergeConfirmationEmail(
-    mergeRequest: AccountMergeRequestEntity
-  ): Promise<void> {
+  private async sendMergeConfirmationEmail(mergeRequest: AccountMergeRequestEntity): Promise<void> {
     this.logger.log('Sending merge confirmation email', {
       requestId: mergeRequest.id,
       sourceUserId: mergeRequest.sourceUserId,
@@ -636,14 +664,10 @@ export class OAuthService {
     const confirmToken = randomBytes(32).toString('hex');
 
     // Redis에 토큰 저장 (24시간 TTL)
-    await this.redisService.setExValue(
-      `merge:token:${mergeRequest.id}`,
-      86400, // 24시간 (60 * 60 * 24)
-      confirmToken
-    );
+    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, 86400);
 
     // 확인 URL 생성
-    const authClientUrl = this.configService.get<DefaultConfig>('default')?.authClientUrl;
+    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
     const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
 
     // 만료 시간 계산 (24시간 후)

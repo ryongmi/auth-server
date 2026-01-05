@@ -1,16 +1,22 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { Redis } from 'ioredis';
-import { REDIS_BASE_KEYS } from '@constants/redis-keys.const.js';
 
-import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config';
+import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config/constants';
+
+import { REDIS_BASE_KEYS } from '@common/constants/index.js';
+import { RedisConfig } from '@common/interfaces/index.js';
 
 @Injectable()
 export class RedisService {
   private readonly envPrefix: string;
 
-  constructor(@Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis) {
-    this.envPrefix = process.env.REDIS_KEY_PREFIX || '';
+  constructor(
+    @Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis,
+    private readonly configService: ConfigService
+  ) {
+    this.envPrefix = this.configService.get<RedisConfig['keyPrefix']>('redis.keyPrefix')!;
   }
 
   /**
@@ -19,7 +25,7 @@ export class RedisService {
    * @param id - 선택적 ID (접두사 키의 경우)
    * @returns 환경 prefix가 적용된 완전한 Redis 키
    */
-  private buildKey(baseKey: string, id?: string): string {
+  private buildKey(baseKey: string, id?: string | number): string {
     const key = id ? `${baseKey}:${id}` : baseKey;
     return this.envPrefix ? `${this.envPrefix}:${key}` : key;
   }
@@ -229,6 +235,70 @@ export class RedisService {
    */
   async deletePasswordResetToken(token: string): Promise<void> {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.PASSWORD_RESET_PREFIX, token);
+    await this.deleteValue(key);
+  }
+
+  // ==================== 계정 병합 토큰 관리 ====================
+
+  /**
+   * 계정 병합 확인 토큰 저장
+   * @param requestId - 병합 요청 ID
+   * @param token - 확인 토큰
+   * @param ttl - TTL (기본값: 86400초 = 24시간)
+   */
+  async setMergeToken(requestId: number, token: string, ttl = 86400): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
+    await this.setExValue(key, ttl, token);
+  }
+
+  /**
+   * 계정 병합 확인 토큰 조회
+   * @param requestId - 병합 요청 ID
+   * @returns 확인 토큰 또는 null
+   */
+  async getMergeToken(requestId: number): Promise<string | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
+    return await this.getValue(key);
+  }
+
+  /**
+   * 계정 병합 확인 토큰 삭제
+   * @param requestId - 병합 요청 ID
+   */
+  async deleteMergeToken(requestId: number): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
+    await this.deleteValue(key);
+  }
+
+  // ==================== 이메일 인증 토큰 관리 ====================
+
+  /**
+   * 이메일 인증 토큰 저장
+   * @param token - UUID v4 토큰
+   * @param userId - 사용자 ID
+   * @param ttl - TTL (기본값: 86400초 = 24시간)
+   */
+  async setEmailVerificationToken(token: string, userId: string, ttl = 86400): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.EMAIL_VERIFICATION_PREFIX, token);
+    await this.setExValue(key, ttl, userId);
+  }
+
+  /**
+   * 이메일 인증 토큰으로 사용자 ID 조회
+   * @param token - UUID v4 토큰
+   * @returns 사용자 ID 또는 null
+   */
+  async getEmailVerificationToken(token: string): Promise<string | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.EMAIL_VERIFICATION_PREFIX, token);
+    return await this.getValue(key);
+  }
+
+  /**
+   * 이메일 인증 토큰 삭제 (일회성)
+   * @param token - UUID v4 토큰
+   */
+  async deleteEmailVerificationToken(token: string): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.EMAIL_VERIFICATION_PREFIX, token);
     await this.deleteValue(key);
   }
 }

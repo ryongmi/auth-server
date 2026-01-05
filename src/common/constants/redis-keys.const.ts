@@ -38,6 +38,12 @@ export const REDIS_BASE_KEYS = {
   AUTH: {
     /** 비밀번호 재설정 토큰 접두사 */
     PASSWORD_RESET_PREFIX: 'passwordReset',
+
+    /** 계정 병합 확인 토큰 접두사 */
+    MERGE_TOKEN_PREFIX: 'merge:token',
+
+    /** 이메일 인증 토큰 접두사 */
+    EMAIL_VERIFICATION_PREFIX: 'emailVerify',
   },
 } as const;
 

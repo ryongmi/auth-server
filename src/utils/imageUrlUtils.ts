@@ -31,7 +31,7 @@ export function convertToProxyUrl(externalUrl: string | null | undefined): strin
   }
 
   // 환경변수에서 auth-server URL 가져오기
-  const authServerUrl = process.env.AUTH_SERVER_URL || 'http://localhost:8000';
+  const authServerUrl = process.env.AUTH_SERVER_URL || 'http://localhost:8000/auth';
 
   // 이미 프록시 URL인 경우 그대로 반환
   if (externalUrl.startsWith(authServerUrl)) {
@@ -40,5 +40,5 @@ export function convertToProxyUrl(externalUrl: string | null | undefined): strin
 
   // 외부 URL을 프록시 URL로 변환
   const encodedUrl = encodeURIComponent(externalUrl);
-  return `${authServerUrl}/api/proxy/image?url=${encodedUrl}`;
+  return `${authServerUrl}/proxy/image?url=${encodedUrl}`;
 }
