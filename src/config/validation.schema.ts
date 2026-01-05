@@ -69,7 +69,7 @@ const emailConfigSchema = {
   SMTP_HOST: Joi.string().default('smtp.gmail.com'),
   SMTP_PORT: Joi.number().default(587),
   SMTP_SECURE: Joi.string().default('false'),
-  SMTP_USER: Joi.string().default('ryongmi2@gmail.com'),
+  SMTP_USER: Joi.string().required(),
   SMTP_PASS: Joi.string().required(),
   SMTP_FROM: Joi.string().default('krgeobuk <noreply@krgeobuk.com>'),
   EMAIL_VERIFICATION_EXPIRES: Joi.number().default(86400),

@@ -499,7 +499,7 @@ export class AuthService {
    * 인증 이메일 발송 (내부 메서드)
    */
   private async sendVerificationEmail(userId: string, email: string, name: string): Promise<void> {
-    this.logger.log(`sendVerificationEmail - 시작되었습니다.`);
+    this.logger.log(`${this.sendVerificationEmail.name} - 시작되었습니다.`);
 
     // UUID 토큰 생성
     const token = uuid();
@@ -519,12 +519,12 @@ export class AuthService {
         name,
         verificationUrl,
       });
-      this.logger.log(`sendVerificationEmail - 이메일 발송 성공`, { email, userId });
+      this.logger.log(`${this.sendVerificationEmail.name} - 이메일 발송 성공`, { email, userId });
     } catch (error) {
       // 이메일 발송 실패 시 토큰 삭제
       await this.redisService.deleteEmailVerificationToken(token);
 
-      this.logger.error(`sendVerificationEmail - 이메일 발송 실패`, {
+      this.logger.error(`${this.sendVerificationEmail.name} - 이메일 발송 실패`, {
         email,
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -588,12 +588,8 @@ export class AuthService {
   /**
    * 비밀번호 재설정 이메일 발송 (내부 메서드)
    */
-  private async sendPasswordResetEmail(
-    userId: string,
-    email: string,
-    name: string
-  ): Promise<void> {
-    this.logger.log(`sendPasswordResetEmail - 시작되었습니다.`);
+  private async sendPasswordResetEmail(userId: string, email: string, name: string): Promise<void> {
+    this.logger.log(`${this.sendPasswordResetEmail.name} - 시작되었습니다.`);
 
     // UUID 토큰 생성
     const token = uuid();
@@ -613,12 +609,12 @@ export class AuthService {
         name,
         resetUrl,
       });
-      this.logger.log(`sendPasswordResetEmail - 이메일 발송 성공`, { email, userId });
+      this.logger.log(`${this.sendPasswordResetEmail.name} - 이메일 발송 성공`, { email, userId });
     } catch (error) {
       // 이메일 발송 실패 시 토큰 삭제
       await this.redisService.deletePasswordResetToken(token);
 
-      this.logger.error(`sendPasswordResetEmail - 이메일 발송 실패`, {
+      this.logger.error(`${this.sendPasswordResetEmail.name} - 이메일 발송 실패`, {
         email,
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
