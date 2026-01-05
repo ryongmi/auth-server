@@ -6,13 +6,22 @@ import { EmailModule } from '@krgeobuk/email';
 import { JwtModule } from '@common/jwt/index.js';
 import { SecurityModule } from '@common/security/index.js';
 import { UserModule } from '@modules/user/index.js';
+import { EmailVerificationModule } from '@modules/email-verification/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
 
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 
 @Module({
-  imports: [HttpModule, UserModule, OAuthModule, JwtModule, EmailModule, SecurityModule],
+  imports: [
+    HttpModule,
+    UserModule,
+    OAuthModule,
+    JwtModule,
+    EmailModule,
+    SecurityModule,
+    EmailVerificationModule,
+  ],
   controllers: [AuthController],
   providers: [AuthService], // 서비스를 providers에 추가
   exports: [AuthService], // 다른 모듈에서 User 서비스를 사용할 수 있도록 exports에 추가
