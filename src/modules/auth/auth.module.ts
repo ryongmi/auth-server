@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 
-import { EmailModule } from '@krgeobuk/email';
-
 import { JwtModule } from '@common/jwt/index.js';
 import { SecurityModule } from '@common/security/index.js';
 import { UserModule } from '@modules/user/index.js';
@@ -18,7 +16,6 @@ import { AuthService } from './auth.service.js';
     UserModule,
     OAuthModule,
     JwtModule,
-    EmailModule,
     SecurityModule,
     EmailVerificationModule,
   ],
