@@ -1,138 +1,234 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 import { Redis } from 'ioredis';
+import { REDIS_BASE_KEYS } from '@constants/redis-keys.const.js';
 
 import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config';
-import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
-
-import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
 
 @Injectable()
 export class RedisService {
-  constructor(
-    @Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis,
-    private readonly configService: ConfigService
-  ) {}
+  private readonly envPrefix: string;
 
-  // state 값 저장, 5분 동안 만료
-  async setExValue(state: string, expire: number, value: string | number | Buffer): Promise<void> {
-    // value를 Redis에 저장하고, 5분(300초) 후에 만료되도록 설정
-    await this.redisClient.setex(state, expire, value); // setex: key, expire(초), value
+  constructor(@Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis) {
+    this.envPrefix = process.env.REDIS_KEY_PREFIX || '';
   }
 
-  async setValue(key: string, value: string): Promise<void> {
+  /**
+   * Redis 키 생성 헬퍼 메서드
+   * @param baseKey - 기본 키
+   * @param id - 선택적 ID (접두사 키의 경우)
+   * @returns 환경 prefix가 적용된 완전한 Redis 키
+   */
+  private buildKey(baseKey: string, id?: string): string {
+    const key = id ? `${baseKey}:${id}` : baseKey;
+    return this.envPrefix ? `${this.envPrefix}:${key}` : key;
+  }
+
+  // ==================== Private 범용 메서드 ====================
+
+  /**
+   * 만료 시간이 있는 값 저장
+   * @private
+   */
+  private async setExValue(
+    key: string,
+    expire: number,
+    value: string | number | Buffer
+  ): Promise<void> {
+    await this.redisClient.setex(key, expire, value);
+  }
+
+  /**
+   * 값 저장
+   * @private
+   */
+  private async setValue(key: string, value: string): Promise<void> {
     await this.redisClient.set(key, value);
   }
 
-  async getValue(key: string): Promise<string | null> {
+  /**
+   * 값 조회
+   * @private
+   */
+  private async getValue(key: string): Promise<string | null> {
     return this.redisClient.get(key);
   }
 
-  async deleteValue(key: string): Promise<void> {
+  /**
+   * 값 삭제
+   * @private
+   */
+  private async deleteValue(key: string): Promise<void> {
     await this.redisClient.del(key);
   }
 
-  // SSO 세션 관리 메서드
-  async setRedirectSession(
-    sessionId: string,
-    redirectUri: string,
-    ttl: number = 300
-  ): Promise<void> {
+  // ==================== OAuth 리다이렉트 세션 관리 ====================
+
+  /**
+   * OAuth 리다이렉트 세션 저장
+   * @param sessionId - 세션 ID
+   * @param redirectUri - 리다이렉트 URI
+   * @param ttl - TTL (기본값: 300초 = 5분)
+   */
+  async setRedirectSession(sessionId: string, redirectUri: string, ttl = 300): Promise<void> {
     const sessionData = {
       redirectUri,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
     };
-    const oauthRedirectSessionStore =
-      this.configService.get<DefaultConfig['oauthRedirectSessionStore']>(
-        `oauthRedirectSessionStore`
-      )!;
-
-    await this.setExValue(
-      `${oauthRedirectSessionStore}${sessionId}`,
-      ttl,
-      JSON.stringify(sessionData)
-    );
+    const key = this.buildKey(REDIS_BASE_KEYS.OAUTH.REDIRECT_SESSION_PREFIX, sessionId);
+    await this.setExValue(key, ttl, JSON.stringify(sessionData));
   }
 
+  /**
+   * OAuth 리다이렉트 세션 조회
+   * @param sessionId - 세션 ID
+   * @returns 세션 데이터 또는 null
+   */
   async getRedirectSession(
     sessionId: string
   ): Promise<{ redirectUri: string; createdAt: string; expiresAt: string } | null> {
-    const oauthRedirectSessionStore =
-      this.configService.get<DefaultConfig['oauthRedirectSessionStore']>(
-        `oauthRedirectSessionStore`
-      )!;
-    const sessionData = await this.getValue(`${oauthRedirectSessionStore}${sessionId}`);
-
+    const key = this.buildKey(REDIS_BASE_KEYS.OAUTH.REDIRECT_SESSION_PREFIX, sessionId);
+    const sessionData = await this.getValue(key);
     return sessionData ? JSON.parse(sessionData) : null;
   }
 
+  /**
+   * OAuth 리다이렉트 세션 삭제
+   * @param sessionId - 세션 ID
+   */
   async deleteRedirectSession(sessionId: string): Promise<void> {
-    const oauthRedirectSessionStore =
-      this.configService.get<DefaultConfig['oauthRedirectSessionStore']>(
-        `oauthRedirectSessionStore`
-      )!;
-
-    await this.deleteValue(`${oauthRedirectSessionStore}${sessionId}`);
+    const key = this.buildKey(REDIS_BASE_KEYS.OAUTH.REDIRECT_SESSION_PREFIX, sessionId);
+    await this.deleteValue(key);
   }
 
-  async setOAuthState(
-    type: OAuthAccountProviderType,
-    state: string,
-    stateData?: string,
-    ttl: number = 300
-  ): Promise<void> {
-    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
-    const stateValue = stateData || 'pending';
+  // ==================== Naver OAuth State 관리 ====================
 
-    await this.setExValue(`${stateStore}${state}`, ttl, stateValue);
+  /**
+   * Naver OAuth State 저장
+   * @param stateId - State ID
+   * @param stateData - State 데이터 (기본값: 'pending')
+   * @param ttl - TTL (기본값: 300초 = 5분)
+   */
+  async setNaverState(stateId: string, stateData = 'pending', ttl = 300): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.NAVER_STATE_PREFIX, stateId);
+    await this.setExValue(key, ttl, stateData);
   }
 
-  async getOAuthState(type: OAuthAccountProviderType, state: string): Promise<string | null> {
-    const stateStore = this.configService.get<JwtConfig['naverStateStore' | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
-
-    return await this.getValue(`${stateStore}${state}`);
+  /**
+   * Naver OAuth State 조회
+   * @param stateId - State ID
+   * @returns State 데이터 또는 null
+   */
+  async getNaverState(stateId: string): Promise<string | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.NAVER_STATE_PREFIX, stateId);
+    return await this.getValue(key);
   }
 
-  async deleteOAuthState(type: OAuthAccountProviderType, state: string): Promise<void> {
-    const stateStore = this.configService.get<JwtConfig[`naverStateStore` | 'googleStateStore']>(
-      `jwt.${type}StateStore`
-    )!;
+  /**
+   * Naver OAuth State 삭제
+   * @param stateId - State ID
+   */
+  async deleteNaverState(stateId: string): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.NAVER_STATE_PREFIX, stateId);
+    await this.deleteValue(key);
+  }
 
-    await this.deleteValue(`${stateStore}${state}`);
+  // ==================== Google OAuth State 관리 ====================
+
+  /**
+   * Google OAuth State 저장
+   * @param stateId - State ID
+   * @param stateData - State 데이터 (기본값: 'pending')
+   * @param ttl - TTL (기본값: 300초 = 5분)
+   */
+  async setGoogleState(stateId: string, stateData = 'pending', ttl = 300): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.GOOGLE_STATE_PREFIX, stateId);
+    await this.setExValue(key, ttl, stateData);
+  }
+
+  /**
+   * Google OAuth State 조회
+   * @param stateId - State ID
+   * @returns State 데이터 또는 null
+   */
+  async getGoogleState(stateId: string): Promise<string | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.GOOGLE_STATE_PREFIX, stateId);
+    return await this.getValue(key);
+  }
+
+  /**
+   * Google OAuth State 삭제
+   * @param stateId - State ID
+   */
+  async deleteGoogleState(stateId: string): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.GOOGLE_STATE_PREFIX, stateId);
+    await this.deleteValue(key);
+  }
+
+  // ==================== JWT Refresh Token Store ====================
+
+  /**
+   * JWT Refresh Token 저장소 명칭 조회
+   * 쿠키 스토어 이름으로 사용됩니다.
+   * @returns 저장소 명칭 (예: "refreshToken", "dev:refreshToken")
+   */
+  getRefreshStoreName(): string {
+    return this.buildKey(REDIS_BASE_KEYS.JWT.REFRESH_NAME);
+  }
+
+  // ==================== JWT 블랙리스트 관리 ====================
+
+  /**
+   * JWT 블랙리스트에 토큰 추가
+   * @param tokenId - 토큰 ID 또는 JTI
+   * @param ttl - TTL (초 단위)
+   */
+  async addToBlacklist(tokenId: string, ttl: number): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.BLACKLIST_PREFIX, tokenId);
+    await this.setExValue(key, ttl, '1');
+  }
+
+  /**
+   * JWT 블랙리스트 확인
+   * @param tokenId - 토큰 ID 또는 JTI
+   * @returns 블랙리스트 여부
+   */
+  async isBlacklisted(tokenId: string): Promise<boolean> {
+    const key = this.buildKey(REDIS_BASE_KEYS.JWT.BLACKLIST_PREFIX, tokenId);
+    const exists = await this.getValue(key);
+    return exists !== null;
   }
 
   // ==================== 비밀번호 재설정 토큰 관리 ====================
 
   /**
    * 비밀번호 재설정 토큰 저장
-   * @param token UUID v4 토큰
-   * @param userId 사용자 ID
-   * @param ttl TTL (기본값: 3600초 = 1시간)
+   * @param token - UUID v4 토큰
+   * @param userId - 사용자 ID
+   * @param ttl - TTL (기본값: 3600초 = 1시간)
    */
-  async setPasswordResetToken(token: string, userId: string, ttl: number = 3600): Promise<void> {
-    await this.setExValue(`password_reset:${token}`, ttl, userId);
+  async setPasswordResetToken(token: string, userId: string, ttl = 3600): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.PASSWORD_RESET_PREFIX, token);
+    await this.setExValue(key, ttl, userId);
   }
 
   /**
    * 비밀번호 재설정 토큰으로 사용자 ID 조회
-   * @param token UUID v4 토큰
+   * @param token - UUID v4 토큰
    * @returns 사용자 ID 또는 null
    */
   async getPasswordResetToken(token: string): Promise<string | null> {
-    return await this.getValue(`password_reset:${token}`);
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.PASSWORD_RESET_PREFIX, token);
+    return await this.getValue(key);
   }
 
   /**
    * 비밀번호 재설정 토큰 삭제 (일회성)
-   * @param token UUID v4 토큰
+   * @param token - UUID v4 토큰
    */
   async deletePasswordResetToken(token: string): Promise<void> {
-    await this.deleteValue(`password_reset:${token}`);
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.PASSWORD_RESET_PREFIX, token);
+    await this.deleteValue(key);
   }
 }

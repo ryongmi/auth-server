@@ -8,7 +8,6 @@ const defaultConfigSchema = {
   AUTH_SERVER_URL: Joi.string().required(),
   AUTH_CLIENT_URL: Joi.string().required(),
   PORTAL_CLIENT_URL: Joi.string().required(),
-  OAUTH_REDIRECT_SESSION_STORE_NAME: Joi.string().required(),
   ALLOWED_REDIRECT_DOMAINS: Joi.string().required(),
   ALLOWED_REDIRECT_PROTOCOLS: Joi.string().required(),
 };
@@ -32,6 +31,9 @@ const redisConfigSchema = {
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().required(),
   REDIS_PASSWORD: Joi.string().required(),
+  // Redis 키 환경별 분리를 위한 prefix (선택사항)
+  // 예: dev, staging, prod 또는 빈 문자열
+  REDIS_KEY_PREFIX: Joi.string().allow('').optional(),
 };
 
 const googleConfigSchema = {
@@ -61,10 +63,6 @@ const jwtConfigSchema = {
   JWT_REFRESH_MAX_AGE: Joi.number().required(),
   JWT_COOKIE_DOMAIN: Joi.string().allow('').optional(),
   JWT_COOKIE_DOMAIN_DEV: Joi.string().allow('').optional(),
-  JWT_REFRESH_STORE_NAME: Joi.string().required(),
-  JWT_BLACKLIST_STORE_NAME: Joi.string().required(),
-  JWT_NAVER_STATE_STORE_NAME: Joi.string().required(),
-  JWT_GOOGLE_STATE_STORE_NAME: Joi.string().required(),
 };
 
 const emailConfigSchema = {
