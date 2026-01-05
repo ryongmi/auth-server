@@ -24,14 +24,9 @@ import {
   AuthLoginResponseDto,
   AuthSignupResponseDto,
   AuthInitializeResponseDto,
-  ForgotPasswordRequestDto,
-  ResetPasswordDto,
 } from '@krgeobuk/auth/dtos';
 import { AuthError } from '@krgeobuk/auth/exception';
 import { AuthResponse } from '@krgeobuk/auth/response';
-import { EmailError } from '@krgeobuk/email/exception';
-import { EmailResponse } from '@krgeobuk/email/response';
-import { EmailVerificationRequestDto, EmailVerificationConfirmDto } from '@krgeobuk/email/dtos';
 import {
   SwaggerApiTags,
   SwaggerApiBody,
@@ -210,105 +205,5 @@ export class AuthController {
     };
 
     return await this.authService.initialize(payload);
-  }
-
-  @Post('verify-email/request')
-  @HttpCode(EmailResponse.VERIFICATION_REQUEST_SUCCESS.statusCode)
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ short: { ttl: 60000, limit: 3 } }) // 1분에 3번으로 제한
-  @SwaggerApiOperation({ summary: '이메일 인증 요청 (재발송)' })
-  @SwaggerApiBody({
-    dto: EmailVerificationRequestDto,
-    description: '인증 이메일을 재발송할 이메일 주소',
-  })
-  @SwaggerApiOkResponse({
-    status: EmailResponse.VERIFICATION_REQUEST_SUCCESS.statusCode,
-    description: EmailResponse.VERIFICATION_REQUEST_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: EmailError.ALREADY_VERIFIED.statusCode,
-    description: EmailError.ALREADY_VERIFIED.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: EmailError.SEND_FAILED.statusCode,
-    description: EmailError.SEND_FAILED.message,
-  })
-  @Serialize({
-    ...EmailResponse.VERIFICATION_REQUEST_SUCCESS,
-  })
-  async requestEmailVerification(@Body() body: EmailVerificationRequestDto): Promise<void> {
-    return await this.authService.requestEmailVerification(body.email);
-  }
-
-  @Post('verify-email/confirm')
-  @HttpCode(EmailResponse.VERIFICATION_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '이메일 인증 완료' })
-  @SwaggerApiBody({
-    dto: EmailVerificationConfirmDto,
-    description: '이메일로 받은 인증 토큰',
-  })
-  @SwaggerApiOkResponse({
-    status: EmailResponse.VERIFICATION_SUCCESS.statusCode,
-    description: EmailResponse.VERIFICATION_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: EmailError.VERIFICATION_TOKEN_INVALID.statusCode,
-    description: EmailError.VERIFICATION_TOKEN_INVALID.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: EmailError.ALREADY_VERIFIED.statusCode,
-    description: EmailError.ALREADY_VERIFIED.message,
-  })
-  @Serialize({
-    ...EmailResponse.VERIFICATION_SUCCESS,
-  })
-  async verifyEmail(@Body() body: EmailVerificationConfirmDto): Promise<void> {
-    return await this.authService.verifyEmail(body.token);
-  }
-
-  @Post('forgot-password')
-  @HttpCode(AuthResponse.PASSWORD_RESET_EMAIL_SENT.statusCode)
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ short: { ttl: 60000, limit: 3 } }) // 1분에 3번으로 제한
-  @SwaggerApiOperation({ summary: '비밀번호 재설정 요청 (이메일 발송)' })
-  @SwaggerApiBody({
-    dto: ForgotPasswordRequestDto,
-    description: '비밀번호 재설정 이메일을 받을 이메일 주소',
-  })
-  @SwaggerApiOkResponse({
-    status: AuthResponse.PASSWORD_RESET_EMAIL_SENT.statusCode,
-    description: AuthResponse.PASSWORD_RESET_EMAIL_SENT.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: EmailError.SEND_FAILED.statusCode,
-    description: EmailError.SEND_FAILED.message,
-  })
-  @Serialize({
-    ...AuthResponse.PASSWORD_RESET_EMAIL_SENT,
-  })
-  async forgotPassword(@Body() body: ForgotPasswordRequestDto): Promise<void> {
-    return await this.authService.requestPasswordReset(body.email);
-  }
-
-  @Post('reset-password')
-  @HttpCode(AuthResponse.PASSWORD_RESET_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '비밀번호 재설정 실행' })
-  @SwaggerApiBody({
-    dto: ResetPasswordDto,
-    description: '이메일로 받은 재설정 토큰과 새 비밀번호',
-  })
-  @SwaggerApiOkResponse({
-    status: AuthResponse.PASSWORD_RESET_SUCCESS.statusCode,
-    description: AuthResponse.PASSWORD_RESET_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: AuthError.PASSWORD_RESET_TOKEN_INVALID.statusCode,
-    description: AuthError.PASSWORD_RESET_TOKEN_INVALID.message,
-  })
-  @Serialize({
-    ...AuthResponse.PASSWORD_RESET_SUCCESS,
-  })
-  async resetPassword(@Body() body: ResetPasswordDto): Promise<void> {
-    return await this.authService.resetPassword(body.token, body.password);
   }
 }

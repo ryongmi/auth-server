@@ -20,7 +20,7 @@ import type { UserProfile } from '@krgeobuk/user/interfaces';
 import type { Service } from '@krgeobuk/shared/service';
 
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
-import { convertToProxyUrl } from '@/utils/imageUrlUtils.js';
+import { ImageProxyService } from '@modules/image/image-proxy.service.js';
 
 import { UserEntity } from './entities/user.entity.js';
 import { UserRepository } from './user.repository.js';
@@ -32,7 +32,8 @@ export class UserService {
   constructor(
     private readonly userRepo: UserRepository,
     @Inject('AUTHZ_SERVICE') private readonly authzClient: ClientProxy,
-    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy
+    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy,
+    private readonly imageProxyService: ImageProxyService
   ) {}
 
   async searchUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
@@ -85,7 +86,7 @@ export class UserService {
     // profileImageUrl을 프록시 URL로 변환
     return {
       ...userDetail,
-      profileImageUrl: convertToProxyUrl(userDetail.profileImageUrl),
+      profileImageUrl: this.imageProxyService.convertToProxyUrl(userDetail.profileImageUrl),
     };
   }
 
@@ -125,7 +126,7 @@ export class UserService {
       // 3. 통합 결과 반환
       const result: UserProfile = {
         ...baseUser,
-        profileImageUrl: convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
+        profileImageUrl: this.imageProxyService.convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
         authorization: {
           roles,
           permissions,
@@ -159,7 +160,7 @@ export class UserService {
       // Fallback: 기본 사용자 정보만 반환 (이미 조회 완료)
       return {
         ...baseUser,
-        profileImageUrl: convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
+        profileImageUrl: this.imageProxyService.convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
         authorization: { roles: [], permissions: [] },
         availableServices: [],
       };

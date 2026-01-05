@@ -1,10 +1,8 @@
 import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 
 import { Request } from 'express';
 
-import { JwtConfig } from '@common/interfaces/index.js';
 import { RedisService } from '@database/redis/redis.service.js';
 
 import { JwtTokenService } from '../jwt-token.service.js';
@@ -14,7 +12,6 @@ export class OptionalRefreshTokenGuard implements CanActivate {
   private readonly logger = new Logger(OptionalRefreshTokenGuard.name);
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly jwtService: JwtTokenService,
     private readonly redisService: RedisService,
     private readonly _reflector: Reflector // 필요한 경우 Role같은거 추후 적용용
@@ -37,19 +34,18 @@ export class OptionalRefreshTokenGuard implements CanActivate {
       return true;
     }
 
-    const blackListStore =
-      this.configService.get<JwtConfig['blackListStore']>('jwt.blackListStore');
-    const blacklistedToken = await this.redisService.getValue(`${blackListStore}${refreshToken}`);
+    // 2. Blacklist 확인
+    const isBlacklisted = await this.redisService.isBlacklisted(refreshToken);
 
-    if (blacklistedToken) {
+    if (isBlacklisted) {
       return true;
     }
 
     try {
-      // 2. Refresh Token 검증
+      // 3. Refresh Token 검증
       const { sub, tokenData, iat, exp } = await this.jwtService.decodeRefreshToken(refreshToken);
 
-      // 3. 검증 성공 시 payload를 request.user에 저장
+      // 4. 검증 성공 시 payload를 request.user에 저장
       request.jwt = {
         userId: sub,
         tokenData,

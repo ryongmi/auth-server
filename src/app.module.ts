@@ -12,6 +12,8 @@ import { AppConfigModule } from '@config/index.js';
 import { SharedClientsModule } from '@common/clients/shared-clients.module.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
+import { EmailVerificationModule } from '@modules/email-verification/index.js';
+import { PasswordResetModule } from '@modules/password-reset/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
 import { AccountMergeModule } from '@modules/account-merge/account-merge.module.js';
 import { ImageModule } from '@modules/image/image.module.js';
@@ -50,6 +52,8 @@ import { HealthModule } from '@modules/health/index.js';
     HealthModule,
     UserModule,
     AuthModule,
+    EmailVerificationModule,
+    PasswordResetModule,
     OAuthModule,
     AccountMergeModule,
     ImageModule,

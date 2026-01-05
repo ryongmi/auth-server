@@ -5,7 +5,6 @@ export interface DefaultConfig {
   port: number | undefined;
   tcpPort: number | undefined;
   corsOrigins: string | undefined;
-  oauthRedirectSessionStore: string | undefined;
   authServerUrl: string | undefined;
   authClientUrl: string | undefined;
   portalClientUrl: string | undefined;
@@ -36,6 +35,7 @@ export interface RedisConfig {
   host: string | undefined;
   port: number | undefined;
   password: string | undefined;
+  keyPrefix: string | undefined;
 }
 
 export interface GoogleConfig {
@@ -64,8 +64,4 @@ export interface JwtConfig {
   sessionCookiePath: string | undefined;
   refreshMaxAge: number | undefined;
   cookieDomain: string | undefined;
-  refreshStore: string | undefined;
-  blackListStore: string | undefined;
-  naverStateStore: string | undefined;
-  googleStateStore: string | undefined;
 }
