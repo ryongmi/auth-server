@@ -8,18 +8,18 @@ import {
 import { AccountMergeStatus, ACCOUNT_MERGE_STATUS_VALUES } from '@krgeobuk/oauth/enum';
 
 /**
- * 계정 병합 요청 엔티티
+ * 계정 병합 엔티티
  * User A (유지할 계정)와 User B (삭제될 계정)의 병합 프로세스를 추적
  *
  * ID: AUTO_INCREMENT (BIGINT)
  * - K8s 레플리카 환경에서도 안전 (단일 RDS 사용)
  * - 성능 최적화 (UUID 대비 인덱스 크기 4.5배 감소)
  */
-@Entity('account_merge_request')
-@Index('IDX_ACCOUNT_MERGE_REQUEST_TARGET_USER_ID', ['targetUserId'])
-@Index('IDX_ACCOUNT_MERGE_REQUEST_SOURCE_USER_ID', ['sourceUserId'])
-@Index('IDX_ACCOUNT_MERGE_REQUEST_STATUS', ['status'])
-export class AccountMergeRequestEntity extends BaseEntityIncrement {
+@Entity('account_merge')
+@Index('IDX_ACCOUNT_MERGE_TARGET_USER_ID', ['targetUserId'])
+@Index('IDX_ACCOUNT_MERGE_SOURCE_USER_ID', ['sourceUserId'])
+@Index('IDX_ACCOUNT_MERGE_STATUS', ['status'])
+export class AccountMergeEntity extends BaseEntityIncrement {
   /** User A (유지할 계정) */
   @Column({ type: 'uuid', comment: 'User A (유지할 계정)' })
   targetUserId!: string;

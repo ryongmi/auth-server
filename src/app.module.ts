@@ -13,6 +13,7 @@ import { SharedClientsModule } from '@common/clients/shared-clients.module.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
 import { OAuthModule } from '@modules/oauth/index.js';
+import { AccountMergeModule } from '@modules/account-merge/account-merge.module.js';
 import { ImageModule } from '@modules/image/image.module.js';
 import { HealthModule } from '@modules/health/index.js';
 
@@ -50,6 +51,7 @@ import { HealthModule } from '@modules/health/index.js';
     UserModule,
     AuthModule,
     OAuthModule,
+    AccountMergeModule,
     ImageModule,
     // RouterModule.register([
     //   {

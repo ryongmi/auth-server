@@ -5,11 +5,14 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { BaseSagaOrchestrator, SagaStep, RetryOptions } from '@krgeobuk/saga';
 import { AccountMergeStatus } from '@krgeobuk/oauth/enum';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
+import { UserRoleTcpPatterns } from '@krgeobuk/user-role/tcp/patterns';
+import { AccountMergeTcpPatterns } from '@krgeobuk/account-merge/tcp/patterns';
 
-import { AccountMergeRequestEntity } from './entities/account-merge-request.entity.js';
-import { OAuthService } from './oauth.service.js';
 import { UserService } from '@modules/user/user.service.js';
+import { OAuthService } from '@modules/oauth/oauth.service.js';
 import { RedisService } from '@database/redis/redis.service.js';
+
+import { AccountMergeEntity } from './entities/account-merge.entity.js';
 
 /**
  * 계정 병합 스냅샷 인터페이스
@@ -42,7 +45,7 @@ interface MergeSnapshot {
  */
 @Injectable()
 export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
-  AccountMergeRequestEntity,
+  AccountMergeEntity,
   MergeSnapshot
 > {
   protected readonly logger = new Logger(AccountMergeOrchestrator.name);
@@ -61,7 +64,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * Saga 실행 단계 정의
    * 각 단계는 독립적으로 실행되며 실패 시 재시도
    */
-  protected getSteps(): SagaStep<AccountMergeRequestEntity>[] {
+  protected getSteps(): SagaStep<AccountMergeEntity>[] {
     const defaultRetryOptions: RetryOptions = {
       maxRetries: 3,
       baseDelayMs: 1000,
@@ -72,31 +75,31 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     return [
       {
         name: 'STEP1_AUTH_BACKUP',
-        execute: (req: AccountMergeRequestEntity) => this.backupAndMergeOAuth(req),
+        execute: (req: AccountMergeEntity) => this.backupAndMergeOAuth(req),
         retryOptions: defaultRetryOptions,
         onRetry: (attempt: number, error: any) => this.logRetry('STEP1_AUTH_BACKUP', attempt, error),
       },
       {
         name: 'STEP2_AUTHZ_MERGE',
-        execute: (req: AccountMergeRequestEntity) => this.mergeRoles(req),
+        execute: (req: AccountMergeEntity) => this.mergeRoles(req),
         retryOptions: defaultRetryOptions,
         onRetry: (attempt: number, error: any) => this.logRetry('STEP2_AUTHZ_MERGE', attempt, error),
       },
       {
         name: 'STEP3_MYPICK_MERGE',
-        execute: (req: AccountMergeRequestEntity) => this.mergeMyPickData(req),
+        execute: (req: AccountMergeEntity) => this.mergeMyPickData(req),
         retryOptions: { ...defaultRetryOptions, timeoutMs: 10000 }, // my-pick은 10초 타임아웃
         onRetry: (attempt: number, error: any) => this.logRetry('STEP3_MYPICK_MERGE', attempt, error),
       },
       {
         name: 'STEP4_USER_DELETE',
-        execute: (req: AccountMergeRequestEntity) => this.softDeleteUser(req),
+        execute: (req: AccountMergeEntity) => this.softDeleteUser(req),
         retryOptions: defaultRetryOptions,
         onRetry: (attempt: number, error: any) => this.logRetry('STEP4_USER_DELETE', attempt, error),
       },
       {
         name: 'STEP5_CACHE_INVALIDATE',
-        execute: (req: AccountMergeRequestEntity) => this.invalidateCache(req),
+        execute: (req: AccountMergeEntity) => this.invalidateCache(req),
         retryOptions: { ...defaultRetryOptions, maxRetries: 1 }, // 캐시는 재시도 1회만
         onRetry: (attempt: number, error: any) => this.logRetry('STEP5_CACHE_INVALIDATE', attempt, error),
       },
@@ -107,7 +110,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * 병합 전 상태 스냅샷 생성
    * Redis에 7일간 보관하여 롤백 시 사용
    */
-  protected async createSnapshot(request: AccountMergeRequestEntity): Promise<MergeSnapshot> {
+  protected async createSnapshot(request: AccountMergeEntity): Promise<MergeSnapshot> {
     this.logger.log('Creating merge snapshot', {
       targetUserId: request.targetUserId,
       sourceUserId: request.sourceUserId,
@@ -211,7 +214,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * STEP1: OAuth 계정 백업 및 병합
    * sourceUser의 OAuth 계정을 targetUser로 이전
    */
-  private async backupAndMergeOAuth(request: AccountMergeRequestEntity): Promise<void> {
+  private async backupAndMergeOAuth(request: AccountMergeEntity): Promise<void> {
     this.logger.log('Executing STEP1: OAuth account merge', {
       sourceUserId: request.sourceUserId,
       targetUserId: request.targetUserId,
@@ -233,63 +236,51 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * STEP2: 역할/권한 병합
    * authz-server TCP를 통해 역할 병합 요청
    */
-  private async mergeRoles(request: AccountMergeRequestEntity): Promise<void> {
+  private async mergeRoles(request: AccountMergeEntity): Promise<void> {
     this.logger.log('Executing STEP2: Role merge', {
       sourceUserId: request.sourceUserId,
       targetUserId: request.targetUserId,
     });
 
-    const result = await firstValueFrom(
+    await firstValueFrom(
       this.authzClient
-        .send('user-role.merge-users', {
-          targetUserId: request.targetUserId,
+        .send(UserRoleTcpPatterns.MERGE_USER_ROLES, {
           sourceUserId: request.sourceUserId,
+          targetUserId: request.targetUserId,
         })
         .pipe(timeout(5000))
     );
 
-    if (!result.success) {
-      throw new Error(`Role merge failed: ${result.message}`);
-    }
-
-    this.logger.log('STEP2 completed', {
-      transferredRoles: result.data?.transferredRoles ?? 0,
-    });
+    this.logger.log('STEP2 completed: User roles merged');
   }
 
   /**
    * STEP3: my-pick 데이터 병합
    * my-pick-server TCP를 통해 데이터 병합 요청
    */
-  private async mergeMyPickData(request: AccountMergeRequestEntity): Promise<void> {
+  private async mergeMyPickData(request: AccountMergeEntity): Promise<void> {
     this.logger.log('Executing STEP3: my-pick data merge', {
       sourceUserId: request.sourceUserId,
       targetUserId: request.targetUserId,
     });
 
-    const result = await firstValueFrom(
+    await firstValueFrom(
       this.myPickClient
-        .send('user.merge-accounts', {
-          targetUserId: request.targetUserId,
+        .send(AccountMergeTcpPatterns.MERGE_USER_DATA, {
           sourceUserId: request.sourceUserId,
+          targetUserId: request.targetUserId,
         })
         .pipe(timeout(10000)) // my-pick은 10초 타임아웃 (여러 테이블 처리)
     );
 
-    if (!result.success) {
-      throw new Error(`my-pick merge failed: ${result.message}`);
-    }
-
-    this.logger.log('STEP3 completed: my-pick data merged', {
-      stats: result.data?.stats,
-    });
+    this.logger.log('STEP3 completed: my-pick data merged');
   }
 
   /**
    * STEP4: User B 소프트 삭제
    * deletedAt 타임스탬프 설정
    */
-  private async softDeleteUser(request: AccountMergeRequestEntity): Promise<void> {
+  private async softDeleteUser(request: AccountMergeEntity): Promise<void> {
     this.logger.log('Executing STEP4: User soft delete', {
       sourceUserId: request.sourceUserId,
     });
@@ -303,7 +294,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * STEP5: 캐시 무효화
    * User A, B의 권한 캐시 삭제
    */
-  private async invalidateCache(request: AccountMergeRequestEntity): Promise<void> {
+  private async invalidateCache(request: AccountMergeEntity): Promise<void> {
     this.logger.log('Executing STEP5: Cache invalidation', {
       sourceUserId: request.sourceUserId,
       targetUserId: request.targetUserId,

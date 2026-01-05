@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 
@@ -23,13 +23,12 @@ import { JwtTokenService } from '@common/jwt/index.js';
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
 import { UserEntity, UserService } from '@modules/user/index.js';
 import { RedisService } from '@database/redis/redis.service.js';
+import { AccountMergeService } from '@modules/account-merge/account-merge.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
-import { AccountMergeRequestEntity } from './entities/account-merge-request.entity.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
-import { AccountMergeRequestRepository } from './account-merge-request.repository.js';
 
 @Injectable()
 export class OAuthService {
@@ -44,7 +43,8 @@ export class OAuthService {
     private readonly naverOAuthService: NaverOAuthService,
     private readonly oauthRepo: OAuthRepository,
     private readonly emailService: EmailService,
-    private readonly mergeRequestRepo: AccountMergeRequestRepository
+    @Inject(forwardRef(() => AccountMergeService))
+    private readonly accountMergeService: AccountMergeService
   ) {}
 
   // state 값 생성
@@ -375,18 +375,42 @@ export class OAuthService {
 
     if (existingOAuth.length > 0 && existingOAuth[0]?.userId !== userId) {
       const existingAccount = existingOAuth[0];
-      if (existingAccount) {
-        // 병합 요청 생성 (예외 발생 대신)
-        await this.createMergeRequest(
-          userId,                      // targetUserId (User A - 유지할 계정)
-          existingAccount.userId,      // sourceUserId (User B - 삭제될 계정)
-          provider,
-          userInfo.id                  // providerId
-        );
+      if (!existingAccount) {
+        throw OAuthException.alreadyLinkedToAnotherAccount(provider);
       }
 
-      // 병합 요청 생성 후 특별한 예외를 던져서 클라이언트에 알림
-      throw OAuthException.alreadyLinkedToAnotherAccount(provider);
+      // OAuth 계정이 다른 사용자에게 이미 연결되어 있음
+      // 자동으로 계정 병합 요청 생성
+      const existingUserId = existingAccount.userId;
+
+      // 기존 사용자(User B)의 이메일 조회
+      const existingUser = await this.userService.findById(existingUserId);
+      if (!existingUser) {
+        throw UserException.userNotFound();
+      }
+
+      // 계정 병합 요청 생성 및 이메일 전송
+      const mergeRequestId = await this.accountMergeService.initiateAccountMerge(
+        provider,
+        userInfo.id,
+        existingUser.email,
+        userId // sourceUserId (OAuth 연동을 시도하는 사용자)
+      );
+
+      this.logger.log(
+        `${this.linkOAuthAccount.name} - 계정 병합 요청 생성됨: ${mergeRequestId}`
+      );
+
+      // 병합 요청이 생성되었음을 알리는 예외 던지기
+      throw new BadRequestException({
+        code: 'OAUTH_206',
+        message: '해당 OAuth 계정이 다른 사용자에게 연결되어 있습니다. 계정 병합 확인 이메일이 발송되었습니다.',
+        details: {
+          mergeRequestId,
+          targetEmail: existingUser.email,
+          provider,
+        },
+      });
     }
 
     // 2. 이미 현재 유저에게 연동되어 있는지 확인
@@ -530,50 +554,6 @@ export class OAuthService {
     return user;
   }
 
-  // ==================== 계정 병합 관련 메서드 ====================
-
-  /**
-   * 계정 병합 요청 생성
-   * User A가 User B의 OAuth 계정을 자신에게 연결하려고 할 때 병합 요청 생성
-   *
-   * @param targetUserId - User A (유지할 계정)
-   * @param sourceUserId - User B (삭제될 계정)
-   * @param provider - OAuth 제공자
-   * @param providerId - OAuth 제공자의 사용자 ID
-   * @returns 생성된 병합 요청 엔티티
-   */
-  async createMergeRequest(
-    targetUserId: string,
-    sourceUserId: string,
-    provider: OAuthAccountProviderType,
-    providerId: string
-  ): Promise<AccountMergeRequestEntity> {
-    this.logger.log('Creating account merge request', {
-      targetUserId,
-      sourceUserId,
-      provider,
-      providerId,
-    });
-
-    // 병합 요청 엔티티 생성
-    const mergeRequest = this.mergeRequestRepo.create({
-      targetUserId,
-      sourceUserId,
-      provider,
-      providerId,
-      status: AccountMergeStatus.PENDING_EMAIL_VERIFICATION,
-    });
-
-    await this.mergeRequestRepo.save(mergeRequest);
-
-    this.logger.log('Merge request created', { requestId: mergeRequest.id });
-
-    // 토큰 생성 및 이메일 발송
-    await this.sendMergeConfirmationEmail(mergeRequest);
-
-    return mergeRequest;
-  }
-
   /**
    * OAuth 계정 이전
    * sourceUser의 OAuth 계정을 targetUser로 이전
@@ -614,9 +594,7 @@ export class OAuthService {
    *
    * @param mergeRequest - 병합 요청 엔티티
    */
-  private async sendMergeConfirmationEmail(
-    mergeRequest: AccountMergeRequestEntity
-  ): Promise<void> {
+  async sendMergeConfirmationEmail(mergeRequest: any): Promise<void> {
     this.logger.log('Sending merge confirmation email', {
       requestId: mergeRequest.id,
       sourceUserId: mergeRequest.sourceUserId,
