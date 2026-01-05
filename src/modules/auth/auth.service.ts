@@ -22,6 +22,7 @@ import type { EmailConfig } from '@krgeobuk/email/interfaces';
 import { RedisService } from '@database/redis/redis.service.js';
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
+import { RedirectValidationService } from '@common/security/index.js';
 import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
 import { UserService } from '@modules/user/index.js';
 import { OAuthService } from '@modules/oauth/index.js';
@@ -36,7 +37,8 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly jwtService: JwtTokenService,
     private readonly oauthService: OAuthService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly redirectValidation: RedirectValidationService
   ) {}
 
   async logout(req: Request, res: Response): Promise<void> {
@@ -118,7 +120,7 @@ export class AuthService {
       const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
       this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl || this.getDefaultRedirectUrl();
+      return redirectUrl || this.redirectValidation.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: JWT 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -196,7 +198,7 @@ export class AuthService {
       const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
       this.logger.log(`${this.signup.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl || this.getDefaultRedirectUrl();
+      return redirectUrl || this.redirectValidation.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: 회원가입 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -278,7 +280,7 @@ export class AuthService {
     this.logger.log(`${this.ssoLoginRedirect.name} - 시작 되었습니다.`);
 
     // 리다이렉트 URI 검증
-    const isValidRedirect = await this.validateRedirectUri(redirectUri, req);
+    const isValidRedirect = await this.redirectValidation.validateRedirectUri(redirectUri, req);
     if (!isValidRedirect) {
       this.logger.warn(`[SSO_REDIRECT_ERROR] 잘못된 리다이렉트 URI: ${redirectUri}`);
       throw AuthException.invalidRedirectUri();
@@ -319,119 +321,6 @@ export class AuthService {
     }
 
     return null;
-  }
-
-  /**
-   * 리다이렉트 URI 검증
-   */
-  private async validateRedirectUri(redirectUri: string, req?: Request): Promise<boolean> {
-    try {
-      const url = new URL(redirectUri);
-
-      // 환경변수에서 허용된 도메인과 프로토콜 가져오기
-      const allowedDomains = this.getAllowedDomains();
-      const allowedProtocols = this.getAllowedProtocols();
-
-      // 프로토콜 검증
-      if (!allowedProtocols.includes(url.protocol.slice(0, -1))) {
-        this.logger.warn(
-          `[SECURITY_ALERT] Invalid protocol: ${url.protocol} for URI: ${redirectUri}`
-        );
-        return false;
-      }
-
-      // 도메인:포트 검증
-      const hostWithPort = url.port ? `${url.hostname}:${url.port}` : url.hostname;
-
-      const isAllowed = allowedDomains.some((allowedDomain) => {
-        // 1. 정확한 매치 (포트 포함) - 개발환경용
-        if (hostWithPort === allowedDomain) return true;
-
-        // 2. 정확한 매치 (메인 도메인만) - krgeobuk.com 허용
-        if (url.hostname === allowedDomain) return true;
-
-        // 3. 서브도메인 매치 (*.krgeobuk.com) - auth.krgeobuk.com, api.krgeobuk.com 등
-        if (url.hostname.endsWith(`.${allowedDomain}`)) {
-          // 보안 강화: 정확한 서브도메인만 허용 (krgeobuk.com.evil.com 차단)
-          const hostParts = url.hostname.split('.');
-          const domainParts = allowedDomain.split('.');
-
-          // 호스트의 마지막 부분이 허용된 도메인과 정확히 일치하는지 확인
-          if (hostParts.length === domainParts.length + 1) {
-            const hostSuffix = hostParts.slice(-domainParts.length).join('.');
-            return hostSuffix === allowedDomain;
-          }
-        }
-
-        return false;
-      });
-
-      if (!isAllowed) {
-        // 상세한 보안 로깅
-        const securityContext = {
-          requestedUri: redirectUri,
-          clientIp: req?.ip || 'unknown',
-          userAgent: req?.get('User-Agent') || 'unknown',
-          referer: req?.get('Referer') || 'none',
-          timestamp: new Date().toISOString(),
-        };
-
-        this.logger.warn(`[SECURITY_ALERT] Unauthorized redirect attempt`, securityContext);
-      }
-
-      return isAllowed;
-    } catch (error) {
-      const securityContext = {
-        requestedUri: redirectUri,
-        clientIp: req?.ip || 'unknown',
-        userAgent: req?.get('User-Agent') || 'unknown',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
-      };
-
-      this.logger.warn(`[SECURITY_ALERT] Invalid URL format in redirect request`, securityContext);
-      return false;
-    }
-  }
-
-  /**
-   * 환경변수에서 허용된 도메인 목록 가져오기
-   */
-  private getAllowedDomains(): string[] {
-    const domainsConfig =
-      this.configService.get<DefaultConfig['allowedRedirectDomains']>('allowedRedirectDomains');
-
-    if (!domainsConfig) {
-      // 기본값 (개발환경용)
-      return ['localhost:3000', 'localhost:3200', 'localhost:3210', '127.0.0.1:3000'];
-    }
-
-    return domainsConfig.split(',').map((domain: string) => domain.trim());
-  }
-
-  /**
-   * 환경변수에서 허용된 프로토콜 목록 가져오기
-   */
-  private getAllowedProtocols(): string[] {
-    const protocolsConfig = this.configService.get<DefaultConfig['allowedRedirectProtocols']>(
-      'allowedRedirectProtocols'
-    );
-
-    if (!protocolsConfig) {
-      // 기본값 (개발환경용)
-      return ['http', 'https'];
-    }
-
-    return protocolsConfig.split(',').map((protocol: string) => protocol.trim());
-  }
-
-  /**
-   * 기본 리다이렉트 URL 반환 (fallback)
-   */
-  private getDefaultRedirectUrl(): string {
-    const portalClientUrl =
-      this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
-    return portalClientUrl;
   }
 
   // ==================== 이메일 인증 관련 메서드 ====================
