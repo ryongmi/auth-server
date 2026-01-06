@@ -301,4 +301,48 @@ export class RedisService {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.EMAIL_VERIFICATION_PREFIX, token);
     await this.deleteValue(key);
   }
+
+  // ==================== 계정 병합 스냅샷 관리 ====================
+
+  /**
+   * 계정 병합 스냅샷 저장
+   * @param requestId - 병합 요청 ID
+   * @param snapshot - 스냅샷 데이터
+   * @param ttl - TTL (기본값: 604800초 = 7일)
+   */
+  async setMergeSnapshot(requestId: number, snapshot: any, ttl = 604800): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
+    await this.setExValue(key, ttl, JSON.stringify(snapshot));
+  }
+
+  /**
+   * 계정 병합 스냅샷 조회
+   * @param requestId - 병합 요청 ID
+   * @returns 스냅샷 데이터 또는 null
+   */
+  async getMergeSnapshot(requestId: number): Promise<any | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
+    const data = await this.getValue(key);
+    return data ? JSON.parse(data) : null;
+  }
+
+  /**
+   * 계정 병합 스냅샷 삭제
+   * @param requestId - 병합 요청 ID
+   */
+  async deleteMergeSnapshot(requestId: number): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
+    await this.deleteValue(key);
+  }
+
+  // ==================== 사용자 권한 캐시 관리 ====================
+
+  /**
+   * 사용자 권한 캐시 삭제
+   * @param userId - 사용자 ID
+   */
+  async deleteUserPermissionCache(userId: string): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.CACHE.USER_PERMISSION_PREFIX, userId);
+    await this.deleteValue(key);
+  }
 }

@@ -1,7 +1,14 @@
-import { Injectable, Logger, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
-import { AccountMergeStatus } from '@krgeobuk/oauth/enum';
+import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { UserException } from '@krgeobuk/user/exception';
 
@@ -82,8 +89,7 @@ export class AccountMergeService {
     });
 
     if (recentRequest) {
-      const hoursSinceRequest =
-        (Date.now() - recentRequest.createdAt.getTime()) / (1000 * 60 * 60);
+      const hoursSinceRequest = (Date.now() - recentRequest.createdAt.getTime()) / (1000 * 60 * 60);
       if (hoursSinceRequest < 24) {
         this.logger.warn('Duplicate merge request within 24 hours', {
           requestId: recentRequest.id,
@@ -250,10 +256,7 @@ export class AccountMergeService {
     }
 
     // 4. 상태를 CANCELLED로 변경
-    await this.accountMergeRepo.update(
-      { id: requestId },
-      { status: AccountMergeStatus.CANCELLED }
-    );
+    await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
 
     this.logger.log('Account merge rejected', { requestId });
   }

@@ -1,14 +1,7 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes } from 'crypto';
 
+import { randomBytes } from 'crypto';
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 import { Response } from 'express';
 
@@ -22,7 +15,7 @@ import type {
   NaverTokenResponse,
 } from '@krgeobuk/oauth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
-import { OauthStateMode, AccountMergeStatus } from '@krgeobuk/oauth/enum';
+import { OauthStateMode } from '@krgeobuk/oauth/enum';
 import { UserException } from '@krgeobuk/user/exception';
 import { EmailService } from '@krgeobuk/email';
 

@@ -1,10 +1,9 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+
 import { firstValueFrom, timeout } from 'rxjs';
 
 import { BaseSagaOrchestrator, SagaStep, RetryOptions } from '@krgeobuk/saga';
-import { AccountMergeStatus } from '@krgeobuk/oauth/enum';
-import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { UserRoleTcpPatterns } from '@krgeobuk/user-role/tcp/patterns';
 import { AccountMergeTcpPatterns } from '@krgeobuk/account-merge/tcp/patterns';
 
@@ -77,31 +76,36 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         name: 'STEP1_AUTH_BACKUP',
         execute: (req: AccountMergeEntity) => this.backupAndMergeOAuth(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) => this.logRetry('STEP1_AUTH_BACKUP', attempt, error),
+        onRetry: (attempt: number, error: any) =>
+          this.logRetry('STEP1_AUTH_BACKUP', attempt, error),
       },
       {
         name: 'STEP2_AUTHZ_MERGE',
         execute: (req: AccountMergeEntity) => this.mergeRoles(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) => this.logRetry('STEP2_AUTHZ_MERGE', attempt, error),
+        onRetry: (attempt: number, error: any) =>
+          this.logRetry('STEP2_AUTHZ_MERGE', attempt, error),
       },
       {
         name: 'STEP3_MYPICK_MERGE',
         execute: (req: AccountMergeEntity) => this.mergeMyPickData(req),
         retryOptions: { ...defaultRetryOptions, timeoutMs: 10000 }, // my-pick은 10초 타임아웃
-        onRetry: (attempt: number, error: any) => this.logRetry('STEP3_MYPICK_MERGE', attempt, error),
+        onRetry: (attempt: number, error: any) =>
+          this.logRetry('STEP3_MYPICK_MERGE', attempt, error),
       },
       {
         name: 'STEP4_USER_DELETE',
         execute: (req: AccountMergeEntity) => this.softDeleteUser(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) => this.logRetry('STEP4_USER_DELETE', attempt, error),
+        onRetry: (attempt: number, error: any) =>
+          this.logRetry('STEP4_USER_DELETE', attempt, error),
       },
       {
         name: 'STEP5_CACHE_INVALIDATE',
         execute: (req: AccountMergeEntity) => this.invalidateCache(req),
         retryOptions: { ...defaultRetryOptions, maxRetries: 1 }, // 캐시는 재시도 1회만
-        onRetry: (attempt: number, error: any) => this.logRetry('STEP5_CACHE_INVALIDATE', attempt, error),
+        onRetry: (attempt: number, error: any) =>
+          this.logRetry('STEP5_CACHE_INVALIDATE', attempt, error),
       },
     ];
   }
@@ -140,11 +144,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     };
 
     // Redis에 7일간 백업 저장
-    await this.redisService.setExValue(
-      `merge:snapshot:${request.id}`,
-      604800, // 7일 (60 * 60 * 24 * 7)
-      JSON.stringify(snapshot)
-    );
+    await this.redisService.setMergeSnapshot(request.id, snapshot, 604800);
 
     this.logger.log('Snapshot created and saved to Redis', {
       requestId: request.id,
@@ -158,10 +158,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * 보상 트랜잭션 실행
    * 완료된 단계를 역순으로 롤백
    */
-  protected async compensate(
-    completedSteps: string[],
-    snapshot: MergeSnapshot
-  ): Promise<void> {
+  protected async compensate(completedSteps: string[], snapshot: MergeSnapshot): Promise<void> {
     this.logger.warn('Starting compensation transaction', {
       completedSteps,
       totalSteps: completedSteps.length,
@@ -301,10 +298,10 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     });
 
     // User B 권한 캐시 삭제
-    await this.redisService.deleteValue(`user:${request.sourceUserId}:permissions`);
+    await this.redisService.deleteUserPermissionCache(request.sourceUserId);
 
     // User A 권한 캐시 삭제 (새 역할 반영)
-    await this.redisService.deleteValue(`user:${request.targetUserId}:permissions`);
+    await this.redisService.deleteUserPermissionCache(request.targetUserId);
 
     this.logger.log('STEP5 completed: Cache invalidated');
   }

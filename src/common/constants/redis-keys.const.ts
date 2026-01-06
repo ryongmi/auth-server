@@ -42,8 +42,19 @@ export const REDIS_BASE_KEYS = {
     /** 계정 병합 확인 토큰 접두사 */
     MERGE_TOKEN_PREFIX: 'merge:token',
 
+    /** 계정 병합 스냅샷 접두사 */
+    MERGE_SNAPSHOT_PREFIX: 'merge:snapshot',
+
     /** 이메일 인증 토큰 접두사 */
     EMAIL_VERIFICATION_PREFIX: 'emailVerify',
+  },
+
+  /**
+   * 캐시 관련 Redis 키
+   */
+  CACHE: {
+    /** 사용자 권한 캐시 접두사 */
+    USER_PERMISSION_PREFIX: 'user:permissions',
   },
 } as const;
 

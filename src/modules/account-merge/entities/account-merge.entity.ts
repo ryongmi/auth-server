@@ -5,7 +5,7 @@ import {
   OAuthAccountProviderType,
   OAUTH_ACCOUNT_PROVIDER_TYPE_VALUES,
 } from '@krgeobuk/shared/oauth';
-import { AccountMergeStatus, ACCOUNT_MERGE_STATUS_VALUES } from '@krgeobuk/oauth/enum';
+import { AccountMergeStatus, ACCOUNT_MERGE_STATUS_VALUES } from '@krgeobuk/shared/account-merge';
 
 /**
  * 계정 병합 엔티티

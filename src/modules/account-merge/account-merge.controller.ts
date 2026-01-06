@@ -18,12 +18,12 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
+import { InitiateAccountMergeDto, AccountMergeResponseDto } from '@krgeobuk/account-merge/dtos';
 
 import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
 import { UserService } from '@modules/user/user.service.js';
 
 import { AccountMergeService } from './account-merge.service.js';
-import { InitiateAccountMergeDto, AccountMergeResponseDto } from './dtos/account-merge.dto.js';
 
 @SwaggerApiTags({ tags: ['account-merge'] })
 @Controller('account-merge')
@@ -100,7 +100,7 @@ export class AccountMergeController {
     const expiresAt = new Date(request.createdAt.getTime() + 86400000);
 
     return {
-      id: request.id.toString(),
+      id: request.id,
       createdAt: request.createdAt,
       expiresAt,
       provider: request.provider,
