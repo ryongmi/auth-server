@@ -413,41 +413,28 @@ export class OAuthService {
 
     if (existingOAuth.length > 0 && existingOAuth[0]?.userId !== userId) {
       const existingAccount = existingOAuth[0];
-      if (!existingAccount) {
-        throw OAuthException.alreadyLinkedToAnotherAccount(provider);
+      if (existingAccount) {
+        // OAuth 계정이 다른 사용자에게 이미 연결되어 있음
+        // 자동으로 계정 병합 요청 생성
+        const existingUserId = existingAccount.userId;
+
+        // 기존 사용자(User B)의 이메일 조회
+        const existingUser = await this.userService.findById(existingUserId);
+        if (existingUser) {
+          // 계정 병합 요청 생성 및 이메일 전송
+          await this.accountMergeService.initiateAccountMerge(
+            provider,
+            userInfo.id,
+            existingUser.email,
+            userId // sourceUserId (OAuth 연동을 시도하는 사용자)
+          );
+
+          this.logger.log(`${this.linkOAuthAccount.name} - 계정 병합 요청 생성 완료`);
+        }
       }
 
-      // OAuth 계정이 다른 사용자에게 이미 연결되어 있음
-      // 자동으로 계정 병합 요청 생성
-      const existingUserId = existingAccount.userId;
-
-      // 기존 사용자(User B)의 이메일 조회
-      const existingUser = await this.userService.findById(existingUserId);
-      if (!existingUser) {
-        throw UserException.userNotFound();
-      }
-
-      // 계정 병합 요청 생성 및 이메일 전송
-      const mergeRequestId = await this.accountMergeService.initiateAccountMerge(
-        provider,
-        userInfo.id,
-        existingUser.email,
-        userId // sourceUserId (OAuth 연동을 시도하는 사용자)
-      );
-
-      this.logger.log(`${this.linkOAuthAccount.name} - 계정 병합 요청 생성됨: ${mergeRequestId}`);
-
-      // 병합 요청이 생성되었음을 알리는 예외 던지기
-      throw new BadRequestException({
-        code: 'OAUTH_206',
-        message:
-          '해당 OAuth 계정이 다른 사용자에게 연결되어 있습니다. 계정 병합 확인 이메일이 발송되었습니다.',
-        details: {
-          mergeRequestId,
-          targetEmail: existingUser.email,
-          provider,
-        },
-      });
+      // 병합 요청 생성 후 특별한 예외를 던져서 클라이언트에 알림
+      throw OAuthException.alreadyLinkedToAnotherAccount(provider);
     }
 
     // 2. 이미 현재 유저에게 연동되어 있는지 확인
