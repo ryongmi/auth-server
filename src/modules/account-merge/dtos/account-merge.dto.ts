@@ -1,5 +1,6 @@
-import { IsString, IsEmail, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
+import { IsString, IsEmail, IsEnum } from 'class-validator';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
