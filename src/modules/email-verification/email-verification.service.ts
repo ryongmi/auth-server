@@ -1,15 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-
-import { v4 as uuid } from 'uuid';
 
 import { EmailException } from '@krgeobuk/email/exception';
 import { UserException } from '@krgeobuk/user/exception';
-import { EmailService } from '@krgeobuk/email/services';
-import type { EmailConfig } from '@krgeobuk/email/interfaces';
 
 import { RedisService } from '@database/redis/redis.service.js';
 import { UserService } from '@modules/user/index.js';
+import { EmailTokenService, EmailTokenType } from '@common/email/index.js';
 
 /**
  * 이메일 인증 서비스
@@ -20,10 +16,9 @@ export class EmailVerificationService {
   private readonly logger = new Logger(EmailVerificationService.name);
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly redisService: RedisService,
     private readonly userService: UserService,
-    private readonly emailService: EmailService
+    private readonly emailTokenService: EmailTokenService
   ) {}
 
   /**
@@ -89,38 +84,11 @@ export class EmailVerificationService {
    * 인증 이메일 발송 (내부 메서드)
    */
   async sendVerificationEmail(userId: string, email: string, name: string): Promise<void> {
-    this.logger.log(`${this.sendVerificationEmail.name} - 시작되었습니다.`);
-
-    // UUID 토큰 생성
-    const token = uuid();
-
-    // 이메일 설정 가져오기
-    const emailConfig = this.configService.get<EmailConfig>('email');
-    const expiresIn = emailConfig?.verification?.expiresIn || 86400; // 기본값 24시간
-    const verificationUrl = `${emailConfig?.verification?.baseUrl}/email-verify?token=${token}`;
-
-    // Redis에 토큰 저장
-    await this.redisService.setEmailVerificationToken(token, userId, expiresIn);
-
-    // 이메일 발송
-    try {
-      await this.emailService.sendVerificationEmail({
-        to: email,
-        name,
-        verificationUrl,
-      });
-      this.logger.log(`${this.sendVerificationEmail.name} - 이메일 발송 성공`, { email, userId });
-    } catch (error) {
-      // 이메일 발송 실패 시 토큰 삭제
-      await this.redisService.deleteEmailVerificationToken(token);
-
-      this.logger.error(`${this.sendVerificationEmail.name} - 이메일 발송 실패`, {
-        email,
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-
-      throw EmailException.sendFailed();
-    }
+    await this.emailTokenService.generateAndSendToken({
+      userId,
+      email,
+      name,
+      tokenType: EmailTokenType.VERIFICATION,
+    });
   }
 }

@@ -1,16 +1,12 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
-  Param,
   HttpCode,
   HttpException,
   Query,
   Res,
   UseGuards,
   UseInterceptors,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -31,8 +27,6 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
   SwaggerApiBearerAuth,
-  SwaggerApiParam,
-  SwaggerApiBody,
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
@@ -50,6 +44,77 @@ export class OAuthController {
     private configService: ConfigService,
     private oauthService: OAuthService
   ) {}
+
+  /**
+   * OAuth 콜백 공통 처리 메서드
+   * Google/Naver OAuth 콜백의 중복 로직을 통합
+   */
+  private async handleOAuthCallback(
+    provider: OAuthAccountProviderType,
+    res: Response,
+    query: GoogleOAuthCallbackQueryDto | NaverOAuthCallbackQueryDto,
+    transactionManager: EntityManager
+  ): Promise<void> {
+    try {
+      let redirectUrl: string;
+
+      // Provider별 로그인 메서드 호출
+      if (provider === OAuthAccountProviderType.GOOGLE) {
+        redirectUrl = await this.oauthService.loginGoogle(
+          res,
+          transactionManager,
+          query as GoogleOAuthCallbackQueryDto
+        );
+      } else {
+        redirectUrl = await this.oauthService.loginNaver(
+          res,
+          transactionManager,
+          query as NaverOAuthCallbackQueryDto
+        );
+      }
+
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      // 에러 코드 및 상세 정보 추출
+      let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
+      let errorDetails;
+
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        if (typeof response === 'object' && response !== null && 'code' in response) {
+          errorCode = (response as { code: string }).code;
+
+          // OAUTH_205 에러의 상세 정보 추출
+          if (
+            errorCode === 'OAUTH_205' &&
+            'details' in response &&
+            typeof (response as { details?: unknown }).details === 'object' &&
+            (response as { details?: unknown }).details !== null
+          ) {
+            errorDetails = {
+              ...(response as { details: Record<string, unknown> }).details,
+              attemptedProvider: provider.toLowerCase(),
+            };
+          }
+        }
+      }
+
+      // stateData에서 mode 추출
+      let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
+      try {
+        const stateData = await this.oauthService.getStateData(query.state, provider);
+        if (stateData?.mode) {
+          mode = stateData.mode as OauthStateMode;
+        }
+      } catch {
+        // state 조회 실패 시 기본값 사용
+      }
+
+      // 에러 코드 및 상세 정보를 포함한 URL로 리다이렉트
+      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode, errorDetails);
+      return res.redirect(redirectUrl);
+    }
+  }
 
   /**
    * OAuth 에러 발생 시 적절한 페이지로 리다이렉트
@@ -141,47 +206,7 @@ export class OAuthController {
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    try {
-      const redirectUrl = await this.oauthService.loginGoogle(res, transactionManager, query);
-      return res.redirect(redirectUrl);
-    } catch (error) {
-      // 에러 코드 및 상세 정보 추출
-      let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
-      let errorDetails;
-
-      if (error instanceof HttpException) {
-        const response = error.getResponse();
-        if (typeof response === 'object' && response !== null && 'code' in response) {
-          errorCode = (response as { code: string }).code;
-
-          // OAUTH_205 에러의 상세 정보 추출
-          if (errorCode === 'OAUTH_205' && 'details' in response) {
-            errorDetails = {
-              ...(response as any).details,
-              attemptedProvider: 'google',
-            };
-          }
-        }
-      }
-
-      // stateData에서 mode 추출 (에러 상황에서도 state를 읽을 수 있다면)
-      let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
-      try {
-        const stateData = await this.oauthService.getStateData(
-          query.state,
-          OAuthAccountProviderType.GOOGLE
-        );
-        if (stateData?.mode) {
-          mode = stateData.mode as OauthStateMode;
-        }
-      } catch {
-        // state 조회 실패 시 기본값 사용
-      }
-
-      // 에러 코드 및 상세 정보를 포함한 URL로 리다이렉트
-      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode, errorDetails);
-      return res.redirect(redirectUrl);
-    }
+    return this.handleOAuthCallback(OAuthAccountProviderType.GOOGLE, res, query, transactionManager);
   }
 
   @Get('/login-naver')
@@ -231,47 +256,7 @@ export class OAuthController {
     @Query() query: NaverOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    try {
-      const redirectUrl = await this.oauthService.loginNaver(res, transactionManager, query);
-      return res.redirect(redirectUrl);
-    } catch (error) {
-      // 에러 코드 및 상세 정보 추출
-      let errorCode = 'OAUTH_003'; // LOGIN_ERROR 기본값
-      let errorDetails;
-
-      if (error instanceof HttpException) {
-        const response = error.getResponse();
-        if (typeof response === 'object' && response !== null && 'code' in response) {
-          errorCode = (response as { code: string }).code;
-
-          // OAUTH_205 에러의 상세 정보 추출
-          if (errorCode === 'OAUTH_205' && 'details' in response) {
-            errorDetails = {
-              ...(response as any).details,
-              attemptedProvider: 'naver',
-            };
-          }
-        }
-      }
-
-      // stateData에서 mode 추출
-      let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
-      try {
-        const stateData = await this.oauthService.getStateData(
-          query.state,
-          OAuthAccountProviderType.NAVER
-        );
-        if (stateData?.mode) {
-          mode = stateData.mode as OauthStateMode;
-        }
-      } catch {
-        // state 조회 실패 시 기본값 사용
-      }
-
-      // 에러 코드 및 상세 정보를 포함한 URL로 리다이렉트
-      const redirectUrl = this.getErrorRedirectUrl(mode, errorCode, errorDetails);
-      return res.redirect(redirectUrl);
-    }
+    return this.handleOAuthCallback(OAuthAccountProviderType.NAVER, res, query, transactionManager);
   }
 
   /**

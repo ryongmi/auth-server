@@ -74,6 +74,8 @@ const emailConfigSchema = {
   SMTP_FROM: Joi.string().default('krgeobuk <noreply@krgeobuk.com>'),
   EMAIL_VERIFICATION_EXPIRES: Joi.number().default(86400),
   EMAIL_VERIFICATION_BASE_URL: Joi.string().default('http://localhost:3000'),
+  EMAIL_PASSWORD_RESET_EXPIRES: Joi.number().default(3600),
+  EMAIL_PASSWORD_RESET_BASE_URL: Joi.string().default('http://localhost:3000'),
 };
 
 export const validationSchema = Joi.object({

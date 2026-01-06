@@ -35,7 +35,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly jwtService: JwtTokenService,
     private readonly oauthService: OAuthService,
-    private readonly redirectValidation: RedirectValidationService,
+    private readonly redirectValidationService: RedirectValidationService,
     private readonly emailVerificationService: EmailVerificationService
   ) {}
 
@@ -118,7 +118,7 @@ export class AuthService {
       const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
       this.logger.log(`${this.login.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl || this.redirectValidation.getDefaultRedirectUrl();
+      return redirectUrl || this.redirectValidationService.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: JWT 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -196,7 +196,7 @@ export class AuthService {
       const redirectUrl = await this.handleSSORedirect(redirectSession, accessToken, refreshToken);
 
       this.logger.log(`${this.signup.name} - SSO 리다이렉트로 종료되었습니다.`);
-      return redirectUrl || this.redirectValidation.getDefaultRedirectUrl();
+      return redirectUrl || this.redirectValidationService.getDefaultRedirectUrl();
     } catch (error: unknown) {
       // 내부 로그: 회원가입 에러 상세 정보
       const internalMessage = error instanceof Error ? error.message : String(error);
@@ -278,7 +278,7 @@ export class AuthService {
     this.logger.log(`${this.ssoLoginRedirect.name} - 시작 되었습니다.`);
 
     // 리다이렉트 URI 검증
-    const isValidRedirect = await this.redirectValidation.validateRedirectUri(redirectUri, req);
+    const isValidRedirect = await this.redirectValidationService.validateRedirectUri(redirectUri, req);
     if (!isValidRedirect) {
       this.logger.warn(`[SSO_REDIRECT_ERROR] 잘못된 리다이렉트 URI: ${redirectUri}`);
       throw AuthException.invalidRedirectUri();

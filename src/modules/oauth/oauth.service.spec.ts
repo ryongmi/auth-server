@@ -1,17 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+
 import { EntityManager } from 'typeorm';
 
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
+import { UserService } from '@modules/user/user.service';
+import { RedisService } from '@database/redis/redis.service';
+import { JwtTokenService } from '@common/jwt/jwt-token.service';
+
 import { OAuthService } from './oauth.service';
 import { OAuthRepository } from './oauth.repository';
 import { GoogleOAuthService } from './google.service';
 import { NaverOAuthService } from './naver.service';
-import { UserService } from '@modules/user/user.service';
-import { RedisService } from '@database/redis/redis.service';
-import { JwtTokenService } from '@common/jwt/jwt-token.service';
 
 describe('OAuthService', () => {
   let service: OAuthService;
