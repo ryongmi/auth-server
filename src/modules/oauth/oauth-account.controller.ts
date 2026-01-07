@@ -13,7 +13,7 @@ import {
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 
-import { OAuthService } from './oauth.service.js';
+import { OAuthLinkageService } from './oauth-linkage.service.js';
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 
 @SwaggerApiTags({ tags: ['oauth-account'] })
@@ -21,7 +21,7 @@ import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 @UseGuards(AccessTokenGuard)
 @Controller('oauth/accounts')
 export class OAuthAccountController {
-  constructor(private readonly oauthService: OAuthService) {}
+  constructor(private readonly oauthLinkageService: OAuthLinkageService) {}
 
   /**
    * 현재 사용자가 연동한 OAuth 계정 목록 조회
@@ -36,7 +36,7 @@ export class OAuthAccountController {
   async getLinkedAccounts(
     @CurrentJwt() { userId }: AuthenticatedJwt
   ): Promise<OAuthAccountEntity[]> {
-    return this.oauthService.getLinkedAccounts(userId);
+    return this.oauthLinkageService.getLinkedAccounts(userId);
   }
 
   /**
@@ -61,7 +61,7 @@ export class OAuthAccountController {
     @CurrentJwt() { userId }: AuthenticatedJwt,
     @Param('provider') provider: OAuthAccountProviderType
   ): Promise<{ success: boolean; message: string }> {
-    await this.oauthService.unlinkOAuthAccount(userId, provider);
+    await this.oauthLinkageService.unlinkOAuthAccount(userId, provider);
 
     return {
       success: true,

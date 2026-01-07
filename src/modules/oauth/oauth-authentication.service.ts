@@ -18,12 +18,12 @@ import { OauthStateMode } from '@krgeobuk/oauth/enum';
 
 import { JwtTokenService } from '@common/jwt/index.js';
 import type { DefaultConfig } from '@common/interfaces/config.interfaces.js';
-import type { UserEntity } from '@modules/user/index.js';
 import { RedisService } from '@database/redis/redis.service.js';
 
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthLinkageService } from './oauth-linkage.service.js';
+import { OAuthUserService } from './oauth-user.service.js';
 
 /**
  * OAuth 인증 처리 서비스
@@ -40,7 +40,9 @@ export class OAuthAuthenticationService {
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     @Inject(forwardRef(() => OAuthLinkageService))
-    private readonly oauthLinkageService: OAuthLinkageService
+    private readonly oauthLinkageService: OAuthLinkageService,
+    @Inject(forwardRef(() => OAuthUserService))
+    private readonly oauthUserService: OAuthUserService
   ) {}
 
   /**
@@ -49,7 +51,6 @@ export class OAuthAuthenticationService {
    * @param res - Express Response 객체
    * @param query - OAuth 콜백 쿼리 파라미터
    * @param stateData - State에서 파싱된 데이터
-   * @param oauthLoginFn - oauthLogin 함수 (OAuthService에서 주입)
    * @param transactionManager - TypeORM 트랜잭션 매니저
    * @returns 리다이렉트 URL
    */
@@ -62,12 +63,6 @@ export class OAuthAuthenticationService {
       userId?: string;
       redirectSession?: string;
     },
-    oauthLoginFn: (
-      userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
-      provider: OAuthAccountProviderType,
-      tokenData: NaverTokenResponse | GoogleTokenResponse,
-      transactionManager: EntityManager
-    ) => Promise<UserEntity>,
     transactionManager: EntityManager
   ): Promise<string> {
     this.logger.log(`${this.authenticate.name} - 시작: provider=${provider}`);
@@ -93,7 +88,12 @@ export class OAuthAuthenticationService {
 
     // 일반 로그인 모드
     if (stateData.mode === OauthStateMode.LOGIN) {
-      const user = await oauthLoginFn(userInfo, provider, tokenData, transactionManager);
+      const user = await this.oauthUserService.authenticateOAuthUser(
+        userInfo,
+        provider,
+        tokenData,
+        transactionManager
+      );
 
       // JWT 토큰 발급
       const payload = {
