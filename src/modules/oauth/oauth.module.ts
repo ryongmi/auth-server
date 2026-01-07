@@ -12,6 +12,7 @@ import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthController } from './oauth.controller.js';
 import { OAuthAccountController } from './oauth-account.controller.js';
 import { OAuthService } from './oauth.service.js';
+import { OAuthStateService } from './oauth-state.service.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
@@ -26,7 +27,7 @@ import { OAuthRepository } from './oauth.repository.js';
     forwardRef(() => AccountMergeModule),
   ],
   controllers: [OAuthController, OAuthAccountController],
-  providers: [OAuthService, GoogleOAuthService, NaverOAuthService, OAuthRepository],
+  providers: [OAuthService, OAuthStateService, GoogleOAuthService, NaverOAuthService, OAuthRepository],
   exports: [OAuthService],
 })
 export class OAuthModule {}

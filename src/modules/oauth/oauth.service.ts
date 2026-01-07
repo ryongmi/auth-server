@@ -1,13 +1,6 @@
 import { randomBytes } from 'crypto';
 
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
@@ -34,6 +27,7 @@ import { RedisService } from '@database/redis/redis.service.js';
 import { AccountMergeService } from '@modules/account-merge/account-merge.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
+import { OAuthStateService } from './oauth-state.service.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
@@ -47,6 +41,7 @@ export class OAuthService {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
+    private readonly oauthStateService: OAuthStateService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly oauthRepo: OAuthRepository,
@@ -57,43 +52,12 @@ export class OAuthService {
 
   // state 값 생성
   async generateState(type: OAuthAccountProviderType, stateData?: string): Promise<string> {
-    this.logger.log(`${this.generateState.name} - 시작 되었습니다.`);
-
-    // const state = randomBytes(16).toString('hex');
-    const state = Math.random().toString(36).substring(2, 15); // 랜덤 문자열 생성
-
-    const data = stateData || 'pending';
-
-    if (type === OAuthAccountProviderType.NAVER) {
-      await this.redisService.setNaverState(state, data, 300);
-    } else if (type === OAuthAccountProviderType.GOOGLE) {
-      await this.redisService.setGoogleState(state, data, 300);
-    } else {
-      throw new Error(`Unsupported OAuth provider: ${type}`);
-    }
-
-    this.logger.log(`${this.generateState.name} - 성공적으로 종료되었습니다.`);
-
-    return state; // 생성된 state 반환
+    return this.oauthStateService.generateState(type, stateData);
   }
 
   // state 값 검증
   async validateState(state: string, type: OAuthAccountProviderType): Promise<boolean> {
-    this.logger.log(`${this.validateState.name} - 시작 되었습니다.`);
-
-    let value: string | null;
-
-    if (type === OAuthAccountProviderType.NAVER) {
-      value = await this.redisService.getNaverState(state);
-    } else if (type === OAuthAccountProviderType.GOOGLE) {
-      value = await this.redisService.getGoogleState(state);
-    } else {
-      throw new Error(`Unsupported OAuth provider: ${type}`);
-    }
-
-    this.logger.log(`${this.validateState.name} - 성공적으로 종료되었습니다.`);
-
-    return value !== null; // state가 존재하면 유효한 state
+    return this.oauthStateService.validateState(state, type);
   }
 
   // state에서 데이터 파싱 (mode, userId, returnUrl 등)
@@ -105,45 +69,12 @@ export class OAuthService {
     userId?: string;
     redirectSession?: string;
   } | null> {
-    this.logger.log(`${this.getStateData.name} - 시작 되었습니다.`);
-
-    let value: string | null;
-
-    if (type === OAuthAccountProviderType.NAVER) {
-      value = await this.redisService.getNaverState(state);
-    } else if (type === OAuthAccountProviderType.GOOGLE) {
-      value = await this.redisService.getGoogleState(state);
-    } else {
-      throw new Error(`Unsupported OAuth provider: ${type}`);
-    }
-
-    if (!value) return null;
-
-    // JSON 형식인 경우 파싱
-    try {
-      const parsed = JSON.parse(value);
-      this.logger.log(`${this.getStateData.name} - 성공적으로 종료되었습니다.`);
-      return parsed;
-    } catch {
-      // JSON이 아닌 경우 null 반환
-      this.logger.log(`${this.getStateData.name} - 성공적으로 종료되었습니다.`);
-      return null;
-    }
+    return this.oauthStateService.getStateData(state, type);
   }
 
   // 인증 후 state 삭제
   async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
-    this.logger.log(`${this.deleteState.name} - 시작 되었습니다.`);
-
-    if (type === OAuthAccountProviderType.NAVER) {
-      await this.redisService.deleteNaverState(state);
-    } else if (type === OAuthAccountProviderType.GOOGLE) {
-      await this.redisService.deleteGoogleState(state);
-    } else {
-      throw new Error(`Unsupported OAuth provider: ${type}`);
-    }
-
-    this.logger.log(`${this.deleteState.name} - 성공적으로 종료되었습니다.`);
+    return this.oauthStateService.deleteState(state, type);
   }
 
   async findById(id: string): Promise<OAuthAccountEntity | null> {
