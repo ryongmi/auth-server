@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager } from 'typeorm';
@@ -23,6 +23,7 @@ import { RedisService } from '@database/redis/redis.service.js';
 
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
+import { OAuthLinkageService } from './oauth-linkage.service.js';
 
 /**
  * OAuth 인증 처리 서비스
@@ -37,7 +38,9 @@ export class OAuthAuthenticationService {
     private readonly jwtService: JwtTokenService,
     private readonly redisService: RedisService,
     private readonly googleOAuthService: GoogleOAuthService,
-    private readonly naverOAuthService: NaverOAuthService
+    private readonly naverOAuthService: NaverOAuthService,
+    @Inject(forwardRef(() => OAuthLinkageService))
+    private readonly oauthLinkageService: OAuthLinkageService
   ) {}
 
   /**
@@ -47,7 +50,6 @@ export class OAuthAuthenticationService {
    * @param query - OAuth 콜백 쿼리 파라미터
    * @param stateData - State에서 파싱된 데이터
    * @param oauthLoginFn - oauthLogin 함수 (OAuthService에서 주입)
-   * @param linkOAuthAccountFn - linkOAuthAccount 함수 (OAuthService에서 주입)
    * @param transactionManager - TypeORM 트랜잭션 매니저
    * @returns 리다이렉트 URL
    */
@@ -66,13 +68,6 @@ export class OAuthAuthenticationService {
       tokenData: NaverTokenResponse | GoogleTokenResponse,
       transactionManager: EntityManager
     ) => Promise<UserEntity>,
-    linkOAuthAccountFn: (
-      userId: string,
-      provider: OAuthAccountProviderType,
-      userInfo: NaverUserProfileResponse | GoogleUserProfileResponse,
-      tokenData: NaverTokenResponse | GoogleTokenResponse,
-      transactionManager?: EntityManager
-    ) => Promise<unknown>,
     transactionManager: EntityManager
   ): Promise<string> {
     this.logger.log(`${this.authenticate.name} - 시작: provider=${provider}`);
@@ -82,7 +77,7 @@ export class OAuthAuthenticationService {
 
     // 계정 연동 모드인 경우
     if (stateData.mode === OauthStateMode.LINK) {
-      await linkOAuthAccountFn(
+      await this.oauthLinkageService.linkOAuthAccount(
         stateData.userId!,
         provider,
         userInfo,

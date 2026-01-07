@@ -29,6 +29,7 @@ import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthStateService } from './oauth-state.service.js';
 import { OAuthTokenService } from './oauth-token.service.js';
 import { OAuthAuthenticationService } from './oauth-authentication.service.js';
+import { OAuthLinkageService } from './oauth-linkage.service.js';
 import { OAuthRepository } from './oauth.repository.js';
 
 @Injectable()
@@ -46,7 +47,9 @@ export class OAuthService {
     private readonly oauthRepo: OAuthRepository,
     private readonly emailService: EmailService,
     @Inject(forwardRef(() => AccountMergeService))
-    private readonly accountMergeService: AccountMergeService
+    private readonly accountMergeService: AccountMergeService,
+    @Inject(forwardRef(() => OAuthLinkageService))
+    private readonly oauthLinkageService: OAuthLinkageService
   ) {}
 
   // state 값 생성
@@ -139,7 +142,6 @@ export class OAuthService {
       query,
       stateData,
       this.oauthLogin.bind(this),
-      this.linkOAuthAccount.bind(this),
       transactionManager
     );
   }
@@ -167,7 +169,6 @@ export class OAuthService {
       query,
       stateData,
       this.oauthLogin.bind(this),
-      this.linkOAuthAccount.bind(this),
       transactionManager
     );
   }
@@ -194,43 +195,18 @@ export class OAuthService {
    * 사용자가 연동한 OAuth 계정 목록 조회
    */
   async getLinkedAccounts(userId: string): Promise<OAuthAccountEntity[]> {
-    this.logger.log(`${this.getLinkedAccounts.name} - userId: ${userId}`);
-    return this.findByAnd({ userId });
+    return this.oauthLinkageService.getLinkedAccounts(userId);
   }
 
   /**
    * OAuth 계정 연동 해제
-   * 최소 1개의 로그인 방식은 유지되어야 함
    */
   async unlinkOAuthAccount(userId: string, provider: OAuthAccountProviderType): Promise<void> {
-    this.logger.log(`${this.unlinkOAuthAccount.name} - userId: ${userId}, provider: ${provider}`);
-
-    // provider 검증
-    if (!Object.values(OAuthAccountProviderType).includes(provider)) {
-      throw OAuthException.unsupportedProvider(provider);
-    }
-
-    // 1. 현재 연동된 계정 개수 확인
-    const linkedAccounts = await this.getLinkedAccounts(userId);
-
-    if (linkedAccounts.length <= 1) {
-      throw OAuthException.cannotUnlinkLastAccount();
-    }
-
-    // 2. 해당 provider 연동 해제
-    const targetAccount = linkedAccounts.find((acc) => acc.provider === provider);
-
-    if (!targetAccount) {
-      throw OAuthException.providerNotLinked(provider);
-    }
-
-    await this.oauthRepo.delete(targetAccount.id);
-
-    this.logger.log(`${this.unlinkOAuthAccount.name} - 성공적으로 종료되었습니다.`);
+    return this.oauthLinkageService.unlinkOAuthAccount(userId, provider);
   }
 
   /**
-   * OAuth 계정 연동 (이미 로그인된 사용자가 추가 OAuth provider 연결)
+   * OAuth 계정 연동
    */
   async linkOAuthAccount(
     userId: string,
@@ -239,61 +215,13 @@ export class OAuthService {
     tokenData: NaverTokenResponse | GoogleTokenResponse,
     transactionManager?: EntityManager
   ): Promise<OAuthAccountEntity> {
-    this.logger.log(`${this.linkOAuthAccount.name} - userId: ${userId}, provider: ${provider}`);
-
-    // 1. 이미 해당 provider가 다른 유저에게 연동되어 있는지 확인
-    const existingOAuth = await this.findByAnd({ providerId: userInfo.id, provider });
-
-    if (existingOAuth.length > 0 && existingOAuth[0]?.userId !== userId) {
-      const existingAccount = existingOAuth[0];
-      if (existingAccount) {
-        // OAuth 계정이 다른 사용자에게 이미 연결되어 있음
-        // 자동으로 계정 병합 요청 생성
-        const existingUserId = existingAccount.userId;
-
-        // 기존 사용자(User B)의 이메일 조회
-        const existingUser = await this.userService.findById(existingUserId);
-        if (existingUser) {
-          // 계정 병합 요청 생성 및 이메일 전송
-          await this.accountMergeService.initiateAccountMerge(
-            provider,
-            userInfo.id,
-            existingUser.email,
-            userId // sourceUserId (OAuth 연동을 시도하는 사용자)
-          );
-
-          this.logger.log(`${this.linkOAuthAccount.name} - 계정 병합 요청 생성 완료`);
-        }
-      }
-
-      // 병합 요청 생성 후 특별한 예외를 던져서 클라이언트에 알림
-      throw OAuthException.alreadyLinkedToAnotherAccount(provider);
-    }
-
-    // 2. 이미 현재 유저에게 연동되어 있는지 확인
-    // const alreadyLinked = await this.findByAnd({ userId, provider });
-
-    // if (alreadyLinked.length > 0) {
-    //   throw OAuthException.providerAlreadyLinked(provider);
-    // }
-    if (existingOAuth.length > 0 && existingOAuth[0]?.userId === userId) {
-      throw OAuthException.providerAlreadyLinked(provider);
-    }
-
-    // 3. OAuth 계정 연동
-    const tokenAttributes = this.oauthTokenService.buildTokenAttributes(tokenData);
-    const oauthAccountAttrs: Partial<OAuthAccountEntity> = {
+    return this.oauthLinkageService.linkOAuthAccount(
       userId,
       provider,
-      providerId: userInfo.id,
-      ...tokenAttributes,
-    };
-
-    const linkedAccount = await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
-
-    this.logger.log(`${this.linkOAuthAccount.name} - 성공적으로 종료되었습니다.`);
-
-    return linkedAccount;
+      userInfo,
+      tokenData,
+      transactionManager
+    );
   }
 
   private async oauthLogin(
