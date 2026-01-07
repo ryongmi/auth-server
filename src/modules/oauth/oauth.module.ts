@@ -14,6 +14,7 @@ import { OAuthAccountController } from './oauth-account.controller.js';
 import { OAuthService } from './oauth.service.js';
 import { OAuthStateService } from './oauth-state.service.js';
 import { OAuthTokenService } from './oauth-token.service.js';
+import { OAuthAuthenticationService } from './oauth-authentication.service.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
@@ -32,6 +33,7 @@ import { OAuthRepository } from './oauth.repository.js';
     OAuthService,
     OAuthStateService,
     OAuthTokenService,
+    OAuthAuthenticationService,
     GoogleOAuthService,
     NaverOAuthService,
     OAuthRepository,

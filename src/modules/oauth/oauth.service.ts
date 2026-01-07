@@ -16,7 +16,6 @@ import type {
   NaverTokenResponse,
 } from '@krgeobuk/oauth/interfaces';
 import { OAuthException } from '@krgeobuk/oauth/exception';
-import { OauthStateMode } from '@krgeobuk/oauth/enum';
 import { UserException } from '@krgeobuk/user/exception';
 import { EmailService } from '@krgeobuk/email';
 
@@ -29,8 +28,7 @@ import { AccountMergeService } from '@modules/account-merge/account-merge.servic
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthStateService } from './oauth-state.service.js';
 import { OAuthTokenService } from './oauth-token.service.js';
-import { GoogleOAuthService } from './google.service.js';
-import { NaverOAuthService } from './naver.service.js';
+import { OAuthAuthenticationService } from './oauth-authentication.service.js';
 import { OAuthRepository } from './oauth.repository.js';
 
 @Injectable()
@@ -44,8 +42,7 @@ export class OAuthService {
     private readonly redisService: RedisService,
     private readonly oauthStateService: OAuthStateService,
     private readonly oauthTokenService: OAuthTokenService,
-    private readonly googleOAuthService: GoogleOAuthService,
-    private readonly naverOAuthService: NaverOAuthService,
+    private readonly oauthAuthenticationService: OAuthAuthenticationService,
     private readonly oauthRepo: OAuthRepository,
     private readonly emailService: EmailService,
     @Inject(forwardRef(() => AccountMergeService))
@@ -126,7 +123,6 @@ export class OAuthService {
   ): Promise<string> {
     this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
 
-    const { tokenData, naverUserInfo } = await this.naverOAuthService.getNaverUserInfo(query);
     const providerType = OAuthAccountProviderType.NAVER;
 
     // state에서 mode 파싱
@@ -136,63 +132,16 @@ export class OAuthService {
       throw OAuthException.invalidState();
     }
 
-    // this.deleteState(query.state, providerType);
-
-    // 계정 연동 모드인 경우
-    if (stateData.mode === OauthStateMode.LINK) {
-      await this.linkOAuthAccount(
-        stateData.userId!,
-        providerType,
-        naverUserInfo,
-        tokenData,
-        transactionManager
-      );
-
-      // 연동 완료 후 계정 설정 페이지로 리다이렉트
-      const authClientUrl = this.configService.get('authClientUrl')!;
-
-      return `${authClientUrl}/settings/accounts?linked=true&provider=${providerType}`;
-    }
-
-    // 일반 로그인 모드
-    if (stateData.mode === OauthStateMode.LOGIN) {
-      const user = await this.oauthLogin(
-        naverUserInfo,
-        providerType,
-        tokenData,
-        transactionManager
-      );
-
-      // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-      const payload = {
-        sub: user.id,
-        tokenData,
-      };
-
-      const { refreshToken } = await this.jwtService.signAccessTokenAndRefreshToken(payload);
-
-      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
-
-      // SSO 리다이렉트 처리
-      if (stateData.redirectSession) {
-        const sessionData = await this.redisService.getRedirectSession(stateData.redirectSession);
-        if (sessionData) {
-          await this.redisService.deleteRedirectSession(stateData.redirectSession);
-          this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
-          return sessionData.redirectUri;
-        }
-      }
-
-      const portalClientUrl =
-        this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
-
-      this.logger.log(`${this.loginNaver.name} - 성공적으로 종료되었습니다.`);
-
-      return portalClientUrl;
-    }
-
-    // 잘못된 mode
-    throw OAuthException.invalidState();
+    // OAuthAuthenticationService로 위임
+    return this.oauthAuthenticationService.authenticate(
+      providerType,
+      res,
+      query,
+      stateData,
+      this.oauthLogin.bind(this),
+      this.linkOAuthAccount.bind(this),
+      transactionManager
+    );
   }
 
   async loginGoogle(
@@ -202,7 +151,6 @@ export class OAuthService {
   ): Promise<string> {
     this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
 
-    const { tokenData, googleUserInfo } = await this.googleOAuthService.getGoogleUserInfo(query);
     const providerType = OAuthAccountProviderType.GOOGLE;
 
     // state에서 mode 파싱
@@ -212,64 +160,16 @@ export class OAuthService {
       throw OAuthException.invalidState();
     }
 
-    // this.deleteState(query.state, providerType);
-
-    // 계정 연동 모드인 경우
-    if (stateData.mode === OauthStateMode.LINK) {
-      await this.linkOAuthAccount(
-        stateData.userId!,
-        providerType,
-        googleUserInfo,
-        tokenData,
-        transactionManager
-      );
-
-      // 연동 완료 후 계정 설정 페이지로 리다이렉트
-      const authClientUrl =
-        this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
-
-      return `${authClientUrl}/settings/accounts?linked=true&provider=${providerType}`;
-    }
-
-    // 일반 로그인 모드
-    if (stateData.mode === OauthStateMode.LOGIN) {
-      const user = await this.oauthLogin(
-        googleUserInfo,
-        providerType,
-        tokenData,
-        transactionManager
-      );
-
-      // tokenData - 현재 사용 고려 x / 우선 토큰에 넣기만함
-      const payload = {
-        sub: user.id,
-        tokenData,
-      };
-
-      const { refreshToken } = await this.jwtService.signAccessTokenAndRefreshToken(payload);
-
-      this.jwtService.setRefreshTokenToCookie(res, refreshToken);
-
-      // SSO 리다이렉트 처리
-      if (stateData.redirectSession) {
-        const sessionData = await this.redisService.getRedirectSession(stateData.redirectSession);
-        if (sessionData) {
-          await this.redisService.deleteRedirectSession(stateData.redirectSession);
-          this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
-          return sessionData.redirectUri;
-        }
-      }
-
-      const portalClientUrl =
-        this.configService.get<DefaultConfig['portalClientUrl']>('portalClientUrl')!;
-
-      this.logger.log(`${this.loginGoogle.name} - 성공적으로 종료되었습니다.`);
-
-      return portalClientUrl;
-    }
-
-    // 잘못된 mode
-    throw OAuthException.invalidState();
+    // OAuthAuthenticationService로 위임
+    return this.oauthAuthenticationService.authenticate(
+      providerType,
+      res,
+      query,
+      stateData,
+      this.oauthLogin.bind(this),
+      this.linkOAuthAccount.bind(this),
+      transactionManager
+    );
   }
 
   async createOAuthAccount(
