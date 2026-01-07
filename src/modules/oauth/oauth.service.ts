@@ -28,6 +28,7 @@ import { AccountMergeService } from '@modules/account-merge/account-merge.servic
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthStateService } from './oauth-state.service.js';
+import { OAuthTokenService } from './oauth-token.service.js';
 import { GoogleOAuthService } from './google.service.js';
 import { NaverOAuthService } from './naver.service.js';
 import { OAuthRepository } from './oauth.repository.js';
@@ -42,6 +43,7 @@ export class OAuthService {
     private readonly userService: UserService,
     private readonly redisService: RedisService,
     private readonly oauthStateService: OAuthStateService,
+    private readonly oauthTokenService: OAuthTokenService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly oauthRepo: OAuthRepository,
@@ -379,16 +381,12 @@ export class OAuthService {
     }
 
     // 3. OAuth 계정 연동
+    const tokenAttributes = this.oauthTokenService.buildTokenAttributes(tokenData);
     const oauthAccountAttrs: Partial<OAuthAccountEntity> = {
       userId,
       provider,
       providerId: userInfo.id,
-      accessToken: tokenData.accessToken,
-      refreshToken: tokenData.refreshToken ?? null,
-      tokenExpiresAt: tokenData.expiresIn
-        ? new Date(Date.now() + tokenData.expiresIn * 1000)
-        : null,
-      scopes: 'scope' in tokenData ? tokenData.scope : null,
+      ...tokenAttributes,
     };
 
     const linkedAccount = await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
@@ -428,16 +426,9 @@ export class OAuthService {
       }
 
       // OAuth 토큰 정보 업데이트
-      const oauthAccountAttrs = {
-        accessToken: tokenData.accessToken,
-        refreshToken: tokenData.refreshToken ?? null,
-        tokenExpiresAt: tokenData.expiresIn
-          ? new Date(Date.now() + tokenData.expiresIn * 1000)
-          : null,
-        scopes: 'scope' in tokenData ? tokenData.scope : null,
-      };
+      const tokenAttributes = this.oauthTokenService.buildTokenAttributes(tokenData);
 
-      Object.assign(oauth, oauthAccountAttrs);
+      Object.assign(oauth, tokenAttributes);
       await this.updateOAuthAccount(oauth, transactionManager);
 
       this.logger.log(`${this.oauthLogin.name} - OAuth 토큰 업데이트 완료. userId: ${user.id}`);
@@ -485,16 +476,12 @@ export class OAuthService {
       user = await this.userService.createUser(userAttrs, transactionManager);
 
       // OAuth 계정 생성
+      const tokenAttributes = this.oauthTokenService.buildTokenAttributes(tokenData);
       const oauthAccountAttrs = {
         providerId: userInfo.id,
         provider,
         userId: user.id,
-        accessToken: tokenData.accessToken,
-        refreshToken: tokenData.refreshToken ?? null,
-        tokenExpiresAt: tokenData.expiresIn
-          ? new Date(Date.now() + tokenData.expiresIn * 1000)
-          : null,
-        scopes: 'scope' in tokenData ? tokenData.scope : null,
+        ...tokenAttributes,
       };
 
       await this.createOAuthAccount(oauthAccountAttrs, transactionManager);
