@@ -4,11 +4,9 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
-import { Response } from 'express';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
-import type { OAuthAccountFilter, NaverOAuthCallbackQuery } from '@krgeobuk/oauth/interfaces';
-import { OAuthException } from '@krgeobuk/oauth/exception';
+import type { OAuthAccountFilter } from '@krgeobuk/oauth/interfaces';
 import { EmailService } from '@krgeobuk/email';
 
 import { JwtTokenService } from '@common/jwt/index.js';
@@ -18,9 +16,7 @@ import { RedisService } from '@database/redis/redis.service.js';
 import { AccountMergeService } from '@modules/account-merge/account-merge.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
-import { OAuthStateService } from './oauth-state.service.js';
 import { OAuthTokenService } from './oauth-token.service.js';
-import { OAuthAuthenticationService } from './oauth-authentication.service.js';
 import { OAuthRepository } from './oauth.repository.js';
 
 @Injectable()
@@ -32,41 +28,12 @@ export class OAuthService {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly redisService: RedisService,
-    private readonly oauthStateService: OAuthStateService,
     private readonly oauthTokenService: OAuthTokenService,
-    private readonly oauthAuthenticationService: OAuthAuthenticationService,
     private readonly oauthRepo: OAuthRepository,
     private readonly emailService: EmailService,
     @Inject(forwardRef(() => AccountMergeService))
     private readonly accountMergeService: AccountMergeService
   ) {}
-
-  // state 값 생성
-  async generateState(type: OAuthAccountProviderType, stateData?: string): Promise<string> {
-    return this.oauthStateService.generateState(type, stateData);
-  }
-
-  // state 값 검증
-  async validateState(state: string, type: OAuthAccountProviderType): Promise<boolean> {
-    return this.oauthStateService.validateState(state, type);
-  }
-
-  // state에서 데이터 파싱 (mode, userId, returnUrl 등)
-  async getStateData(
-    state: string,
-    type: OAuthAccountProviderType
-  ): Promise<{
-    mode?: string;
-    userId?: string;
-    redirectSession?: string;
-  } | null> {
-    return this.oauthStateService.getStateData(state, type);
-  }
-
-  // 인증 후 state 삭제
-  async deleteState(state: string, type: OAuthAccountProviderType): Promise<void> {
-    return this.oauthStateService.deleteState(state, type);
-  }
 
   async findById(id: string): Promise<OAuthAccountEntity | null> {
     return this.oauthRepo.findOneById(id);
@@ -106,58 +73,6 @@ export class OAuthService {
     }
 
     return this.oauthRepo.find({ where });
-  }
-
-  async loginNaver(
-    res: Response,
-    transactionManager: EntityManager,
-    query: NaverOAuthCallbackQuery
-  ): Promise<string> {
-    this.logger.log(`${this.loginNaver.name} - 시작 되었습니다.`);
-
-    const providerType = OAuthAccountProviderType.NAVER;
-
-    // state에서 mode 파싱
-    const stateData = await this.getStateData(query.state, providerType);
-
-    if (!stateData?.mode) {
-      throw OAuthException.invalidState();
-    }
-
-    // OAuthAuthenticationService로 위임
-    return this.oauthAuthenticationService.authenticate(
-      providerType,
-      res,
-      query,
-      stateData,
-      transactionManager
-    );
-  }
-
-  async loginGoogle(
-    res: Response,
-    transactionManager: EntityManager,
-    query: NaverOAuthCallbackQuery
-  ): Promise<string> {
-    this.logger.log(`${this.loginGoogle.name} - 시작 되었습니다.`);
-
-    const providerType = OAuthAccountProviderType.GOOGLE;
-
-    // state에서 mode 파싱
-    const stateData = await this.getStateData(query.state, providerType);
-
-    if (!stateData?.mode) {
-      throw OAuthException.invalidState();
-    }
-
-    // OAuthAuthenticationService로 위임
-    return this.oauthAuthenticationService.authenticate(
-      providerType,
-      res,
-      query,
-      stateData,
-      transactionManager
-    );
   }
 
   async createOAuthAccount(

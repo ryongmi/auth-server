@@ -17,7 +17,7 @@ import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 import { TransactionManager } from '@krgeobuk/core/decorators';
 import { NaverOAuthCallbackQueryDto, GoogleOAuthCallbackQueryDto } from '@krgeobuk/oauth/dtos';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
-import { OAuthError } from '@krgeobuk/oauth/exception';
+import { OAuthException, OAuthError } from '@krgeobuk/oauth/exception';
 import { OAuthResponse } from '@krgeobuk/oauth/response';
 import { OauthStateMode } from '@krgeobuk/oauth/enum';
 import '@krgeobuk/core/interfaces/express';
@@ -35,14 +35,16 @@ import { GoogleConfig, NaverConfig } from '@common/interfaces/index.js';
 import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
 
 import { NaverOAuthStateGuard, GoogleOAuthStateGuard } from './guards/oauth-state.guard.js';
-import { OAuthService } from './oauth.service.js';
+import { OAuthAuthenticationService } from './oauth-authentication.service.js';
+import { OAuthStateService } from './oauth-state.service.js';
 
 @SwaggerApiTags({ tags: ['oauth'] })
 @Controller('oauth')
 export class OAuthController {
   constructor(
     private configService: ConfigService,
-    private oauthService: OAuthService
+    private oauthAuthenticationService: OAuthAuthenticationService,
+    private oauthStateService: OAuthStateService
   ) {}
 
   /**
@@ -56,22 +58,21 @@ export class OAuthController {
     transactionManager: EntityManager
   ): Promise<void> {
     try {
-      let redirectUrl: string;
+      // state에서 mode 파싱
+      const stateData = await this.oauthStateService.getStateData(query.state, provider);
 
-      // Provider별 로그인 메서드 호출
-      if (provider === OAuthAccountProviderType.GOOGLE) {
-        redirectUrl = await this.oauthService.loginGoogle(
-          res,
-          transactionManager,
-          query as GoogleOAuthCallbackQueryDto
-        );
-      } else {
-        redirectUrl = await this.oauthService.loginNaver(
-          res,
-          transactionManager,
-          query as NaverOAuthCallbackQueryDto
-        );
+      if (!stateData?.mode) {
+        throw OAuthException.invalidState();
       }
+
+      // OAuthAuthenticationService로 직접 호출
+      const redirectUrl = await this.oauthAuthenticationService.authenticate(
+        provider,
+        res,
+        query,
+        stateData,
+        transactionManager
+      );
 
       return res.redirect(redirectUrl);
     } catch (error) {
@@ -102,7 +103,7 @@ export class OAuthController {
       // stateData에서 mode 추출
       let mode: OauthStateMode | string = OauthStateMode.LOGIN; // 기본값
       try {
-        const stateData = await this.oauthService.getStateData(query.state, provider);
+        const stateData = await this.oauthStateService.getStateData(query.state, provider);
         if (stateData?.mode) {
           mode = stateData.mode as OauthStateMode;
         }
@@ -173,7 +174,10 @@ export class OAuthController {
       mode: OauthStateMode.LOGIN,
       redirectSession,
     });
-    const state = await this.oauthService.generateState(OAuthAccountProviderType.GOOGLE, stateData);
+    const state = await this.oauthStateService.generateState(
+      OAuthAccountProviderType.GOOGLE,
+      stateData
+    );
     const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
     const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
 
@@ -206,7 +210,12 @@ export class OAuthController {
     @Query() query: GoogleOAuthCallbackQueryDto,
     @TransactionManager() transactionManager: EntityManager
   ): Promise<void> {
-    return this.handleOAuthCallback(OAuthAccountProviderType.GOOGLE, res, query, transactionManager);
+    return this.handleOAuthCallback(
+      OAuthAccountProviderType.GOOGLE,
+      res,
+      query,
+      transactionManager
+    );
   }
 
   @Get('/login-naver')
@@ -224,7 +233,10 @@ export class OAuthController {
       mode: OauthStateMode.LOGIN,
       redirectSession,
     });
-    const state = await this.oauthService.generateState(OAuthAccountProviderType.NAVER, stateData);
+    const state = await this.oauthStateService.generateState(
+      OAuthAccountProviderType.NAVER,
+      stateData
+    );
     const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
     const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
 
@@ -282,7 +294,10 @@ export class OAuthController {
       mode: OauthStateMode.LINK,
       userId,
     });
-    const state = await this.oauthService.generateState(OAuthAccountProviderType.GOOGLE, stateData);
+    const state = await this.oauthStateService.generateState(
+      OAuthAccountProviderType.GOOGLE,
+      stateData
+    );
 
     const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
     const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
@@ -307,16 +322,16 @@ export class OAuthController {
     status: OAuthResponse.NAVER_LINK_START_REDIRECT.statusCode,
     description: OAuthResponse.NAVER_LINK_START_REDIRECT.message,
   })
-  async linkNaver(
-    @Res() res: Response,
-    @CurrentJwt() { userId }: AuthenticatedJwt
-  ): Promise<void> {
+  async linkNaver(@Res() res: Response, @CurrentJwt() { userId }: AuthenticatedJwt): Promise<void> {
     // state에 mode와 userId만 포함
     const stateData = JSON.stringify({
       mode: OauthStateMode.LINK,
       userId,
     });
-    const state = await this.oauthService.generateState(OAuthAccountProviderType.NAVER, stateData);
+    const state = await this.oauthStateService.generateState(
+      OAuthAccountProviderType.NAVER,
+      stateData
+    );
 
     const clientId = this.configService.get<NaverConfig['clientId']>('naver.clientId');
     const redirectUrl = this.configService.get<NaverConfig['redirectUrl']>('naver.redirectUrl');
