@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { EntityManager } from 'typeorm';
 
@@ -31,9 +31,7 @@ export class OAuthLinkageService {
     private readonly userService: UserService,
     private readonly oauthTokenService: OAuthTokenService,
     private readonly oauthRepo: OAuthRepository,
-    @Inject(forwardRef(() => AccountMergeService))
     private readonly accountMergeService: AccountMergeService,
-    @Inject(forwardRef(() => OAuthService))
     private readonly oauthService: OAuthService
   ) {}
 

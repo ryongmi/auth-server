@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { EntityManager } from 'typeorm';
 
@@ -28,7 +28,6 @@ export class OAuthUserService {
   constructor(
     private readonly userService: UserService,
     private readonly oauthTokenService: OAuthTokenService,
-    @Inject(forwardRef(() => OAuthService))
     private readonly oauthService: OAuthService
   ) {}
 
