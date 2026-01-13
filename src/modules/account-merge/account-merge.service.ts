@@ -1,19 +1,18 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { randomBytes } from 'crypto';
+
+import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { UserException } from '@krgeobuk/user/exception';
+import { EmailService } from '@krgeobuk/email';
 
+import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
+import { RedisService } from '@database/redis/redis.service.js';
 
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 import { AccountMergeRepository } from './repositories/account-merge.repository.js';
@@ -27,7 +26,9 @@ export class AccountMergeService {
     private readonly userService: UserService,
     private readonly accountMergeRepo: AccountMergeRepository,
     private readonly mergeOrchestrator: AccountMergeOrchestrator,
-    @Inject(forwardRef(() => OAuthService))
+    private readonly redisService: RedisService,
+    private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
     private readonly oauthService: OAuthService
   ) {}
 
@@ -112,7 +113,7 @@ export class AccountMergeService {
     const savedRequest = await this.accountMergeRepo.save(mergeRequest);
 
     // 6. User B에게 병합 확인 이메일 발송
-    await this.oauthService.sendMergeConfirmationEmail(savedRequest);
+    await this.sendMergeConfirmationEmail(savedRequest);
 
     this.logger.log('Account merge request created', {
       requestId: savedRequest.id,
@@ -259,5 +260,57 @@ export class AccountMergeService {
     await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
 
     this.logger.log('Account merge rejected', { requestId });
+  }
+
+  /**
+   * 병합 확인 이메일 발송
+   * User B에게 병합 확인 이메일 발송
+   *
+   * @param mergeRequest - 병합 요청 엔티티
+   */
+  private async sendMergeConfirmationEmail(mergeRequest: AccountMergeEntity): Promise<void> {
+    this.logger.log('Sending merge confirmation email', {
+      requestId: mergeRequest.id,
+      sourceUserId: mergeRequest.sourceUserId,
+    });
+
+    // User A와 User B 정보 조회
+    const [targetUser, sourceUser] = await Promise.all([
+      this.userService.findById(mergeRequest.targetUserId),
+      this.userService.findById(mergeRequest.sourceUserId),
+    ]);
+
+    if (!targetUser || !sourceUser) {
+      throw new Error('User not found for merge confirmation email');
+    }
+
+    // 확인 토큰 생성 (24시간 유효) - 랜덤 바이트 기반
+    const confirmToken = randomBytes(32).toString('hex');
+
+    // Redis에 토큰 저장 (24시간 TTL)
+    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, 86400);
+
+    // 확인 URL 생성
+    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
+    const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
+
+    // 만료 시간 계산 (24시간 후)
+    const expiresAt = new Date(Date.now() + 86400000).toLocaleString('ko-KR');
+
+    // 이메일 발송
+    await this.emailService.sendAccountMergeEmail({
+      to: sourceUser.email,
+      name: sourceUser.name || sourceUser.email,
+      targetUserEmail: targetUser.email,
+      provider: mergeRequest.provider,
+      providerId: mergeRequest.providerId,
+      confirmUrl,
+      expiresAt,
+    });
+
+    this.logger.log('Merge confirmation email sent', {
+      to: sourceUser.email,
+      requestId: mergeRequest.id,
+    });
   }
 }

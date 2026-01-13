@@ -1,39 +1,18 @@
-import { randomBytes } from 'crypto';
-
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import type { OAuthAccountFilter } from '@krgeobuk/oauth/interfaces';
-import { EmailService } from '@krgeobuk/email';
-
-import { JwtTokenService } from '@common/jwt/index.js';
-import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
-import { UserService } from '@modules/user/index.js';
-import { RedisService } from '@database/redis/redis.service.js';
-import { AccountMergeService } from '@modules/account-merge/account-merge.service.js';
 
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
-import { OAuthTokenService } from './oauth-token.service.js';
 import { OAuthRepository } from './oauth.repository.js';
 
 @Injectable()
 export class OAuthService {
   private readonly logger = new Logger(OAuthService.name);
 
-  constructor(
-    private readonly jwtService: JwtTokenService,
-    private readonly configService: ConfigService,
-    private readonly userService: UserService,
-    private readonly redisService: RedisService,
-    private readonly oauthTokenService: OAuthTokenService,
-    private readonly oauthRepo: OAuthRepository,
-    private readonly emailService: EmailService,
-    @Inject(forwardRef(() => AccountMergeService))
-    private readonly accountMergeService: AccountMergeService
-  ) {}
+  constructor(private readonly oauthRepo: OAuthRepository) {}
 
   async findById(id: string): Promise<OAuthAccountEntity | null> {
     return this.oauthRepo.findOneById(id);
@@ -127,57 +106,6 @@ export class OAuthService {
     this.logger.log('OAuth account transferred successfully');
   }
 
-  /**
-   * 병합 확인 이메일 발송
-   * User B에게 병합 확인 이메일 발송
-   *
-   * @param mergeRequest - 병합 요청 엔티티
-   */
-  async sendMergeConfirmationEmail(mergeRequest: any): Promise<void> {
-    this.logger.log('Sending merge confirmation email', {
-      requestId: mergeRequest.id,
-      sourceUserId: mergeRequest.sourceUserId,
-    });
-
-    // User A와 User B 정보 조회
-    const [targetUser, sourceUser] = await Promise.all([
-      this.userService.findById(mergeRequest.targetUserId),
-      this.userService.findById(mergeRequest.sourceUserId),
-    ]);
-
-    if (!targetUser || !sourceUser) {
-      throw new Error('User not found for merge confirmation email');
-    }
-
-    // 확인 토큰 생성 (24시간 유효) - 랜덤 바이트 기반
-    const confirmToken = randomBytes(32).toString('hex');
-
-    // Redis에 토큰 저장 (24시간 TTL)
-    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, 86400);
-
-    // 확인 URL 생성
-    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
-    const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
-
-    // 만료 시간 계산 (24시간 후)
-    const expiresAt = new Date(Date.now() + 86400000).toLocaleString('ko-KR');
-
-    // 이메일 발송
-    await this.emailService.sendAccountMergeEmail({
-      to: sourceUser.email,
-      name: sourceUser.name || sourceUser.email,
-      targetUserEmail: targetUser.email,
-      provider: mergeRequest.provider,
-      providerId: mergeRequest.providerId,
-      confirmUrl,
-      expiresAt,
-    });
-
-    this.logger.log('Merge confirmation email sent', {
-      to: sourceUser.email,
-      requestId: mergeRequest.id,
-    });
-  }
 
   /**
    * OAuth 계정 복원
