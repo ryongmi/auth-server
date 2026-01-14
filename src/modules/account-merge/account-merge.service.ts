@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 
-import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
@@ -17,6 +17,7 @@ import { RedisService } from '@database/redis/redis.service.js';
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 import { AccountMergeRepository } from './repositories/account-merge.repository.js';
 import { AccountMergeOrchestrator } from './account-merge.orchestrator.js';
+import { MergeStateMachine } from './merge-state-machine.js';
 
 @Injectable()
 export class AccountMergeService {
@@ -155,33 +156,25 @@ export class AccountMergeService {
     // 1. 병합 요청 조회
     const request = await this.getAccountMerge(requestId);
 
-    // 2. User B가 맞는지 확인
-    if (request.targetUserId !== userId) {
-      throw new ForbiddenException({
-        code: 'ACCOUNT_MERGE_002',
-        message: '계정 병합을 승인할 권한이 없습니다.',
-      });
+    // 2. 상태 머신을 통한 검증 (권한, 상태, 만료 시간)
+    try {
+      MergeStateMachine.validateConfirm(request, userId);
+    } catch (error: unknown) {
+      // 만료된 경우 상태를 CANCELLED로 변경
+      if (error instanceof BadRequestException) {
+        const errorResponse = error.getResponse() as { code?: string };
+        if (errorResponse.code === 'ACCOUNT_MERGE_004') {
+          await this.accountMergeRepo.update(
+            { id: requestId },
+            { status: AccountMergeStatus.CANCELLED }
+          );
+          throw OAuthException.mergeTokenInvalidOrExpired();
+        }
+      }
+      throw error;
     }
 
-    // 3. 상태 확인 (PENDING_EMAIL_VERIFICATION만 승인 가능)
-    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_003',
-        message: '이미 처리되었거나 처리할 수 없는 병합 요청입니다.',
-      });
-    }
-
-    // 4. 만료 시간 확인 (24시간)
-    const hoursSinceCreation = (Date.now() - request.createdAt.getTime()) / (1000 * 60 * 60);
-    if (hoursSinceCreation > 24) {
-      await this.accountMergeRepo.update(
-        { id: requestId },
-        { status: AccountMergeStatus.CANCELLED }
-      );
-      throw OAuthException.mergeTokenInvalidOrExpired();
-    }
-
-    // 5. 상태를 IN_PROGRESS로 변경
+    // 3. 상태를 IN_PROGRESS로 변경
     await this.accountMergeRepo.update(
       { id: requestId },
       {
@@ -190,11 +183,11 @@ export class AccountMergeService {
       }
     );
 
-    // 6. AccountMergeOrchestrator를 통한 Saga 실행
+    // 4. AccountMergeOrchestrator를 통한 Saga 실행
     try {
       await this.mergeOrchestrator.execute(request);
 
-      // 7. 성공 시 상태를 COMPLETED로 변경
+      // 5. 성공 시 상태를 COMPLETED로 변경
       await this.accountMergeRepo.update(
         { id: requestId },
         {
@@ -205,7 +198,7 @@ export class AccountMergeService {
 
       this.logger.log('Account merge completed successfully', { requestId });
     } catch (error: unknown) {
-      // 8. 실패 시 상태를 FAILED로 변경
+      // 6. 실패 시 상태를 FAILED로 변경
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await this.accountMergeRepo.update(
         { id: requestId },
@@ -240,23 +233,10 @@ export class AccountMergeService {
     // 1. 병합 요청 조회
     const request = await this.getAccountMerge(requestId);
 
-    // 2. User B가 맞는지 확인
-    if (request.targetUserId !== userId) {
-      throw new ForbiddenException({
-        code: 'ACCOUNT_MERGE_002',
-        message: '계정 병합을 거부할 권한이 없습니다.',
-      });
-    }
+    // 2. 상태 머신을 통한 검증 (권한, 상태)
+    MergeStateMachine.validateReject(request, userId);
 
-    // 3. 상태 확인 (PENDING_EMAIL_VERIFICATION만 거부 가능)
-    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_003',
-        message: '이미 처리되었거나 처리할 수 없는 병합 요청입니다.',
-      });
-    }
-
-    // 4. 상태를 CANCELLED로 변경
+    // 3. 상태를 CANCELLED로 변경
     await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
 
     this.logger.log('Account merge rejected', { requestId });
