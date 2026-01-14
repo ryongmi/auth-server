@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
+import { AccountMergeCode } from '@krgeobuk/account-merge/codes';
+import { AccountMergeException } from '@krgeobuk/account-merge/exception';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { UserException } from '@krgeobuk/user/exception';
 import { EmailService } from '@krgeobuk/email';
@@ -63,10 +65,7 @@ export class AccountMergeService {
 
     // 2. User A와 User B가 같은 계정인지 확인
     if (sourceUserId === targetUser.id) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_001',
-        message: '동일한 계정을 병합할 수 없습니다.',
-      });
+      throw AccountMergeException.sameAccountMerge();
     }
 
     // 3. User B가 이미 해당 OAuth 계정을 소유하고 있는지 확인
@@ -134,7 +133,7 @@ export class AccountMergeService {
   async getAccountMerge(requestId: number): Promise<AccountMergeEntity> {
     const request = await this.accountMergeRepo.findOneBy({ id: requestId });
     if (!request) {
-      throw OAuthException.mergeRequestNotFound();
+      throw AccountMergeException.requestNotFound();
     }
 
     this.logger.debug('Merge request retrieved', { requestId });
@@ -160,15 +159,15 @@ export class AccountMergeService {
     try {
       MergeStateMachine.validateConfirm(request, userId);
     } catch (error: unknown) {
-      // 만료된 경우 상태를 CANCELLED로 변경
+      // 만료된 경우 상태를 CANCELLED로 변경하고 토큰 만료 에러 발생
       if (error instanceof BadRequestException) {
         const errorResponse = error.getResponse() as { code?: string };
-        if (errorResponse.code === 'ACCOUNT_MERGE_004') {
+        if (errorResponse.code === AccountMergeCode.REQUEST_EXPIRED) {
           await this.accountMergeRepo.update(
             { id: requestId },
             { status: AccountMergeStatus.CANCELLED }
           );
-          throw OAuthException.mergeTokenInvalidOrExpired();
+          throw AccountMergeException.tokenInvalidOrExpired();
         }
       }
       throw error;

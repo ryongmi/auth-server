@@ -1,6 +1,5 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
-
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
+import { AccountMergeException } from '@krgeobuk/account-merge/exception';
 
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 
@@ -43,10 +42,7 @@ export class MergeStateMachine {
    */
   static validateTargetUserPermission(request: AccountMergeEntity, userId: string): void {
     if (request.targetUserId !== userId) {
-      throw new ForbiddenException({
-        code: 'ACCOUNT_MERGE_002',
-        message: '계정 병합을 처리할 권한이 없습니다.',
-      });
+      throw AccountMergeException.unauthorized();
     }
   }
 
@@ -58,40 +54,18 @@ export class MergeStateMachine {
       (Date.now() - request.createdAt.getTime()) / this.MS_PER_HOUR;
 
     if (hoursSinceCreation > this.EXPIRATION_HOURS) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_004',
-        message: '병합 요청이 만료되었습니다.',
-      });
-    }
-  }
-
-  /**
-   * 상태가 특정 상태인지 확인
-   */
-  static validateStatus(
-    request: AccountMergeEntity,
-    expectedStatus: AccountMergeStatus,
-    errorCode: string,
-    errorMessage: string
-  ): void {
-    if (request.status !== expectedStatus) {
-      throw new BadRequestException({
-        code: errorCode,
-        message: errorMessage,
-      });
+      throw AccountMergeException.requestExpired();
     }
   }
 
   /**
    * confirm/reject 전 공통 검증
+   * 상태가 PENDING_EMAIL_VERIFICATION인지 확인
    */
   static validatePendingState(request: AccountMergeEntity): void {
-    this.validateStatus(
-      request,
-      AccountMergeStatus.PENDING_EMAIL_VERIFICATION,
-      'ACCOUNT_MERGE_003',
-      '이미 처리되었거나 처리할 수 없는 병합 요청입니다.'
-    );
+    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
+      throw AccountMergeException.invalidStatus();
+    }
   }
 
   /**
@@ -102,10 +76,7 @@ export class MergeStateMachine {
     targetStatus: AccountMergeStatus
   ): void {
     if (!this.canTransition(request.status, targetStatus)) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_005',
-        message: `상태를 ${request.status}에서 ${targetStatus}로 전환할 수 없습니다.`,
-      });
+      throw AccountMergeException.invalidTransition(request.status, targetStatus);
     }
   }
 
