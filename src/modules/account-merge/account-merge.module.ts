@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserModule } from '@modules/user/index.js';
@@ -14,7 +14,7 @@ import { AccountMergeOrchestrator } from './account-merge.orchestrator.js';
   imports: [
     TypeOrmModule.forFeature([AccountMergeEntity]),
     UserModule,
-    forwardRef(() => OAuthModule),
+    OAuthModule,
   ],
   controllers: [AccountMergeController],
   providers: [AccountMergeService, AccountMergeRepository, AccountMergeOrchestrator],

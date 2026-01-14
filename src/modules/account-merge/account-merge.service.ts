@@ -1,23 +1,25 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { randomBytes } from 'crypto';
+
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
+import { AccountMergeCode } from '@krgeobuk/account-merge/codes';
+import { AccountMergeException } from '@krgeobuk/account-merge/exception';
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { UserException } from '@krgeobuk/user/exception';
+import { EmailService } from '@krgeobuk/email';
 
+import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
+import { RedisService } from '@database/redis/redis.service.js';
 
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 import { AccountMergeRepository } from './repositories/account-merge.repository.js';
 import { AccountMergeOrchestrator } from './account-merge.orchestrator.js';
+import { MergeStateMachine } from './merge-state-machine.js';
 
 @Injectable()
 export class AccountMergeService {
@@ -27,7 +29,9 @@ export class AccountMergeService {
     private readonly userService: UserService,
     private readonly accountMergeRepo: AccountMergeRepository,
     private readonly mergeOrchestrator: AccountMergeOrchestrator,
-    @Inject(forwardRef(() => OAuthService))
+    private readonly redisService: RedisService,
+    private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
     private readonly oauthService: OAuthService
   ) {}
 
@@ -61,10 +65,7 @@ export class AccountMergeService {
 
     // 2. User A와 User B가 같은 계정인지 확인
     if (sourceUserId === targetUser.id) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_001',
-        message: '동일한 계정을 병합할 수 없습니다.',
-      });
+      throw AccountMergeException.sameAccountMerge();
     }
 
     // 3. User B가 이미 해당 OAuth 계정을 소유하고 있는지 확인
@@ -112,7 +113,7 @@ export class AccountMergeService {
     const savedRequest = await this.accountMergeRepo.save(mergeRequest);
 
     // 6. User B에게 병합 확인 이메일 발송
-    await this.oauthService.sendMergeConfirmationEmail(savedRequest);
+    await this.sendMergeConfirmationEmail(savedRequest);
 
     this.logger.log('Account merge request created', {
       requestId: savedRequest.id,
@@ -132,7 +133,7 @@ export class AccountMergeService {
   async getAccountMerge(requestId: number): Promise<AccountMergeEntity> {
     const request = await this.accountMergeRepo.findOneBy({ id: requestId });
     if (!request) {
-      throw OAuthException.mergeRequestNotFound();
+      throw AccountMergeException.requestNotFound();
     }
 
     this.logger.debug('Merge request retrieved', { requestId });
@@ -154,33 +155,25 @@ export class AccountMergeService {
     // 1. 병합 요청 조회
     const request = await this.getAccountMerge(requestId);
 
-    // 2. User B가 맞는지 확인
-    if (request.targetUserId !== userId) {
-      throw new ForbiddenException({
-        code: 'ACCOUNT_MERGE_002',
-        message: '계정 병합을 승인할 권한이 없습니다.',
-      });
+    // 2. 상태 머신을 통한 검증 (권한, 상태, 만료 시간)
+    try {
+      MergeStateMachine.validateConfirm(request, userId);
+    } catch (error: unknown) {
+      // 만료된 경우 상태를 CANCELLED로 변경하고 토큰 만료 에러 발생
+      if (error instanceof BadRequestException) {
+        const errorResponse = error.getResponse() as { code?: string };
+        if (errorResponse.code === AccountMergeCode.REQUEST_EXPIRED) {
+          await this.accountMergeRepo.update(
+            { id: requestId },
+            { status: AccountMergeStatus.CANCELLED }
+          );
+          throw AccountMergeException.tokenInvalidOrExpired();
+        }
+      }
+      throw error;
     }
 
-    // 3. 상태 확인 (PENDING_EMAIL_VERIFICATION만 승인 가능)
-    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_003',
-        message: '이미 처리되었거나 처리할 수 없는 병합 요청입니다.',
-      });
-    }
-
-    // 4. 만료 시간 확인 (24시간)
-    const hoursSinceCreation = (Date.now() - request.createdAt.getTime()) / (1000 * 60 * 60);
-    if (hoursSinceCreation > 24) {
-      await this.accountMergeRepo.update(
-        { id: requestId },
-        { status: AccountMergeStatus.CANCELLED }
-      );
-      throw OAuthException.mergeTokenInvalidOrExpired();
-    }
-
-    // 5. 상태를 IN_PROGRESS로 변경
+    // 3. 상태를 IN_PROGRESS로 변경
     await this.accountMergeRepo.update(
       { id: requestId },
       {
@@ -189,11 +182,11 @@ export class AccountMergeService {
       }
     );
 
-    // 6. AccountMergeOrchestrator를 통한 Saga 실행
+    // 4. AccountMergeOrchestrator를 통한 Saga 실행
     try {
       await this.mergeOrchestrator.execute(request);
 
-      // 7. 성공 시 상태를 COMPLETED로 변경
+      // 5. 성공 시 상태를 COMPLETED로 변경
       await this.accountMergeRepo.update(
         { id: requestId },
         {
@@ -204,7 +197,7 @@ export class AccountMergeService {
 
       this.logger.log('Account merge completed successfully', { requestId });
     } catch (error: unknown) {
-      // 8. 실패 시 상태를 FAILED로 변경
+      // 6. 실패 시 상태를 FAILED로 변경
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await this.accountMergeRepo.update(
         { id: requestId },
@@ -239,25 +232,64 @@ export class AccountMergeService {
     // 1. 병합 요청 조회
     const request = await this.getAccountMerge(requestId);
 
-    // 2. User B가 맞는지 확인
-    if (request.targetUserId !== userId) {
-      throw new ForbiddenException({
-        code: 'ACCOUNT_MERGE_002',
-        message: '계정 병합을 거부할 권한이 없습니다.',
-      });
-    }
+    // 2. 상태 머신을 통한 검증 (권한, 상태)
+    MergeStateMachine.validateReject(request, userId);
 
-    // 3. 상태 확인 (PENDING_EMAIL_VERIFICATION만 거부 가능)
-    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
-      throw new BadRequestException({
-        code: 'ACCOUNT_MERGE_003',
-        message: '이미 처리되었거나 처리할 수 없는 병합 요청입니다.',
-      });
-    }
-
-    // 4. 상태를 CANCELLED로 변경
+    // 3. 상태를 CANCELLED로 변경
     await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
 
     this.logger.log('Account merge rejected', { requestId });
+  }
+
+  /**
+   * 병합 확인 이메일 발송
+   * User B에게 병합 확인 이메일 발송
+   *
+   * @param mergeRequest - 병합 요청 엔티티
+   */
+  private async sendMergeConfirmationEmail(mergeRequest: AccountMergeEntity): Promise<void> {
+    this.logger.log('Sending merge confirmation email', {
+      requestId: mergeRequest.id,
+      sourceUserId: mergeRequest.sourceUserId,
+    });
+
+    // User A와 User B 정보 조회
+    const [targetUser, sourceUser] = await Promise.all([
+      this.userService.findById(mergeRequest.targetUserId),
+      this.userService.findById(mergeRequest.sourceUserId),
+    ]);
+
+    if (!targetUser || !sourceUser) {
+      throw new Error('User not found for merge confirmation email');
+    }
+
+    // 확인 토큰 생성 (24시간 유효) - 랜덤 바이트 기반
+    const confirmToken = randomBytes(32).toString('hex');
+
+    // Redis에 토큰 저장 (24시간 TTL)
+    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, 86400);
+
+    // 확인 URL 생성
+    const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
+    const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
+
+    // 만료 시간 계산 (24시간 후)
+    const expiresAt = new Date(Date.now() + 86400000).toLocaleString('ko-KR');
+
+    // 이메일 발송
+    await this.emailService.sendAccountMergeEmail({
+      to: sourceUser.email,
+      name: sourceUser.name || sourceUser.email,
+      targetUserEmail: targetUser.email,
+      provider: mergeRequest.provider,
+      providerId: mergeRequest.providerId,
+      confirmUrl,
+      expiresAt,
+    });
+
+    this.logger.log('Merge confirmation email sent', {
+      to: sourceUser.email,
+      requestId: mergeRequest.id,
+    });
   }
 }

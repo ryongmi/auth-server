@@ -90,81 +90,103 @@ export class UserService {
     };
   }
 
-  async getMyProfile(userId?: string): Promise<UserProfile> {
-    // 비로그인 사용자인 경우 기본 정보만 반환
-    if (!userId || userId.trim() === '') {
-      this.logger.debug('비로그인 사용자 프로필 요청');
-
-      return await this.getGuestProfile();
+  /**
+   * 이미지 프록시 URL 변환 Helper
+   */
+  private applyImageProxyUrl(user: { profileImageUrl: string | null }): void {
+    if (user.profileImageUrl) {
+      user.profileImageUrl = this.imageProxyService.convertToProxyUrl(user.profileImageUrl);
     }
+  }
 
-    let baseUser: UserDetail;
+  /**
+   * UserProfile 생성 Helper
+   */
+  private buildUserProfile(
+    baseUser: UserDetail,
+    roles: string[],
+    permissions: string[],
+    availableServices: Service[]
+  ): UserProfile {
+    const profile: UserProfile = {
+      ...baseUser,
+      authorization: {
+        roles,
+        permissions,
+      },
+      availableServices,
+    };
 
+    this.applyImageProxyUrl(profile);
+    return profile;
+  }
+
+  /**
+   * Authz 데이터 조회 - 에러 발생 시 빈 값 반환
+   */
+  private async fetchAuthzData(userId: string): Promise<{
+    roles: string[];
+    permissions: string[];
+    availableServices: Service[];
+  }> {
     try {
-      // 1. 기본 사용자 정보 조회 (OAuth 포함)
-      baseUser = await this.userRepo.findUserProfile(userId);
-    } catch (error: unknown) {
-      // 내부 에러: 사용자 조회 실패 - 예외 발생
-      this.logger.error('사용자 기본 정보 조회 실패', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId,
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-
-      throw UserException.profileFetchError();
-    }
-
-    try {
-      // 2. authz-server에서 권한/역할 정보 조회 (병렬 처리)
-      // TCP 에러는 각 메서드 내부에서 처리되어 빈 배열/null 반환
       const [roles, permissions, availableServices] = await Promise.all([
         this.getUserRoles(userId),
         this.getUserPermissions(userId),
         this.getAvailableServices(userId),
       ]);
 
-      // 3. 통합 결과 반환
-      const result: UserProfile = {
-        ...baseUser,
-        profileImageUrl: this.imageProxyService.convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
-        authorization: {
-          roles,
-          permissions,
-        },
-        availableServices: availableServices,
-      };
-
-      this.logger.log('통합 사용자 프로필 조회 성공', {
-        userId,
-        provider: baseUser.oauthAccount.provider,
-        hasGoogleAccount: baseUser.oauthAccount.provider === 'google',
-        roleCount: roles.length,
-        permissionCount: permissions.length,
-        serviceCount: availableServices?.length || 0,
-        tcpServicesAvailable: {
-          roles: roles.length > 0,
-          permissions: permissions.length > 0,
-          services: availableServices.length > 0,
-        },
-      });
-
-      return result;
+      return { roles, permissions, availableServices };
     } catch (error: unknown) {
-      // 예상치 못한 에러: TCP 호출 중 치명적 에러
-      this.logger.error('통합 사용자 프로필 조회 중 예상치 못한 에러 발생', {
+      this.logger.warn('Authz 데이터 조회 중 예상치 못한 에러 발생, 빈 값 반환', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      return { roles: [], permissions: [], availableServices: [] };
+    }
+  }
+
+  async getMyProfile(userId?: string): Promise<UserProfile> {
+    // 비로그인 사용자인 경우 기본 정보만 반환
+    if (!userId || userId.trim() === '') {
+      this.logger.debug('비로그인 사용자 프로필 요청');
+      return await this.getGuestProfile();
+    }
+
+    // 1. 기본 사용자 정보 조회 (OAuth 포함)
+    let baseUser: UserDetail;
+    try {
+      baseUser = await this.userRepo.findUserProfile(userId);
+    } catch (error: unknown) {
+      this.logger.error('사용자 기본 정보 조회 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId,
         stack: error instanceof Error ? error.stack : undefined,
       });
-
-      // Fallback: 기본 사용자 정보만 반환 (이미 조회 완료)
-      return {
-        ...baseUser,
-        profileImageUrl: this.imageProxyService.convertToProxyUrl(baseUser.profileImageUrl), // 프록시 URL로 변환
-        authorization: { roles: [], permissions: [] },
-        availableServices: [],
-      };
+      throw UserException.profileFetchError();
     }
+
+    // 2. authz-server에서 권한/역할 정보 조회 (에러 시 빈 값 반환)
+    const { roles, permissions, availableServices } = await this.fetchAuthzData(userId);
+
+    // 3. 통합 결과 반환
+    const profile = this.buildUserProfile(baseUser, roles, permissions, availableServices);
+
+    this.logger.log('통합 사용자 프로필 조회 성공', {
+      userId,
+      provider: baseUser.oauthAccount.provider,
+      hasGoogleAccount: baseUser.oauthAccount.provider === 'google',
+      roleCount: roles.length,
+      permissionCount: permissions.length,
+      serviceCount: availableServices?.length || 0,
+      tcpServicesAvailable: {
+        roles: roles.length > 0,
+        permissions: permissions.length > 0,
+        services: availableServices.length > 0,
+      },
+    });
+
+    return profile;
   }
 
   async updateMyProfile(userId: string, attrs: UpdateMyProfile): Promise<void> {
@@ -257,54 +279,55 @@ export class UserService {
   }
 
   // TCP 통신 헬퍼 메서드
-  private async getUserRoles(userId: string): Promise<string[]> {
+  /**
+   * TCP 호출 통합 헬퍼 - 에러 처리 중앙화
+   */
+  private async callAuthzServiceSafely<T>(
+    pattern: string,
+    data: Record<string, unknown>,
+    methodName: string,
+    defaultValue: T
+  ): Promise<T> {
     try {
-      if (!this.authzClient) return [];
-      const result = await firstValueFrom<string[]>(
-        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_ROLE_NAMES, { userId })
-      );
+      if (!this.authzClient) return defaultValue;
 
-      return result || [];
+      const result = await firstValueFrom<T>(this.authzClient.send(pattern, data));
+
+      return result || defaultValue;
     } catch (error: unknown) {
-      this.logger.warn('Authz service unavailable for getUserRoles', {
+      this.logger.warn(`Authz service unavailable for ${methodName}`, {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId,
+        data,
       });
-      return [];
+      return defaultValue;
     }
+  }
+
+  private async getUserRoles(userId: string): Promise<string[]> {
+    return this.callAuthzServiceSafely<string[]>(
+      AuthorizationTcpPatterns.GET_USER_ROLE_NAMES,
+      { userId },
+      this.getUserRoles.name,
+      []
+    );
   }
 
   private async getUserPermissions(userId: string): Promise<string[]> {
-    try {
-      if (!this.authzClient) return [];
-      const result = await firstValueFrom<string[]>(
-        this.authzClient.send(AuthorizationTcpPatterns.GET_USER_PERMISSION_ACTIONS, { userId })
-      );
-
-      return result || [];
-    } catch (error: unknown) {
-      this.logger.warn('Authz service unavailable for getUserPermissions', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId,
-      });
-      return [];
-    }
+    return this.callAuthzServiceSafely<string[]>(
+      AuthorizationTcpPatterns.GET_USER_PERMISSION_ACTIONS,
+      { userId },
+      this.getUserPermissions.name,
+      []
+    );
   }
 
   private async getAvailableServices(userId: string): Promise<Service[]> {
-    try {
-      if (!this.authzClient) return [];
-      const result = await firstValueFrom<Service[]>(
-        this.authzClient.send(AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES, { userId })
-      );
-      return result || [];
-    } catch (error: unknown) {
-      this.logger.warn('Authz service unavailable for getAvailableServices', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId,
-      });
-      return [];
-    }
+    return this.callAuthzServiceSafely<Service[]>(
+      AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES,
+      { userId },
+      this.getAvailableServices.name,
+      []
+    );
   }
 
   /**
