@@ -43,12 +43,12 @@ export class AccountMergeService {
 
   /**
    * 계정 병합 요청 시작
-   * User A가 이미 가입된 이메일로 다른 OAuth provider로 로그인 시도 시
+   * User B가 이미 가입된 이메일(User A 소유)로 OAuth 로그인 시도 시
    *
    * @param provider - OAuth 제공자 (Google or Naver)
    * @param providerId - OAuth 제공자의 사용자 ID
    * @param email - 이메일 주소 (User A와 User B가 공유하는 이메일)
-   * @param sourceUserId - User A (새로운 OAuth 계정 소유자)
+   * @param sourceUserId - User B (삭제될 계정, 새 OAuth로 로그인 시도한 사용자)
    * @returns 병합 요청 ID
    */
   async initiateAccountMerge(
@@ -63,7 +63,7 @@ export class AccountMergeService {
       sourceUserId,
     });
 
-    // 1. 이메일로 User B 찾기
+    // 1. 이메일로 User A (유지할 계정) 찾기
     const targetUser = await this.userService.findByEmail(email);
     if (!targetUser) {
       throw UserException.userNotFound();
@@ -74,7 +74,7 @@ export class AccountMergeService {
       throw AccountMergeException.sameAccountMerge();
     }
 
-    // 3. User B가 이미 해당 OAuth 계정을 소유하고 있는지 확인
+    // 3. User A가 이미 해당 OAuth 계정을 소유하고 있는지 확인
     const existingOAuth = await this.oauthService.findByAnd({
       userId: targetUser.id,
       provider,
@@ -109,8 +109,8 @@ export class AccountMergeService {
 
     // 5. 병합 요청 엔티티 생성
     const mergeRequest = this.accountMergeRepo.create({
-      sourceUserId, // User A (새로운 OAuth 계정 소유자)
-      targetUserId: targetUser.id, // User B (기존 계정 소유자)
+      sourceUserId, // User B (삭제될 계정)
+      targetUserId: targetUser.id, // User A (유지할 계정)
       provider,
       providerId,
       status: AccountMergeStatus.PENDING_EMAIL_VERIFICATION,
@@ -150,7 +150,7 @@ export class AccountMergeService {
    * 계정 병합 확인 (User B가 승인)
    *
    * @param requestId - 병합 요청 ID
-   * @param userId - User B의 ID (확인하는 사용자)
+   * @param userId - User B의 ID (승인하는 사용자, 삭제될 계정)
    */
   async confirmAccountMerge(requestId: number, userId: string): Promise<void> {
     this.logger.log('Confirming account merge', {
@@ -227,7 +227,7 @@ export class AccountMergeService {
    * 계정 병합 거부 (User B가 거부)
    *
    * @param requestId - 병합 요청 ID
-   * @param userId - User B의 ID (거부하는 사용자)
+   * @param userId - User B의 ID (거부하는 사용자, 삭제될 계정)
    */
   async rejectAccountMerge(requestId: number, userId: string): Promise<void> {
     this.logger.log('Rejecting account merge', {
@@ -248,7 +248,6 @@ export class AccountMergeService {
   }
 
   /**
-   * 병합 확인 이메일 발송
    * User B에게 병합 확인 이메일 발송
    *
    * @param mergeRequest - 병합 요청 엔티티
@@ -259,10 +258,10 @@ export class AccountMergeService {
       sourceUserId: mergeRequest.sourceUserId,
     });
 
-    // User A와 User B 정보 조회
+    // User A (유지할 계정)와 User B (삭제될 계정) 정보 조회
     const [targetUser, sourceUser] = await Promise.all([
-      this.userService.findById(mergeRequest.targetUserId),
-      this.userService.findById(mergeRequest.sourceUserId),
+      this.userService.findById(mergeRequest.targetUserId), // User A
+      this.userService.findById(mergeRequest.sourceUserId), // User B
     ]);
 
     if (!targetUser || !sourceUser) {
@@ -273,7 +272,11 @@ export class AccountMergeService {
     const confirmToken = randomBytes(32).toString('hex');
 
     // Redis에 토큰 저장
-    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, MERGE_REQUEST_EXPIRATION_SECONDS);
+    await this.redisService.setMergeToken(
+      mergeRequest.id,
+      confirmToken,
+      MERGE_REQUEST_EXPIRATION_SECONDS
+    );
 
     // 확인 URL 생성
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;

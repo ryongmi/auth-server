@@ -39,6 +39,7 @@ export class MergeStateMachine {
 
   /**
    * 사용자가 병합 요청에 대한 권한이 있는지 확인
+   * User A (유지할 계정, targetUserId)만 승인/거부 가능
    */
   static validateTargetUserPermission(request: AccountMergeEntity, userId: string): void {
     if (request.targetUserId !== userId) {
