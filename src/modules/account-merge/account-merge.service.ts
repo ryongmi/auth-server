@@ -118,8 +118,18 @@ export class AccountMergeService {
 
     const savedRequest = await this.accountMergeRepo.save(mergeRequest);
 
-    // 6. User B에게 병합 확인 이메일 발송
-    await this.sendMergeConfirmationEmail(savedRequest);
+    // 6. 병합 확인 이메일 발송 (실패 시 DB 롤백)
+    try {
+      await this.sendMergeConfirmationEmail(savedRequest);
+    } catch (error) {
+      // Redis 또는 이메일 발송 실패 시 DB 롤백
+      this.logger.error('Failed to send merge confirmation email, rolling back', {
+        requestId: savedRequest.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.accountMergeRepo.delete({ id: savedRequest.id });
+      throw error;
+    }
 
     this.logger.log('Account merge request created', {
       requestId: savedRequest.id,
@@ -272,11 +282,19 @@ export class AccountMergeService {
     const confirmToken = randomBytes(32).toString('hex');
 
     // Redis에 토큰 저장
-    await this.redisService.setMergeToken(
-      mergeRequest.id,
-      confirmToken,
-      MERGE_REQUEST_EXPIRATION_SECONDS
-    );
+    try {
+      await this.redisService.setMergeToken(
+        mergeRequest.id,
+        confirmToken,
+        MERGE_REQUEST_EXPIRATION_SECONDS
+      );
+    } catch (error) {
+      this.logger.error('Failed to save merge token to Redis', {
+        requestId: mergeRequest.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw AccountMergeException.requestCreationFailed();
+    }
 
     // 확인 URL 생성
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
