@@ -1,6 +1,8 @@
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
 import { AccountMergeException } from '@krgeobuk/account-merge/exception';
 
+import { MERGE_REQUEST_EXPIRATION_HOURS, MS_PER_HOUR } from '@common/constants/index.js';
+
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 
 /**
@@ -13,8 +15,6 @@ import { AccountMergeEntity } from './entities/account-merge.entity.js';
  * - IN_PROGRESS → FAILED (merge failure)
  */
 export class MergeStateMachine {
-  private static readonly EXPIRATION_HOURS = 24;
-  private static readonly MS_PER_HOUR = 1000 * 60 * 60;
 
   /**
    * 상태 전환 가능 여부 확인
@@ -51,9 +51,9 @@ export class MergeStateMachine {
    */
   static validateNotExpired(request: AccountMergeEntity): void {
     const hoursSinceCreation =
-      (Date.now() - request.createdAt.getTime()) / this.MS_PER_HOUR;
+      (Date.now() - request.createdAt.getTime()) / MS_PER_HOUR;
 
-    if (hoursSinceCreation > this.EXPIRATION_HOURS) {
+    if (hoursSinceCreation > MERGE_REQUEST_EXPIRATION_HOURS) {
       throw AccountMergeException.requestExpired();
     }
   }

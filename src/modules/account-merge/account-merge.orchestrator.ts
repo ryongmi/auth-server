@@ -7,6 +7,15 @@ import { BaseSagaOrchestrator, SagaStep, RetryOptions } from '@krgeobuk/saga';
 import { UserRoleTcpPatterns } from '@krgeobuk/user-role/tcp/patterns';
 import { AccountMergeTcpPatterns } from '@krgeobuk/account-merge/tcp/patterns';
 
+import {
+  DEFAULT_TCP_TIMEOUT_MS,
+  MYPICK_TCP_TIMEOUT_MS,
+  DEFAULT_MAX_RETRIES,
+  CACHE_MAX_RETRIES,
+  RETRY_BASE_DELAY_MS,
+  RETRY_MAX_DELAY_MS,
+  SNAPSHOT_RETENTION_SECONDS,
+} from '@common/constants/index.js';
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
 import { RedisService } from '@database/redis/redis.service.js';
@@ -65,10 +74,10 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    */
   protected getSteps(): SagaStep<AccountMergeEntity>[] {
     const defaultRetryOptions: RetryOptions = {
-      maxRetries: 3,
-      baseDelayMs: 1000,
-      maxDelayMs: 5000,
-      timeoutMs: 5000,
+      maxRetries: DEFAULT_MAX_RETRIES,
+      baseDelayMs: RETRY_BASE_DELAY_MS,
+      maxDelayMs: RETRY_MAX_DELAY_MS,
+      timeoutMs: DEFAULT_TCP_TIMEOUT_MS,
     };
 
     return [
@@ -89,7 +98,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       {
         name: 'STEP3_MYPICK_MERGE',
         execute: (req: AccountMergeEntity) => this.mergeMyPickData(req),
-        retryOptions: { ...defaultRetryOptions, timeoutMs: 10000 }, // my-pick은 10초 타임아웃
+        retryOptions: { ...defaultRetryOptions, timeoutMs: MYPICK_TCP_TIMEOUT_MS },
         onRetry: (attempt: number, error: any) =>
           this.logRetry('STEP3_MYPICK_MERGE', attempt, error),
       },
@@ -103,7 +112,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       {
         name: 'STEP5_CACHE_INVALIDATE',
         execute: (req: AccountMergeEntity) => this.invalidateCache(req),
-        retryOptions: { ...defaultRetryOptions, maxRetries: 1 }, // 캐시는 재시도 1회만
+        retryOptions: { ...defaultRetryOptions, maxRetries: CACHE_MAX_RETRIES },
         onRetry: (attempt: number, error: any) =>
           this.logRetry('STEP5_CACHE_INVALIDATE', attempt, error),
       },
@@ -131,7 +140,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     const sourceRoles = await firstValueFrom(
       this.authzClient
         .send('user-role.find-roles-by-user', { userId: request.sourceUserId })
-        .pipe(timeout(5000))
+        .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
 
     // 스냅샷 생성 (my-pick 데이터는 my-pick-server에서 자체 스냅샷 생성)
@@ -143,12 +152,12 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       backupTimestamp: new Date(),
     };
 
-    // Redis에 7일간 백업 저장
-    await this.redisService.setMergeSnapshot(request.id, snapshot, 604800);
+    // Redis에 백업 저장
+    await this.redisService.setMergeSnapshot(request.id, snapshot, SNAPSHOT_RETENTION_SECONDS);
 
     this.logger.log('Snapshot created and saved to Redis', {
       requestId: request.id,
-      ttl: 604800,
+      ttlSeconds: SNAPSHOT_RETENTION_SECONDS,
     });
 
     return snapshot;
@@ -245,7 +254,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
           sourceUserId: request.sourceUserId,
           targetUserId: request.targetUserId,
         })
-        .pipe(timeout(5000))
+        .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
 
     this.logger.log('STEP2 completed: User roles merged');
@@ -267,7 +276,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
           sourceUserId: request.sourceUserId,
           targetUserId: request.targetUserId,
         })
-        .pipe(timeout(10000)) // my-pick은 10초 타임아웃 (여러 테이블 처리)
+        .pipe(timeout(MYPICK_TCP_TIMEOUT_MS))
     );
 
     this.logger.log('STEP3 completed: my-pick data merged');
@@ -329,7 +338,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         .send('user.rollback-merge', {
           snapshotData: snapshot.sourceMyPickData,
         })
-        .pipe(timeout(10000))
+        .pipe(timeout(MYPICK_TCP_TIMEOUT_MS))
     );
 
     this.logger.log('my-pick merge rollback completed');
@@ -347,7 +356,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         .send('user-role.rollback-merge', {
           snapshotData: snapshot.sourceRoles,
         })
-        .pipe(timeout(5000))
+        .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
 
     this.logger.log('Role merge rollback completed');

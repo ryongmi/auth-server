@@ -12,6 +12,12 @@ import { UserException } from '@krgeobuk/user/exception';
 import { EmailService } from '@krgeobuk/email';
 
 import { DefaultConfig } from '@common/interfaces/config.interfaces.js';
+import {
+  MS_PER_HOUR,
+  MERGE_REQUEST_EXPIRATION_HOURS,
+  MERGE_REQUEST_EXPIRATION_SECONDS,
+  MERGE_REQUEST_EXPIRATION_MS,
+} from '@common/constants/index.js';
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
 import { RedisService } from '@database/redis/redis.service.js';
@@ -90,9 +96,9 @@ export class AccountMergeService {
     });
 
     if (recentRequest) {
-      const hoursSinceRequest = (Date.now() - recentRequest.createdAt.getTime()) / (1000 * 60 * 60);
-      if (hoursSinceRequest < 24) {
-        this.logger.warn('Duplicate merge request within 24 hours', {
+      const hoursSinceRequest = (Date.now() - recentRequest.createdAt.getTime()) / MS_PER_HOUR;
+      if (hoursSinceRequest < MERGE_REQUEST_EXPIRATION_HOURS) {
+        this.logger.warn(`Duplicate merge request within ${MERGE_REQUEST_EXPIRATION_HOURS} hours`, {
           requestId: recentRequest.id,
           hoursSinceRequest,
         });
@@ -263,18 +269,18 @@ export class AccountMergeService {
       throw new Error('User not found for merge confirmation email');
     }
 
-    // 확인 토큰 생성 (24시간 유효) - 랜덤 바이트 기반
+    // 확인 토큰 생성 - 랜덤 바이트 기반
     const confirmToken = randomBytes(32).toString('hex');
 
-    // Redis에 토큰 저장 (24시간 TTL)
-    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, 86400);
+    // Redis에 토큰 저장
+    await this.redisService.setMergeToken(mergeRequest.id, confirmToken, MERGE_REQUEST_EXPIRATION_SECONDS);
 
     // 확인 URL 생성
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
     const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
 
-    // 만료 시간 계산 (24시간 후)
-    const expiresAt = new Date(Date.now() + 86400000).toLocaleString('ko-KR');
+    // 만료 시간 계산
+    const expiresAt = new Date(Date.now() + MERGE_REQUEST_EXPIRATION_MS).toLocaleString('ko-KR');
 
     // 이메일 발송
     await this.emailService.sendAccountMergeEmail({

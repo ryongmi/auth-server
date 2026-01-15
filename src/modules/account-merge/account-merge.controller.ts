@@ -21,6 +21,7 @@ import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { InitiateAccountMergeDto, AccountMergeResponseDto } from '@krgeobuk/account-merge/dtos';
 
 import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
+import { MERGE_REQUEST_EXPIRATION_MS } from '@common/constants/index.js';
 import { UserService } from '@modules/user/user.service.js';
 
 import { AccountMergeService } from './account-merge.service.js';
@@ -96,8 +97,8 @@ export class AccountMergeController {
     const sourceUser = await this.userService.findById(request.sourceUserId);
     const targetUser = await this.userService.findById(request.targetUserId);
 
-    // 24시간 후 만료 시간 계산
-    const expiresAt = new Date(request.createdAt.getTime() + 86400000);
+    // 만료 시간 계산
+    const expiresAt = new Date(request.createdAt.getTime() + MERGE_REQUEST_EXPIRATION_MS);
 
     return {
       id: request.id,
