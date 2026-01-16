@@ -15,28 +15,6 @@ import { AccountMergeEntity } from './entities/account-merge.entity.js';
  * - IN_PROGRESS → FAILED (merge failure)
  */
 export class MergeStateMachine {
-
-  /**
-   * 상태 전환 가능 여부 확인
-   */
-  static canTransition(from: AccountMergeStatus, to: AccountMergeStatus): boolean {
-    const transitions: Record<AccountMergeStatus, AccountMergeStatus[]> = {
-      [AccountMergeStatus.PENDING_EMAIL_VERIFICATION]: [
-        AccountMergeStatus.IN_PROGRESS,
-        AccountMergeStatus.CANCELLED,
-      ],
-      [AccountMergeStatus.IN_PROGRESS]: [
-        AccountMergeStatus.COMPLETED,
-        AccountMergeStatus.FAILED,
-      ],
-      [AccountMergeStatus.COMPLETED]: [],
-      [AccountMergeStatus.FAILED]: [],
-      [AccountMergeStatus.CANCELLED]: [],
-    };
-
-    return transitions[from]?.includes(to) ?? false;
-  }
-
   /**
    * 사용자가 병합 요청에 대한 권한이 있는지 확인
    * User A (유지할 계정, targetUserId)만 승인/거부 가능
@@ -66,18 +44,6 @@ export class MergeStateMachine {
   static validatePendingState(request: AccountMergeEntity): void {
     if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
       throw AccountMergeException.invalidStatus();
-    }
-  }
-
-  /**
-   * 상태 전환 유효성 검증 및 실행
-   */
-  static validateAndTransition(
-    request: AccountMergeEntity,
-    targetStatus: AccountMergeStatus
-  ): void {
-    if (!this.canTransition(request.status, targetStatus)) {
-      throw AccountMergeException.invalidTransition(request.status, targetStatus);
     }
   }
 
