@@ -6,6 +6,7 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { BaseSagaOrchestrator, SagaStep, RetryOptions } from '@krgeobuk/saga';
 import { UserRoleTcpPatterns } from '@krgeobuk/user-role/tcp/patterns';
 import { AccountMergeTcpPatterns } from '@krgeobuk/account-merge/tcp/patterns';
+import type { MyPickSnapshotData } from '@krgeobuk/account-merge/tcp/interfaces';
 
 import {
   DEFAULT_TCP_TIMEOUT_MS,
@@ -16,9 +17,13 @@ import {
   RETRY_MAX_DELAY_MS,
   SNAPSHOT_RETENTION_SECONDS,
 } from '@common/constants/index.js';
+import type { UserRole } from '@krgeobuk/shared/user-role';
+
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
 import { RedisService } from '@database/redis/redis.service.js';
+import { UserEntity } from '@modules/user/entities/user.entity.js';
+import { OAuthAccountEntity } from '@modules/oauth/entities/oauth-account.entity.js';
 
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
 
@@ -34,13 +39,13 @@ interface MergeSnapshot {
   /** User A (유지할 계정) ID */
   targetUserId: string;
   /** User B (삭제될 계정) 정보 */
-  sourceUser: any;
+  sourceUser: UserEntity;
   /** User B의 OAuth 계정 정보 */
-  sourceOAuthAccounts: any[];
+  sourceOAuthAccounts: OAuthAccountEntity[];
   /** User B의 역할 정보 (authz-server에서 조회) */
-  sourceRoles: any[];
+  sourceRoles: UserRole[];
   /** User B의 my-pick 데이터 (my-pick-server에서 조회) */
-  sourceMyPickData: any;
+  sourceMyPickData: MyPickSnapshotData;
   /** 백업 생성 시각 */
   backupTimestamp: Date;
 }
@@ -145,17 +150,17 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     // authz-server에서 역할 조회
     const sourceRoles = await firstValueFrom(
       this.authzClient
-        .send('user-role.find-roles-by-user', { userId: request.sourceUserId })
+        .send<UserRole[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.sourceUserId })
         .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
 
-    // 스냅샷 생성 (my-pick 데이터는 병합 시 수집)
+    // 스냅샷 생성 (my-pick 데이터는 STEP3에서 수집하여 업데이트)
     const snapshot: MergeSnapshot = {
       targetUserId: request.targetUserId,
       sourceUser,
       sourceOAuthAccounts,
       sourceRoles,
-      sourceMyPickData: {}, // STEP3에서 병합 시 수집하여 업데이트
+      sourceMyPickData: { sourceCreatorIds: [], sourceContentIds: [] },
       backupTimestamp: new Date(),
     };
 
@@ -281,13 +286,10 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     // my-pick-server에서 병합 실행 및 스냅샷 수신
     const myPickSnapshot = await firstValueFrom(
       this.myPickClient
-        .send<{ sourceCreatorIds: string[]; sourceContentIds: string[] }>(
-          AccountMergeTcpPatterns.MERGE_USER_DATA,
-          {
-            sourceUserId: request.sourceUserId,
-            targetUserId: request.targetUserId,
-          }
-        )
+        .send<MyPickSnapshotData>(AccountMergeTcpPatterns.MERGE_USER_DATA, {
+          sourceUserId: request.sourceUserId,
+          targetUserId: request.targetUserId,
+        })
         .pipe(timeout(MYPICK_TCP_TIMEOUT_MS))
     );
 
@@ -295,7 +297,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     const existingSnapshot = await this.redisService.getMergeSnapshot(request.id);
     if (existingSnapshot) {
       existingSnapshot.sourceMyPickData = myPickSnapshot;
-      await this.redisService.setMergeSnapshot(request.id, existingSnapshot, 604800);
+      await this.redisService.setMergeSnapshot(request.id, existingSnapshot, SNAPSHOT_RETENTION_SECONDS);
     }
 
     this.logger.log('STEP3 completed: my-pick data merged', {
@@ -380,7 +382,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
 
     await firstValueFrom(
       this.authzClient
-        .send('user-role.rollback-merge', {
+        .send(UserRoleTcpPatterns.ROLLBACK_MERGE, {
           snapshotData: snapshot.sourceRoles,
         })
         .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
