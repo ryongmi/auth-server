@@ -179,10 +179,7 @@ export class AccountMergeService {
       if (error instanceof BadRequestException) {
         const errorResponse = error.getResponse() as { code?: string };
         if (errorResponse.code === AccountMergeCode.REQUEST_EXPIRED) {
-          await this.accountMergeRepo.update(
-            { id: requestId },
-            { status: AccountMergeStatus.CANCELLED }
-          );
+          await this.cancelMergeRequest(requestId);
           throw AccountMergeException.tokenInvalidOrExpired();
         }
       }
@@ -190,39 +187,20 @@ export class AccountMergeService {
     }
 
     // 3. 상태를 IN_PROGRESS로 변경
-    await this.accountMergeRepo.update(
-      { id: requestId },
-      {
-        status: AccountMergeStatus.IN_PROGRESS,
-        emailVerifiedAt: new Date(),
-      }
-    );
+    await this.startMergeProcess(requestId);
 
     // 4. AccountMergeOrchestrator를 통한 Saga 실행
     try {
       await this.mergeOrchestrator.execute(request);
 
       // 5. 성공 시 상태를 COMPLETED로 변경
-      await this.accountMergeRepo.update(
-        { id: requestId },
-        {
-          status: AccountMergeStatus.COMPLETED,
-          completedAt: new Date(),
-        }
-      );
+      await this.completeMergeProcess(requestId);
 
       this.logger.log('Account merge completed successfully', { requestId });
     } catch (error: unknown) {
       // 6. 실패 시 상태를 FAILED로 변경
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      await this.accountMergeRepo.update(
-        { id: requestId },
-        {
-          status: AccountMergeStatus.FAILED,
-          errorMessage,
-          retryCount: request.retryCount + 1,
-        }
-      );
+      await this.failMergeProcess(requestId, errorMessage, request.retryCount);
 
       this.logger.error('Account merge failed', {
         requestId,
@@ -252,10 +230,68 @@ export class AccountMergeService {
     MergeStateMachine.validateReject(request, userId);
 
     // 3. 상태를 CANCELLED로 변경
-    await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
+    await this.cancelMergeRequest(requestId);
 
     this.logger.log('Account merge rejected', { requestId });
   }
+
+  // ==================== 상태 업데이트 헬퍼 메서드 ====================
+
+  /**
+   * 병합 요청 취소
+   */
+  private async cancelMergeRequest(requestId: number): Promise<void> {
+    await this.accountMergeRepo.update(
+      { id: requestId },
+      { status: AccountMergeStatus.CANCELLED }
+    );
+  }
+
+  /**
+   * 병합 프로세스 시작 (이메일 인증 완료)
+   */
+  private async startMergeProcess(requestId: number): Promise<void> {
+    await this.accountMergeRepo.update(
+      { id: requestId },
+      {
+        status: AccountMergeStatus.IN_PROGRESS,
+        emailVerifiedAt: new Date(),
+      }
+    );
+  }
+
+  /**
+   * 병합 프로세스 완료
+   */
+  private async completeMergeProcess(requestId: number): Promise<void> {
+    await this.accountMergeRepo.update(
+      { id: requestId },
+      {
+        status: AccountMergeStatus.COMPLETED,
+        completedAt: new Date(),
+      }
+    );
+  }
+
+  /**
+   * 병합 프로세스 실패
+   */
+  private async failMergeProcess(
+    requestId: number,
+    errorMessage: string,
+    currentRetryCount: number
+  ): Promise<void> {
+    await this.accountMergeRepo.update(
+      { id: requestId },
+      {
+        status: AccountMergeStatus.FAILED,
+        errorMessage,
+        retryCount: currentRetryCount + 1,
+      }
+    );
+  }
+
+  // ==================== 이메일 발송 ====================
 
   /**
    * User B에게 병합 확인 이메일 발송
