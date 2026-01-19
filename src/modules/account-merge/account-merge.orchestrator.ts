@@ -17,7 +17,6 @@ import {
   RETRY_MAX_DELAY_MS,
   SNAPSHOT_RETENTION_SECONDS,
 } from '@common/constants/index.js';
-import type { UserRole } from '@krgeobuk/shared/user-role';
 
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
@@ -42,8 +41,8 @@ interface MergeSnapshot {
   sourceUser: UserEntity;
   /** User B의 OAuth 계정 정보 */
   sourceOAuthAccounts: OAuthAccountEntity[];
-  /** User B의 역할 정보 (authz-server에서 조회) */
-  sourceRoles: UserRole[];
+  /** User B의 역할 ID 목록 (authz-server에서 조회) */
+  sourceRoleIds: string[];
   /** User B의 my-pick 데이터 (my-pick-server에서 조회) */
   sourceMyPickData: MyPickSnapshotData;
   /** 백업 생성 시각 */
@@ -147,10 +146,10 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
 
     const sourceOAuthAccounts = await this.oauthService.findByAnd({ userId: request.sourceUserId });
 
-    // authz-server에서 역할 조회
-    const sourceRoles = await firstValueFrom(
+    // authz-server에서 역할 ID 목록 조회
+    const sourceRoleIds = await firstValueFrom(
       this.authzClient
-        .send<UserRole[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.sourceUserId })
+        .send<string[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.sourceUserId })
         .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
 
@@ -159,7 +158,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       targetUserId: request.targetUserId,
       sourceUser,
       sourceOAuthAccounts,
-      sourceRoles,
+      sourceRoleIds,
       sourceMyPickData: { sourceCreatorIds: [], sourceContentIds: [] },
       backupTimestamp: new Date(),
     };
@@ -378,12 +377,18 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
    * authz-server TCP를 통해 롤백 요청
    */
   private async rollbackRoleMerge(snapshot: MergeSnapshot): Promise<void> {
-    this.logger.log('Rolling back role merge');
+    this.logger.log('Rolling back role merge', {
+      sourceUserId: snapshot.sourceUser.id,
+      targetUserId: snapshot.targetUserId,
+      roleCount: snapshot.sourceRoleIds.length,
+    });
 
     await firstValueFrom(
       this.authzClient
         .send(UserRoleTcpPatterns.ROLLBACK_MERGE, {
-          snapshotData: snapshot.sourceRoles,
+          sourceUserId: snapshot.sourceUser.id,
+          targetUserId: snapshot.targetUserId,
+          sourceRoleIds: snapshot.sourceRoleIds,
         })
         .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );
