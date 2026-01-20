@@ -110,7 +110,7 @@ describe('OAuthService', () => {
 
         // Mock 설정
         oauthRepo.find.mockResolvedValueOnce([]); // providerId로 조회: 없음
-        userService.findByEmail.mockResolvedValueOnce(existingUser as any);
+        userService.findByEmail.mockResolvedValueOnce(existingUser);
         oauthRepo.find.mockResolvedValueOnce([]); // userId로 OAuth 계정 조회: 없음
 
         // When & Then: 에러 발생 및 에러 상세 확인
@@ -118,7 +118,7 @@ describe('OAuthService', () => {
           await service['oauthLogin'](
             googleUserInfo,
             OAuthAccountProviderType.GOOGLE,
-            mockTokenData as any,
+            mockTokenData,
             mockTransactionManager
           );
           fail('예외가 발생해야 합니다');
@@ -171,15 +171,15 @@ describe('OAuthService', () => {
 
         // Mock 설정
         oauthRepo.find.mockResolvedValueOnce([]); // Google providerId 조회: 없음
-        userService.findByEmail.mockResolvedValueOnce(existingUser as any);
-        oauthRepo.find.mockResolvedValueOnce([naverOAuthAccount] as any); // userId로 Naver 계정 조회
+        userService.findByEmail.mockResolvedValueOnce(existingUser);
+        oauthRepo.find.mockResolvedValueOnce([naverOAuthAccount]); // userId로 Naver 계정 조회
 
         // When & Then: 에러 발생 + Naver 로그인 안내
         try {
           await service['oauthLogin'](
             googleUserInfo,
             OAuthAccountProviderType.GOOGLE,
-            mockTokenData as any,
+            mockTokenData,
             mockTransactionManager
           );
           fail('예외가 발생해야 합니다');
@@ -221,15 +221,15 @@ describe('OAuthService', () => {
 
         // Mock 설정
         oauthRepo.find.mockResolvedValueOnce([]); // Google providerId 조회: 없음
-        userService.findByEmail.mockResolvedValueOnce(existingUser as any);
-        oauthRepo.find.mockResolvedValueOnce([naverOAuthAccount] as any); // Naver 계정 있음
+        userService.findByEmail.mockResolvedValueOnce(existingUser);
+        oauthRepo.find.mockResolvedValueOnce([naverOAuthAccount]); // Naver 계정 있음
 
         // When & Then: 에러 발생 + email, naver 둘 다 안내
         try {
           await service['oauthLogin'](
             googleUserInfo,
             OAuthAccountProviderType.GOOGLE,
-            mockTokenData as any,
+            mockTokenData,
             mockTransactionManager
           );
           fail('예외가 발생해야 합니다');
@@ -271,14 +271,14 @@ describe('OAuthService', () => {
         // Mock 설정
         oauthRepo.find.mockResolvedValueOnce([]); // providerId 조회: 없음
         userService.findByEmail.mockResolvedValueOnce(null); // 이메일 중복 없음
-        userService.createUser.mockResolvedValueOnce(createdUser as any);
-        oauthRepo.saveEntity.mockResolvedValueOnce(createdOAuthAccount as any);
+        userService.createUser.mockResolvedValueOnce(createdUser);
+        oauthRepo.saveEntity.mockResolvedValueOnce(createdOAuthAccount);
 
         // When: OAuth 로그인
         const result = await service['oauthLogin'](
           newUserInfo,
           OAuthAccountProviderType.GOOGLE,
-          mockTokenData as any,
+          mockTokenData,
           mockTransactionManager
         );
 
@@ -320,15 +320,15 @@ describe('OAuthService', () => {
         };
 
         // Mock 설정
-        oauthRepo.find.mockResolvedValueOnce([existingOAuthAccount] as any); // providerId 조회: 있음
-        userService.findById.mockResolvedValueOnce(existingUser as any);
-        oauthRepo.updateEntity.mockResolvedValueOnce({} as any);
+        oauthRepo.find.mockResolvedValueOnce([existingOAuthAccount]); // providerId 조회: 있음
+        userService.findById.mockResolvedValueOnce(existingUser);
+        oauthRepo.updateEntity.mockResolvedValueOnce({});
 
         // When: OAuth 로그인
         const result = await service['oauthLogin'](
           googleUserInfo,
           OAuthAccountProviderType.GOOGLE,
-          mockTokenData as any,
+          mockTokenData,
           mockTransactionManager
         );
 
@@ -348,7 +348,7 @@ describe('OAuthService', () => {
         { id: 'oauth-2', userId: 'user-1', provider: 'naver' },
       ];
 
-      oauthRepo.find.mockResolvedValueOnce(mockAccounts as any);
+      oauthRepo.find.mockResolvedValueOnce(mockAccounts);
 
       const result = await service.findByAnd({ userId: 'user-1' });
 

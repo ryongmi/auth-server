@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { EmailException } from '@krgeobuk/email/exception';
 import { EmailService } from '@krgeobuk/email/services';
 import type { EmailConfig } from '@krgeobuk/email/interfaces';
+import type { SendEmailResult } from '@krgeobuk/email/interfaces';
 
 import { RedisService } from '@database/redis/redis.service.js';
 
@@ -88,7 +89,12 @@ export class EmailTokenService {
   /**
    * 토큰 타입별 설정 가져오기
    */
-  private getTokenConfig(tokenType: EmailTokenType) {
+  private getTokenConfig(tokenType: EmailTokenType): {
+    expiresIn: number;
+    emailUrl: string;
+    redisMethod: (token: string, userId: string, ttl: number) => Promise<void>;
+    emailMethod: (params: { to: string; name: string; url: string }) => Promise<SendEmailResult>;
+  } {
     const emailConfig = this.configService.get<EmailConfig>('email');
 
     switch (tokenType) {
@@ -97,7 +103,11 @@ export class EmailTokenService {
           expiresIn: emailConfig?.verification?.expiresIn || 86400, // 24시간
           emailUrl: `${emailConfig?.verification?.baseUrl}/email-verify`,
           redisMethod: this.redisService.setEmailVerificationToken,
-          emailMethod: (params: { to: string; name: string; url: string }) =>
+          emailMethod: (params: {
+            to: string;
+            name: string;
+            url: string;
+          }): Promise<SendEmailResult> =>
             this.emailService.sendVerificationEmail({
               to: params.to,
               name: params.name,
@@ -110,7 +120,11 @@ export class EmailTokenService {
           expiresIn: emailConfig?.passwordReset?.expiresIn || 3600, // 1시간
           emailUrl: `${emailConfig?.passwordReset?.baseUrl}/reset-password`,
           redisMethod: this.redisService.setPasswordResetToken,
-          emailMethod: (params: { to: string; name: string; url: string }) =>
+          emailMethod: (params: {
+            to: string;
+            name: string;
+            url: string;
+          }): Promise<SendEmailResult> =>
             this.emailService.sendPasswordResetEmail({
               to: params.to,
               name: params.name,

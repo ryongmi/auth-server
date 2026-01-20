@@ -7,6 +7,7 @@ import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config/constants';
 
 import { REDIS_BASE_KEYS } from '@common/constants/index.js';
 import { RedisConfig } from '@common/interfaces/index.js';
+import { MergeSnapshot } from '@/modules/account-merge/interface/index.js';
 
 @Injectable()
 export class RedisService {
@@ -310,7 +311,7 @@ export class RedisService {
    * @param snapshot - 스냅샷 데이터
    * @param ttl - TTL (기본값: 604800초 = 7일)
    */
-  async setMergeSnapshot(requestId: number, snapshot: any, ttl = 604800): Promise<void> {
+  async setMergeSnapshot(requestId: number, snapshot: MergeSnapshot, ttl = 604800): Promise<void> {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
     await this.setExValue(key, ttl, JSON.stringify(snapshot));
   }
@@ -320,7 +321,7 @@ export class RedisService {
    * @param requestId - 병합 요청 ID
    * @returns 스냅샷 데이터 또는 null
    */
-  async getMergeSnapshot(requestId: number): Promise<any | null> {
+  async getMergeSnapshot(requestId: number): Promise<MergeSnapshot | null> {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
     const data = await this.getValue(key);
     return data ? JSON.parse(data) : null;

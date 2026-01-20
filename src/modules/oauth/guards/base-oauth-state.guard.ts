@@ -3,7 +3,7 @@ import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/commo
 import { OAuthException } from '@krgeobuk/oauth/exception';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
-import { OAuthService } from '../oauth.service.js';
+import { OAuthStateService } from '../oauth-state.service.js';
 
 /**
  * OAuth State 검증을 위한 추상 베이스 가드 클래스
@@ -14,7 +14,7 @@ export abstract class BaseOAuthStateGuard implements CanActivate {
   protected readonly logger: Logger;
 
   constructor(
-    protected readonly oauthService: OAuthService,
+    protected readonly oauthStateService: OAuthStateService,
     protected readonly providerType: OAuthAccountProviderType
   ) {
     this.logger = new Logger(this.constructor.name);
@@ -42,7 +42,7 @@ export abstract class BaseOAuthStateGuard implements CanActivate {
     }
 
     // 3. State 값 유효성 검증
-    const isValidState = await this.oauthService.validateState(state, this.providerType);
+    const isValidState = await this.oauthStateService.validateState(state, this.providerType);
     if (!isValidState) {
       throw OAuthException.stateExpired(this.providerType);
     }

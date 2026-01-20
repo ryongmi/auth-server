@@ -17,37 +17,12 @@ import {
   RETRY_MAX_DELAY_MS,
   SNAPSHOT_RETENTION_SECONDS,
 } from '@common/constants/index.js';
-
 import { UserService } from '@modules/user/user.service.js';
 import { OAuthService } from '@modules/oauth/oauth.service.js';
 import { RedisService } from '@database/redis/redis.service.js';
-import { UserEntity } from '@modules/user/entities/user.entity.js';
-import { OAuthAccountEntity } from '@modules/oauth/entities/oauth-account.entity.js';
 
 import { AccountMergeEntity } from './entities/account-merge.entity.js';
-
-/**
- * 계정 병합 스냅샷 인터페이스
- * Redis에 7일간 보관하여 롤백 시 사용
- *
- * 용어 정의:
- * - User A (target): 유지할 계정, 기존 이메일 소유자
- * - User B (source): 삭제될 계정, 새 OAuth로 로그인 시도한 사용자
- */
-interface MergeSnapshot {
-  /** User A (유지할 계정) ID */
-  targetUserId: string;
-  /** User B (삭제될 계정) 정보 */
-  sourceUser: UserEntity;
-  /** User B의 OAuth 계정 정보 */
-  sourceOAuthAccounts: OAuthAccountEntity[];
-  /** User B의 역할 ID 목록 (authz-server에서 조회) */
-  sourceRoleIds: string[];
-  /** User B의 my-pick 데이터 (my-pick-server에서 조회) */
-  sourceMyPickData: MyPickSnapshotData;
-  /** 백업 생성 시각 */
-  backupTimestamp: Date;
-}
+import type { MergeSnapshot } from './interface/merge-snapshot.interface.js';
 
 /**
  * 계정 병합 오케스트레이터
@@ -95,35 +70,35 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         name: 'STEP1_AUTH_BACKUP',
         execute: (req: AccountMergeEntity) => this.backupAndMergeOAuth(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) =>
+        onRetry: (attempt: number, error: unknown) =>
           this.logRetry('STEP1_AUTH_BACKUP', attempt, error),
       },
       {
         name: 'STEP2_AUTHZ_MERGE',
         execute: (req: AccountMergeEntity) => this.mergeRoles(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) =>
+        onRetry: (attempt: number, error: unknown) =>
           this.logRetry('STEP2_AUTHZ_MERGE', attempt, error),
       },
       {
         name: 'STEP3_MYPICK_MERGE',
         execute: (req: AccountMergeEntity) => this.mergeMyPickData(req),
         retryOptions: { ...defaultRetryOptions, timeoutMs: MYPICK_TCP_TIMEOUT_MS },
-        onRetry: (attempt: number, error: any) =>
+        onRetry: (attempt: number, error: unknown) =>
           this.logRetry('STEP3_MYPICK_MERGE', attempt, error),
       },
       {
         name: 'STEP4_USER_DELETE',
         execute: (req: AccountMergeEntity) => this.softDeleteUser(req),
         retryOptions: defaultRetryOptions,
-        onRetry: (attempt: number, error: any) =>
+        onRetry: (attempt: number, error: unknown) =>
           this.logRetry('STEP4_USER_DELETE', attempt, error),
       },
       {
         name: 'STEP5_CACHE_INVALIDATE',
         execute: (req: AccountMergeEntity) => this.invalidateCache(req),
         retryOptions: { ...defaultRetryOptions, maxRetries: CACHE_MAX_RETRIES },
-        onRetry: (attempt: number, error: any) =>
+        onRetry: (attempt: number, error: unknown) =>
           this.logRetry('STEP5_CACHE_INVALIDATE', attempt, error),
       },
     ];
@@ -296,7 +271,11 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     const existingSnapshot = await this.redisService.getMergeSnapshot(request.id);
     if (existingSnapshot) {
       existingSnapshot.sourceMyPickData = myPickSnapshot;
-      await this.redisService.setMergeSnapshot(request.id, existingSnapshot, SNAPSHOT_RETENTION_SECONDS);
+      await this.redisService.setMergeSnapshot(
+        request.id,
+        existingSnapshot,
+        SNAPSHOT_RETENTION_SECONDS
+      );
     }
 
     this.logger.log('STEP3 completed: my-pick data merged', {
@@ -417,10 +396,10 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
   /**
    * 재시도 로그 기록
    */
-  private async logRetry(stepName: string, attempt: number, error: any): Promise<void> {
+  private async logRetry(stepName: string, attempt: number, error: unknown): Promise<void> {
     this.logger.warn(`Retry ${stepName} (attempt ${attempt})`, {
       error: error instanceof Error ? error.message : 'Unknown error',
-      code: (error as any)?.code,
+      code: error && typeof error === 'object' && 'code' in error ? error.code : '',
     });
   }
 }
