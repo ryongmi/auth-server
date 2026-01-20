@@ -1,7 +1,6 @@
-import { randomBytes } from 'crypto';
-
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { v4 as uuid } from 'uuid';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 import { AccountMergeStatus } from '@krgeobuk/shared/account-merge';
@@ -35,10 +34,10 @@ export class AccountMergeService {
     private readonly userService: UserService,
     private readonly accountMergeRepo: AccountMergeRepository,
     private readonly mergeOrchestrator: AccountMergeOrchestrator,
-    private readonly redisService: RedisService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
-    private readonly oauthService: OAuthService
+    private readonly oauthService: OAuthService,
+    private readonly redisService: RedisService
   ) {}
 
   /**
@@ -241,10 +240,7 @@ export class AccountMergeService {
    * 병합 요청 취소
    */
   private async cancelMergeRequest(requestId: number): Promise<void> {
-    await this.accountMergeRepo.update(
-      { id: requestId },
-      { status: AccountMergeStatus.CANCELLED }
-    );
+    await this.accountMergeRepo.update({ id: requestId }, { status: AccountMergeStatus.CANCELLED });
   }
 
   /**
@@ -291,6 +287,34 @@ export class AccountMergeService {
     );
   }
 
+  // ==================== 토큰 검증 ====================
+
+  /**
+   * 병합 확인 토큰 검증 및 requestId 반환
+   *
+   * @param token - UUID v4 토큰
+   * @returns 병합 요청 ID
+   */
+  async verifyToken(token: string): Promise<number> {
+    this.logger.log('Verifying merge token');
+
+    const requestId = await this.redisService.getAccountMergeToken(token);
+    if (!requestId) {
+      throw AccountMergeException.tokenInvalidOrExpired();
+    }
+
+    // 병합 요청이 존재하는지 확인
+    const request = await this.accountMergeRepo.findOneBy({ id: requestId });
+    if (!request) {
+      // 토큰은 있지만 DB에 요청이 없는 경우 토큰 삭제
+      await this.redisService.deleteAccountMergeToken(token);
+      throw AccountMergeException.requestNotFound();
+    }
+
+    this.logger.log('Merge token verified', { requestId });
+    return requestId;
+  }
+
   // ==================== 이메일 발송 ====================
 
   /**
@@ -314,14 +338,14 @@ export class AccountMergeService {
       throw new Error('User not found for merge confirmation email');
     }
 
-    // 확인 토큰 생성 - 랜덤 바이트 기반
-    const confirmToken = randomBytes(32).toString('hex');
+    // UUID 토큰 생성
+    const confirmToken = uuid();
 
-    // Redis에 토큰 저장
+    // Redis에 토큰 저장 (token → requestId 매핑)
     try {
-      await this.redisService.setMergeToken(
-        mergeRequest.id,
+      await this.redisService.setAccountMergeToken(
         confirmToken,
+        mergeRequest.id,
         MERGE_REQUEST_EXPIRATION_SECONDS
       );
     } catch (error) {
@@ -332,23 +356,29 @@ export class AccountMergeService {
       throw AccountMergeException.requestCreationFailed();
     }
 
-    // 확인 URL 생성
+    // 확인 URL 생성 (token 기반)
     const authClientUrl = this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl')!;
-    const confirmUrl = `${authClientUrl}/oauth/merge/confirm?token=${confirmToken}`;
+    const confirmUrl = `${authClientUrl}/account-merge/confirm?token=${confirmToken}`;
 
     // 만료 시간 계산
     const expiresAt = new Date(Date.now() + MERGE_REQUEST_EXPIRATION_MS).toLocaleString('ko-KR');
 
     // 이메일 발송
-    await this.emailService.sendAccountMergeEmail({
-      to: sourceUser.email,
-      name: sourceUser.name || sourceUser.email,
-      targetUserEmail: targetUser.email,
-      provider: mergeRequest.provider,
-      providerId: mergeRequest.providerId,
-      confirmUrl,
-      expiresAt,
-    });
+    try {
+      await this.emailService.sendAccountMergeEmail({
+        to: sourceUser.email,
+        name: sourceUser.name || sourceUser.email,
+        targetUserEmail: targetUser.email,
+        provider: mergeRequest.provider,
+        providerId: mergeRequest.providerId,
+        confirmUrl,
+        expiresAt,
+      });
+    } catch (error) {
+      // 이메일 발송 실패 시 토큰 삭제
+      await this.redisService.deleteAccountMergeToken(token);
+      throw error;
+    }
 
     this.logger.log('Merge confirmation email sent', {
       to: sourceUser.email,

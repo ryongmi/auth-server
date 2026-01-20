@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   HttpCode,
   UseGuards,
   ParseIntPipe,
@@ -15,6 +16,7 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
   SwaggerApiBearerAuth,
+  SwaggerApiQuery,
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
@@ -33,6 +35,31 @@ export class AccountMergeController {
     private readonly accountMergeService: AccountMergeService,
     private readonly userService: UserService
   ) {}
+
+  /**
+   * 토큰 검증 및 requestId 조회
+   * 이메일 링크에서 token을 검증하고 requestId를 반환
+   */
+  @Get('verify-token')
+  @HttpCode(200)
+  @SwaggerApiOperation({ summary: '병합 확인 토큰 검증' })
+  @SwaggerApiQuery({ name: 'token', required: true, description: '병합 확인 토큰 (UUID)' })
+  @SwaggerApiOkResponse({
+    status: 200,
+    description: '토큰 검증 성공, requestId 반환',
+  })
+  @SwaggerApiErrorResponse({
+    status: 400,
+    description: '토큰이 유효하지 않거나 만료되었습니다.',
+  })
+  @SwaggerApiErrorResponse({
+    status: 404,
+    description: '병합 요청을 찾을 수 없습니다.',
+  })
+  async verifyToken(@Query('token') token: string): Promise<{ requestId: number }> {
+    const requestId = await this.accountMergeService.verifyToken(token);
+    return { requestId };
+  }
 
   /**
    * 계정 병합 요청 시작

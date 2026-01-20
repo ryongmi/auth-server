@@ -241,32 +241,33 @@ export class RedisService {
   // ==================== 계정 병합 토큰 관리 ====================
 
   /**
-   * 계정 병합 확인 토큰 저장
+   * 계정 병합 확인 토큰 저장 (token → requestId 매핑)
+   * @param token - UUID v4 토큰
    * @param requestId - 병합 요청 ID
-   * @param token - 확인 토큰
    * @param ttl - TTL (기본값: 86400초 = 24시간)
    */
-  async setMergeToken(requestId: number, token: string, ttl = 86400): Promise<void> {
-    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
-    await this.setExValue(key, ttl, token);
+  async setAccountMergeToken(token: string, requestId: number, ttl = 86400): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, token);
+    await this.setExValue(key, ttl, String(requestId));
   }
 
   /**
-   * 계정 병합 확인 토큰 조회
-   * @param requestId - 병합 요청 ID
-   * @returns 확인 토큰 또는 null
+   * 계정 병합 확인 토큰으로 requestId 조회
+   * @param token - UUID v4 토큰
+   * @returns 병합 요청 ID 또는 null
    */
-  async getMergeToken(requestId: number): Promise<string | null> {
-    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
-    return await this.getValue(key);
+  async getAccountMergeToken(token: string): Promise<number | null> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, token);
+    const requestId = await this.getValue(key);
+    return requestId ? parseInt(requestId, 10) : null;
   }
 
   /**
    * 계정 병합 확인 토큰 삭제
-   * @param requestId - 병합 요청 ID
+   * @param token - UUID v4 토큰
    */
-  async deleteMergeToken(requestId: number): Promise<void> {
-    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, requestId);
+  async deleteAccountMergeToken(token: string): Promise<void> {
+    const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_TOKEN_PREFIX, token);
     await this.deleteValue(key);
   }
 
