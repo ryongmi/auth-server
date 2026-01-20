@@ -170,8 +170,8 @@ export class AuthService {
 
       // 이메일 인증 메일 발송 (비동기로 처리하여 회원가입 플로우에 영향 없도록)
       this.emailVerificationService
-        .sendVerificationEmail(createdUser.id, createdUser.email, createdUser.name)
-        .catch((error) => {
+        .requestEmailVerification(createdUser.email)
+        .catch((error: unknown) => {
           this.logger.error(
             `[AUTH_SIGNUP] 이메일 인증 메일 발송 실패 - userId: ${createdUser.id}`,
             {
@@ -278,7 +278,10 @@ export class AuthService {
     this.logger.log(`${this.ssoLoginRedirect.name} - 시작 되었습니다.`);
 
     // 리다이렉트 URI 검증
-    const isValidRedirect = await this.redirectValidationService.validateRedirectUri(redirectUri, req);
+    const isValidRedirect = await this.redirectValidationService.validateRedirectUri(
+      redirectUri,
+      req
+    );
     if (!isValidRedirect) {
       this.logger.warn(`[SSO_REDIRECT_ERROR] 잘못된 리다이렉트 URI: ${redirectUri}`);
       throw AuthException.invalidRedirectUri();
@@ -320,5 +323,4 @@ export class AuthService {
 
     return null;
   }
-
 }

@@ -3,69 +3,18 @@ import { ConfigService } from '@nestjs/config';
 
 import { Redis } from 'ioredis';
 
+import { BaseRedisService } from '@krgeobuk/database-config/redis';
 import { REDIS_CLIENT_TOKEN } from '@krgeobuk/database-config/constants';
 
 import { REDIS_BASE_KEYS } from '@common/constants/index.js';
-import { RedisConfig } from '@common/interfaces/index.js';
+import { RedisConfig } from '@/common/interfaces/index.js';
+import { MergeSnapshot } from '@/modules/account-merge/interface/index.js';
 
 @Injectable()
-export class RedisService {
-  private readonly envPrefix: string;
-
-  constructor(
-    @Inject(REDIS_CLIENT_TOKEN) private readonly redisClient: Redis,
-    private readonly configService: ConfigService
-  ) {
-    this.envPrefix = this.configService.get<RedisConfig['keyPrefix']>('redis.keyPrefix')!;
-  }
-
-  /**
-   * Redis 키 생성 헬퍼 메서드
-   * @param baseKey - 기본 키
-   * @param id - 선택적 ID (접두사 키의 경우)
-   * @returns 환경 prefix가 적용된 완전한 Redis 키
-   */
-  private buildKey(baseKey: string, id?: string | number): string {
-    const key = id ? `${baseKey}:${id}` : baseKey;
-    return this.envPrefix ? `${this.envPrefix}:${key}` : key;
-  }
-
-  // ==================== Private 범용 메서드 ====================
-
-  /**
-   * 만료 시간이 있는 값 저장
-   * @private
-   */
-  private async setExValue(
-    key: string,
-    expire: number,
-    value: string | number | Buffer
-  ): Promise<void> {
-    await this.redisClient.setex(key, expire, value);
-  }
-
-  /**
-   * 값 저장
-   * @private
-   */
-  private async setValue(key: string, value: string): Promise<void> {
-    await this.redisClient.set(key, value);
-  }
-
-  /**
-   * 값 조회
-   * @private
-   */
-  private async getValue(key: string): Promise<string | null> {
-    return this.redisClient.get(key);
-  }
-
-  /**
-   * 값 삭제
-   * @private
-   */
-  private async deleteValue(key: string): Promise<void> {
-    await this.redisClient.del(key);
+export class RedisService extends BaseRedisService {
+  constructor(@Inject(REDIS_CLIENT_TOKEN) redisClient: Redis, configService: ConfigService) {
+    const keyPrefix = configService.get<RedisConfig['keyPrefix']>('redis.keyPrefix') ?? '';
+    super(redisClient, keyPrefix);
   }
 
   // ==================== OAuth 리다이렉트 세션 관리 ====================
@@ -311,7 +260,7 @@ export class RedisService {
    * @param snapshot - 스냅샷 데이터
    * @param ttl - TTL (기본값: 604800초 = 7일)
    */
-  async setMergeSnapshot(requestId: number, snapshot: any, ttl = 604800): Promise<void> {
+  async setMergeSnapshot(requestId: number, snapshot: MergeSnapshot, ttl = 604800): Promise<void> {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
     await this.setExValue(key, ttl, JSON.stringify(snapshot));
   }
@@ -321,7 +270,7 @@ export class RedisService {
    * @param requestId - 병합 요청 ID
    * @returns 스냅샷 데이터 또는 null
    */
-  async getMergeSnapshot(requestId: number): Promise<any | null> {
+  async getMergeSnapshot(requestId: number): Promise<MergeSnapshot | null> {
     const key = this.buildKey(REDIS_BASE_KEYS.AUTH.MERGE_SNAPSHOT_PREFIX, requestId);
     const data = await this.getValue(key);
     return data ? JSON.parse(data) : null;

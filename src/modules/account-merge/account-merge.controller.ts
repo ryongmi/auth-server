@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 
+import { Serialize } from '@krgeobuk/core/decorators';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -20,7 +21,13 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
-import { InitiateAccountMergeDto, AccountMergeResponseDto } from '@krgeobuk/account-merge/dtos';
+import {
+  InitiateAccountMergeRequestDto,
+  InitiateAccountMergeResponseDto,
+  GetAccountMergeResponseDto,
+} from '@krgeobuk/account-merge/dtos';
+import { AccountMergeResponse } from '@krgeobuk/account-merge/response';
+import { AccountMergeError } from '@krgeobuk/account-merge/exception';
 
 import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
 import { MERGE_REQUEST_EXPIRATION_MS } from '@common/constants/index.js';
@@ -66,26 +73,27 @@ export class AccountMergeController {
    * User A가 이미 가입된 이메일로 다른 OAuth provider로 로그인 시도 시
    */
   @Post('request')
-  @HttpCode(201)
+  @HttpCode(AccountMergeResponse.REQUEST_CREATED.statusCode)
   @SwaggerApiBearerAuth()
   @UseGuards(RefreshTokenGuard)
   @SwaggerApiOperation({ summary: '계정 병합 요청 시작' })
   @SwaggerApiOkResponse({
-    status: 201,
-    description: '계정 병합 요청이 생성되었습니다. User B에게 확인 이메일이 발송됩니다.',
+    status: AccountMergeResponse.REQUEST_CREATED.statusCode,
+    description: AccountMergeResponse.REQUEST_CREATED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 400,
-    description: '잘못된 요청 (동일 계정, OAuth 계정 이미 연동됨 등)',
+    status: AccountMergeError.SAME_ACCOUNT_MERGE.statusCode,
+    description: AccountMergeError.SAME_ACCOUNT_MERGE.message,
   })
   @SwaggerApiErrorResponse({
-    status: 404,
-    description: '사용자를 찾을 수 없습니다.',
+    status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
+    description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
+  @Serialize({ dto: InitiateAccountMergeResponseDto, ...AccountMergeResponse.REQUEST_CREATED })
   async initiateAccountMerge(
-    @Body() dto: InitiateAccountMergeDto,
+    @Body() dto: InitiateAccountMergeRequestDto,
     @CurrentJwt() { userId }: AuthenticatedJwt
-  ): Promise<{ requestId: number; message: string }> {
+  ): Promise<InitiateAccountMergeResponseDto> {
     const requestId = await this.accountMergeService.initiateAccountMerge(
       dto.provider,
       dto.providerId,
@@ -93,31 +101,29 @@ export class AccountMergeController {
       userId
     );
 
-    return {
-      requestId,
-      message: '계정 병합 요청이 생성되었습니다.',
-    };
+    return { requestId };
   }
 
   /**
    * 계정 병합 요청 조회
    */
   @Get(':requestId')
-  @HttpCode(200)
+  @HttpCode(AccountMergeResponse.FETCH_SUCCESS.statusCode)
   @SwaggerApiBearerAuth()
   @UseGuards(RefreshTokenGuard)
   @SwaggerApiOperation({ summary: '계정 병합 요청 조회' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '병합 요청 정보',
+    status: AccountMergeResponse.FETCH_SUCCESS.statusCode,
+    description: AccountMergeResponse.FETCH_SUCCESS.message,
   })
   @SwaggerApiErrorResponse({
-    status: 404,
-    description: '병합 요청을 찾을 수 없습니다.',
+    status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
+    description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
+  @Serialize({ dto: GetAccountMergeResponseDto, ...AccountMergeResponse.FETCH_SUCCESS })
   async getAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number
-  ): Promise<AccountMergeResponseDto> {
+  ): Promise<GetAccountMergeResponseDto> {
     const request = await this.accountMergeService.getAccountMerge(requestId);
 
     // User 정보 조회 (이메일 표시용)
@@ -142,73 +148,67 @@ export class AccountMergeController {
    * 계정 병합 확인 (User B가 승인)
    */
   @Post(':requestId/confirm')
-  @HttpCode(200)
+  @HttpCode(AccountMergeResponse.MERGE_COMPLETED.statusCode)
   @SwaggerApiBearerAuth()
   @UseGuards(RefreshTokenGuard)
   @SwaggerApiOperation({ summary: '계정 병합 확인 (User B가 승인)' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '계정 병합이 완료되었습니다.',
+    status: AccountMergeResponse.MERGE_COMPLETED.statusCode,
+    description: AccountMergeResponse.MERGE_COMPLETED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 400,
-    description: '잘못된 요청 (이미 처리됨, 만료됨 등)',
+    status: AccountMergeError.INVALID_STATUS.statusCode,
+    description: AccountMergeError.INVALID_STATUS.message,
   })
   @SwaggerApiErrorResponse({
-    status: 403,
-    description: '권한이 없습니다 (User B만 승인 가능)',
+    status: AccountMergeError.UNAUTHORIZED.statusCode,
+    description: AccountMergeError.UNAUTHORIZED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 404,
-    description: '병합 요청을 찾을 수 없습니다.',
+    status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
+    description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
   @SwaggerApiErrorResponse({
-    status: 500,
-    description: '계정 병합 실패 (Saga 오류)',
+    status: AccountMergeError.EXECUTION_FAILED.statusCode,
+    description: AccountMergeError.EXECUTION_FAILED.message,
   })
+  @Serialize({ ...AccountMergeResponse.MERGE_COMPLETED })
   async confirmAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number,
     @CurrentJwt() { userId }: AuthenticatedJwt
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     await this.accountMergeService.confirmAccountMerge(requestId, userId);
-
-    return {
-      message: '계정 병합이 완료되었습니다.',
-    };
   }
 
   /**
    * 계정 병합 거부 (User B가 거부)
    */
   @Post(':requestId/reject')
-  @HttpCode(200)
+  @HttpCode(AccountMergeResponse.MERGE_REJECTED.statusCode)
   @SwaggerApiBearerAuth()
   @UseGuards(RefreshTokenGuard)
   @SwaggerApiOperation({ summary: '계정 병합 거부 (User B가 거부)' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '계정 병합 요청이 거부되었습니다.',
+    status: AccountMergeResponse.MERGE_REJECTED.statusCode,
+    description: AccountMergeResponse.MERGE_REJECTED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 400,
-    description: '잘못된 요청 (이미 처리됨 등)',
+    status: AccountMergeError.INVALID_STATUS.statusCode,
+    description: AccountMergeError.INVALID_STATUS.message,
   })
   @SwaggerApiErrorResponse({
-    status: 403,
-    description: '권한이 없습니다 (User B만 거부 가능)',
+    status: AccountMergeError.UNAUTHORIZED.statusCode,
+    description: AccountMergeError.UNAUTHORIZED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 404,
-    description: '병합 요청을 찾을 수 없습니다.',
+    status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
+    description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
+  @Serialize({ ...AccountMergeResponse.MERGE_REJECTED })
   async rejectAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number,
     @CurrentJwt() { userId }: AuthenticatedJwt
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     await this.accountMergeService.rejectAccountMerge(requestId, userId);
-
-    return {
-      message: '계정 병합 요청이 거부되었습니다.',
-    };
   }
 }

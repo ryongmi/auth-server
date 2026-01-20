@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
-import { OAuthService } from '../oauth.service.js';
+import { OAuthStateService } from '../oauth-state.service.js';
 
 import { BaseOAuthStateGuard } from './base-oauth-state.guard.js';
 
@@ -12,8 +12,8 @@ import { BaseOAuthStateGuard } from './base-oauth-state.guard.js';
  */
 @Injectable()
 export class NaverOAuthStateGuard extends BaseOAuthStateGuard {
-  constructor(oauthService: OAuthService) {
-    super(oauthService, OAuthAccountProviderType.NAVER);
+  constructor(oauthStateService: OAuthStateService) {
+    super(oauthStateService, OAuthAccountProviderType.NAVER);
   }
 
   /**
@@ -39,8 +39,8 @@ export class NaverOAuthStateGuard extends BaseOAuthStateGuard {
  */
 @Injectable()
 export class GoogleOAuthStateGuard extends BaseOAuthStateGuard {
-  constructor(oauthService: OAuthService) {
-    super(oauthService, OAuthAccountProviderType.GOOGLE);
+  constructor(oauthStateService: OAuthStateService) {
+    super(oauthStateService, OAuthAccountProviderType.GOOGLE);
   }
 
   /**
