@@ -131,7 +131,7 @@ describe('OAuthService', () => {
           expect(response.code).toBe('OAUTH_205');
           expect(response.message).toContain('test@gmail.com');
           expect(response.details.email).toBe('test@gmail.com');
-          expect(response.details.attemptedProvider).toBe('google');
+          expect(response.details.attemptedProvider).toBe(OAuthAccountProviderType.GOOGLE);
           expect(response.details.availableLoginMethods).toContain('email');
           expect(response.details.suggestion).toContain('Google 연동이 가능합니다');
         }
@@ -186,7 +186,7 @@ describe('OAuthService', () => {
         } catch (error: any) {
           const response = error.getResponse();
           expect(response.code).toBe('OAUTH_205');
-          expect(response.details.availableLoginMethods).toContain('naver');
+          expect(response.details.availableLoginMethods).toContain(OAuthAccountProviderType.NAVER);
           expect(response.details.availableLoginMethods).not.toContain('email');
         }
       });
@@ -237,7 +237,7 @@ describe('OAuthService', () => {
           const response = error.getResponse();
           expect(response.code).toBe('OAUTH_205');
           expect(response.details.availableLoginMethods).toContain('email');
-          expect(response.details.availableLoginMethods).toContain('naver');
+          expect(response.details.availableLoginMethods).toContain(OAuthAccountProviderType.NAVER);
         }
       });
     });
@@ -344,8 +344,8 @@ describe('OAuthService', () => {
   describe('findByAnd', () => {
     it('userId로 OAuth 계정 조회', async () => {
       const mockAccounts = [
-        { id: 'oauth-1', userId: 'user-1', provider: 'google' },
-        { id: 'oauth-2', userId: 'user-1', provider: 'naver' },
+        { id: 'oauth-1', userId: 'user-1', provider: OAuthAccountProviderType.GOOGLE },
+        { id: 'oauth-2', userId: 'user-1', provider: OAuthAccountProviderType.NAVER },
       ];
 
       oauthRepo.find.mockResolvedValueOnce(mockAccounts);

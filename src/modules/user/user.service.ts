@@ -15,9 +15,10 @@ import type {
   UpdateMyProfile,
   UserSearchResult,
   UserDetail,
+  UserProfile,
 } from '@krgeobuk/user/interfaces';
-import type { UserProfile } from '@krgeobuk/user/interfaces';
 import type { Service } from '@krgeobuk/shared/service';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
 import { ImageProxyService } from '@modules/image/image-proxy.service.js';
@@ -175,7 +176,7 @@ export class UserService {
     this.logger.log('통합 사용자 프로필 조회 성공', {
       userId,
       provider: baseUser.oauthAccount.provider,
-      hasGoogleAccount: baseUser.oauthAccount.provider === 'google',
+      hasGoogleAccount: baseUser.oauthAccount.provider === OAuthAccountProviderType.GOOGLE,
       roleCount: roles.length,
       permissionCount: permissions.length,
       serviceCount: availableServices?.length || 0,
@@ -469,7 +470,7 @@ export class UserService {
         // OAuth 정보 - 기본값
         oauthAccount: {
           id: '',
-          provider: 'homePage',
+          provider: OAuthAccountProviderType.HOMEPAGE,
           providerId: '',
         },
 
@@ -509,7 +510,7 @@ export class UserService {
         updatedAt: new Date(),
         oauthAccount: {
           id: '',
-          provider: 'homePage',
+          provider: OAuthAccountProviderType.HOMEPAGE,
           providerId: '',
         },
         authorization: {
