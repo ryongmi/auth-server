@@ -7,6 +7,7 @@ import { naverConfig } from './naver.js';
 import { googleConfig } from './google.js';
 import { jwtConfig } from './jwt.js';
 import { clientConfig } from './client.js';
+import { encryptionConfig } from './encryption.js';
 import { validationSchema } from './validation.schema.js';
 
 @Module({
@@ -22,6 +23,7 @@ import { validationSchema } from './validation.schema.js';
         googleConfig,
         naverConfig,
         jwtConfig,
+        encryptionConfig,
       ],
       validationSchema,
     }),

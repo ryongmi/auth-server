@@ -65,3 +65,8 @@ export interface JwtConfig {
   refreshMaxAge: number | undefined;
   cookieDomain: string | undefined;
 }
+
+export interface EncryptionConfig {
+  key: string;
+  salt: string;
+}

@@ -20,7 +20,7 @@ import type {
 import type { Service } from '@krgeobuk/shared/service';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
-import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
+import { CryptoService } from '@common/crypto/index.js';
 import { ImageProxyService } from '@modules/image/image-proxy.service.js';
 
 import { UserEntity } from './entities/user.entity.js';
@@ -34,7 +34,8 @@ export class UserService {
     private readonly userRepo: UserRepository,
     @Inject('AUTHZ_SERVICE') private readonly authzClient: ClientProxy,
     @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy,
-    private readonly imageProxyService: ImageProxyService
+    private readonly imageProxyService: ImageProxyService,
+    private readonly cryptoService: CryptoService
   ) {}
 
   async searchUsers(query: UserSearchQuery): Promise<PaginatedResult<UserSearchResult>> {
@@ -224,10 +225,10 @@ export class UserService {
     const user = await this.findById(userId);
     if (!user) throw UserException.userNotFound();
 
-    const isMatch = isPasswordMatching(currentPassword, user.password ?? '');
+    const isMatch = await this.cryptoService.verify(currentPassword, user.password ?? '');
     if (!isMatch) throw UserException.passwordIncorrect();
 
-    const hashedPassword = await hashPassword(newPassword);
+    const hashedPassword = await this.cryptoService.hash(newPassword);
 
     Object.assign(user, { password: hashedPassword });
 

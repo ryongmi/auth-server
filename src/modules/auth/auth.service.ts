@@ -17,7 +17,7 @@ import type {
 import type { JwtPayload } from '@krgeobuk/jwt/interfaces';
 
 import { RedisService } from '@database/redis/redis.service.js';
-import { hashPassword, isPasswordMatching } from '@common/utils/index.js';
+import { CryptoService } from '@common/crypto/index.js';
 import { JwtTokenService } from '@common/jwt/index.js';
 import { RedirectValidationService } from '@common/security/index.js';
 import { DefaultConfig, JwtConfig } from '@common/interfaces/index.js';
@@ -36,7 +36,8 @@ export class AuthService {
     private readonly jwtService: JwtTokenService,
     private readonly oauthService: OAuthService,
     private readonly redirectValidationService: RedirectValidationService,
-    private readonly emailVerificationService: EmailVerificationService
+    private readonly emailVerificationService: EmailVerificationService,
+    private readonly cryptoService: CryptoService
   ) {}
 
   async logout(req: Request, res: Response): Promise<void> {
@@ -82,7 +83,7 @@ export class AuthService {
     //   throw UserException.userNotFound();
     // }
 
-    const isMatch = isPasswordMatching(password, user.password ?? '');
+    const isMatch = await this.cryptoService.verify(password, user.password ?? '');
     if (!isMatch) {
       // 내부 로그: 상세한 정보
       this.logger.warn(
@@ -152,7 +153,7 @@ export class AuthService {
     const findUser = (await this.userService.findByAnd({ email }))[0];
     if (findUser) throw UserException.emailAlreadyExists();
 
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await this.cryptoService.hash(password);
     const createUserAttrs = { ...attrs, password: hashedPassword };
 
     try {
