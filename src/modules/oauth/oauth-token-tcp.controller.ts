@@ -1,6 +1,9 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
+import { OAuthTcpPatterns } from '@krgeobuk/oauth/tcp/patterns';
+import type { TcpYouTubeTokenParams, TcpYouTubeTokenResult } from '@krgeobuk/oauth/tcp/interfaces';
+
 import { OAuthTokenService } from './oauth-token.service.js';
 
 @Controller()
@@ -13,70 +16,32 @@ export class OAuthTokenTcpController {
    * YouTube 액세스 토큰 조회 (TCP)
    * 토큰이 만료 임박 시 자동 갱신
    */
-  @MessagePattern('oauth.youtube.getAccessToken')
-  async getYouTubeAccessToken(@Payload() data: { userId: string }) {
-    this.logger.debug(`[TCP] oauth.youtube.getAccessToken - userId: ${data.userId}`);
+  @MessagePattern(OAuthTcpPatterns.YOUTUBE_GET_ACCESS_TOKEN)
+  async getYouTubeAccessToken(
+    @Payload() data: TcpYouTubeTokenParams
+  ): Promise<TcpYouTubeTokenResult> {
+    this.logger.log(`TCP: Getting YouTube access token - userId: ${data.userId}`);
 
     try {
-      const result = await this.oauthTokenService.getYouTubeAccessToken(data.userId);
-
-      this.logger.log(`[TCP] YouTube 토큰 조회 성공 - userId: ${data.userId}`);
-
-      return {
-        success: true,
-        data: result,
-      };
+      return await this.oauthTokenService.getYouTubeAccessToken(data.userId);
     } catch (error) {
-      const err = error as { code?: string; message?: string };
-
-      this.logger.error(`[TCP] YouTube 토큰 조회 실패`, {
-        userId: data.userId,
-        error: err.message || 'Unknown',
-      });
-
-      return {
-        success: false,
-        error: {
-          code: err.code || 'OAUTH_ERROR',
-          message: err.message || 'OAuth 토큰 조회 실패',
-        },
-      };
+      this.logger.error(`TCP: Error getting YouTube access token ${data.userId}:`, error);
+      throw error;
     }
   }
 
   /**
    * YouTube 권한 여부 확인 (TCP)
    */
-  @MessagePattern('oauth.youtube.hasAccess')
-  async hasYouTubeAccess(@Payload() data: { userId: string }) {
-    this.logger.debug(`[TCP] oauth.youtube.hasAccess - userId: ${data.userId}`);
+  @MessagePattern(OAuthTcpPatterns.YOUTUBE_HAS_ACCESS)
+  async hasYouTubeAccess(@Payload() data: TcpYouTubeTokenParams): Promise<boolean> {
+    this.logger.log(`TCP: Checking YouTube access - userId: ${data.userId}`);
 
     try {
-      const hasAccess = await this.oauthTokenService.hasYouTubeAccess(data.userId);
-
-      this.logger.debug(
-        `[TCP] YouTube 권한 확인 완료 - userId: ${data.userId}, hasAccess: ${hasAccess}`
-      );
-
-      return {
-        success: true,
-        data: { hasAccess },
-      };
+      return await this.oauthTokenService.hasYouTubeAccess(data.userId);
     } catch (error) {
-      const err = error as { message?: string };
-
-      this.logger.error(`[TCP] YouTube 권한 확인 실패`, {
-        userId: data.userId,
-        error: err.message || 'Unknown',
-      });
-
-      return {
-        success: false,
-        error: {
-          code: 'OAUTH_ERROR',
-          message: err.message || 'YouTube 권한 확인 실패',
-        },
-      };
+      this.logger.error(`TCP: Error checking YouTube access ${data.userId}:`, error);
+      throw error;
     }
   }
 }
