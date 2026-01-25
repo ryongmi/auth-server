@@ -1,13 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+
+import { lastValueFrom, map } from 'rxjs';
 
 import type {
   GoogleTokenResponse,
   NaverTokenResponse,
 } from '@krgeobuk/oauth/interfaces';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 import { CryptoService } from '@common/crypto/index.js';
+import type { GoogleConfig } from '@common/interfaces/index.js';
 
 import type { OAuthAccountEntity } from './entities/oauth-account.entity.js';
+import { OAuthRepository } from './oauth.repository.js';
 
 /**
  * OAuth 토큰 관리 서비스
@@ -18,7 +25,12 @@ import type { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 export class OAuthTokenService {
   private readonly logger = new Logger(OAuthTokenService.name);
 
-  constructor(private readonly cryptoService: CryptoService) {}
+  constructor(
+    private readonly cryptoService: CryptoService,
+    private readonly oauthRepo: OAuthRepository,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService
+  ) {}
 
   /**
    * OAuth 토큰 데이터를 OAuthAccountEntity 속성으로 변환 (암호화 적용)
@@ -62,5 +74,123 @@ export class OAuthTokenService {
    */
   decryptRefreshToken(encryptedToken: string): string {
     return this.cryptoService.decrypt(encryptedToken);
+  }
+
+  // ==================== YouTube 토큰 조회/갱신 ====================
+
+  /**
+   * YouTube 액세스 토큰 조회 (자동 갱신 포함)
+   * @param userId - 사용자 ID
+   * @returns 복호화된 액세스 토큰 및 만료 시간
+   */
+  async getYouTubeAccessToken(
+    userId: string
+  ): Promise<{ accessToken: string; expiresAt: Date }> {
+    this.logger.debug(`YouTube 토큰 조회 시작 - userId: ${userId}`);
+
+    const oauth = await this.oauthRepo.findOne({
+      where: { userId, provider: OAuthAccountProviderType.GOOGLE },
+    });
+
+    if (!oauth?.accessToken) {
+      this.logger.warn(`YouTube 토큰 없음 - userId: ${userId}`);
+      throw new UnauthorizedException({
+        code: 'OAUTH_TOKEN_NOT_FOUND',
+        message: 'YouTube 권한이 없습니다. Google 로그인을 다시 시도해주세요.',
+      });
+    }
+
+    // 토큰 만료 확인 (5분 버퍼)
+    const expiryBuffer = new Date(Date.now() + 5 * 60 * 1000);
+    if (oauth.tokenExpiresAt && oauth.tokenExpiresAt < expiryBuffer) {
+      this.logger.log(
+        `토큰 만료 임박, 갱신 시작 - userId: ${userId}, expiresAt: ${oauth.tokenExpiresAt}`
+      );
+      await this.refreshGoogleToken(oauth);
+    }
+
+    const accessToken = this.cryptoService.decrypt(oauth.accessToken);
+
+    this.logger.debug(`YouTube 토큰 조회 완료 - userId: ${userId}`);
+
+    return {
+      accessToken,
+      expiresAt: oauth.tokenExpiresAt!,
+    };
+  }
+
+  /**
+   * 사용자의 YouTube 권한 여부 확인
+   * @param userId - 사용자 ID
+   * @returns YouTube 권한 여부
+   */
+  async hasYouTubeAccess(userId: string): Promise<boolean> {
+    const oauth = await this.oauthRepo.findOne({
+      where: { userId, provider: OAuthAccountProviderType.GOOGLE },
+    });
+
+    const hasAccess = !!(oauth?.accessToken && oauth?.scopes?.includes('youtube'));
+
+    this.logger.debug(
+      `YouTube 권한 확인 - userId: ${userId}, hasAccess: ${hasAccess}`
+    );
+
+    return hasAccess;
+  }
+
+  /**
+   * Google OAuth 토큰 갱신
+   * @param oauth - OAuth 계정 엔티티
+   */
+  private async refreshGoogleToken(oauth: OAuthAccountEntity): Promise<void> {
+    if (!oauth.refreshToken) {
+      this.logger.error(`Refresh Token 없음 - userId: ${oauth.userId}`);
+      throw new UnauthorizedException({
+        code: 'REFRESH_TOKEN_NOT_FOUND',
+        message: 'Refresh Token이 없습니다. 다시 로그인해주세요.',
+      });
+    }
+
+    const refreshToken = this.cryptoService.decrypt(oauth.refreshToken);
+    const googleConfig = this.configService.get<GoogleConfig>('google')!;
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService
+          .post('https://oauth2.googleapis.com/token', {
+            client_id: googleConfig.clientId,
+            client_secret: googleConfig.clientSecret,
+            refresh_token: refreshToken,
+            grant_type: 'refresh_token',
+          })
+          .pipe(map((res) => res.data))
+      );
+
+      this.logger.log(`Google 토큰 갱신 성공 - userId: ${oauth.userId}`);
+
+      // 새 토큰 저장
+      oauth.accessToken = this.cryptoService.encrypt(response.access_token);
+      oauth.tokenExpiresAt = new Date(Date.now() + response.expires_in * 1000);
+
+      // refresh_token이 갱신되었다면 업데이트
+      if (response.refresh_token) {
+        oauth.refreshToken = this.cryptoService.encrypt(response.refresh_token);
+      }
+
+      await this.oauthRepo.save(oauth);
+
+      this.logger.log(
+        `토큰 갱신 DB 저장 완료 - userId: ${oauth.userId}, expiresAt: ${oauth.tokenExpiresAt}`
+      );
+    } catch (error) {
+      this.logger.error('Google 토큰 갱신 실패', {
+        userId: oauth.userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new UnauthorizedException({
+        code: 'TOKEN_REFRESH_FAILED',
+        message: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.',
+      });
+    }
   }
 }

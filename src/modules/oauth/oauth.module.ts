@@ -11,6 +11,7 @@ import { AccountMergeModule } from '@modules/account-merge/account-merge.module.
 import { OAuthAccountEntity } from './entities/oauth-account.entity.js';
 import { OAuthController } from './oauth.controller.js';
 import { OAuthAccountController } from './oauth-account.controller.js';
+import { OAuthTokenTcpController } from './oauth-token-tcp.controller.js';
 import { OAuthService } from './oauth.service.js';
 import { OAuthStateService } from './oauth-state.service.js';
 import { OAuthTokenService } from './oauth-token.service.js';
@@ -30,7 +31,7 @@ import { OAuthRepository } from './oauth.repository.js';
     EmailModule,
     forwardRef(() => AccountMergeModule),
   ],
-  controllers: [OAuthController, OAuthAccountController],
+  controllers: [OAuthController, OAuthAccountController, OAuthTokenTcpController],
   providers: [
     OAuthService,
     OAuthStateService,
@@ -42,6 +43,6 @@ import { OAuthRepository } from './oauth.repository.js';
     NaverOAuthService,
     OAuthRepository,
   ],
-  exports: [OAuthService],
+  exports: [OAuthService, OAuthTokenService],
 })
 export class OAuthModule {}
