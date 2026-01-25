@@ -62,7 +62,6 @@ const jwtConfigSchema = {
   JWT_SESSION_COOKIE_PATH: Joi.string().required(),
   JWT_REFRESH_MAX_AGE: Joi.number().required(),
   JWT_COOKIE_DOMAIN: Joi.string().allow('').optional(),
-  JWT_COOKIE_DOMAIN_DEV: Joi.string().allow('').optional(),
 };
 
 const emailConfigSchema = {
