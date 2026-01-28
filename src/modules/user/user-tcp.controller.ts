@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
-import { UserTcpPatterns } from '@krgeobuk/user/tcp';
+import { UserTcpPatterns, TcpUserId } from '@krgeobuk/user/tcp';
 import type { UserDetail, UserFilter } from '@krgeobuk/user/interfaces';
 
 import { UserService } from './user.service.js';
@@ -21,7 +21,7 @@ export class UserTcpController {
    * 사용자 ID로 사용자 정보 조회
    */
   @MessagePattern(UserTcpPatterns.FIND_BY_ID)
-  async findUserById(@Payload() data: { userId: string }): Promise<UserEntity | null> {
+  async findUserById(@Payload() data: TcpUserId): Promise<UserEntity | null> {
     this.logger.log(`TCP: Finding user by ID: ${data.userId}`);
 
     try {
@@ -35,8 +35,8 @@ export class UserTcpController {
   /**
    * 사용자 ID로 상세 정보 조회 (가공된 데이터)
    */
-  @MessagePattern('user.getDetailById')
-  async getUserDetailById(@Payload() data: { userId: string }): Promise<UserDetail | null> {
+  @MessagePattern(UserTcpPatterns.GET_DETAIL_BY_ID)
+  async getUserDetailById(@Payload() data: TcpUserId): Promise<UserDetail | null> {
     this.logger.log(`TCP: Getting user detail by ID: ${data.userId}`);
 
     try {
@@ -81,11 +81,11 @@ export class UserTcpController {
    * 필터 조건으로 사용자 목록 조회
    */
   @MessagePattern('user.findByFilter')
-  async findUsersByFilter(@Payload() data: { filter: UserFilter }): Promise<UserEntity[]> {
-    this.logger.log(`TCP: Finding users by filter:`, data.filter);
+  async findUsersByFilter(@Payload() data: UserFilter): Promise<UserEntity[]> {
+    this.logger.log(`TCP: Finding users by filter:`, data);
 
     try {
-      return await this.userService.findByAnd(data.filter);
+      return await this.userService.findByAnd(data);
     } catch (error) {
       this.logger.error(`TCP: Error finding users by filter:`, error);
       throw error;
@@ -96,7 +96,7 @@ export class UserTcpController {
    * 사용자 존재 여부 확인
    */
   @MessagePattern(UserTcpPatterns.EXISTS)
-  async checkUserExists(@Payload() data: { userId: string }): Promise<boolean> {
+  async checkUserExists(@Payload() data: TcpUserId): Promise<boolean> {
     this.logger.log(`TCP: Checking if user exists: ${data.userId}`);
 
     try {
@@ -133,8 +133,8 @@ export class UserTcpController {
   /**
    * 사용자 이메일 인증 상태 확인
    */
-  @MessagePattern('user.isEmailVerified')
-  async isEmailVerified(@Payload() data: { userId: string }): Promise<boolean> {
+  @MessagePattern(UserTcpPatterns.IS_EMAIL_VERIFIED)
+  async isEmailVerified(@Payload() data: TcpUserId): Promise<boolean> {
     this.logger.log(`TCP: Checking email verification for user: ${data.userId}`);
 
     try {
