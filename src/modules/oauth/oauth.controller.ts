@@ -31,7 +31,7 @@ import {
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 
-import { GoogleConfig, NaverConfig } from '@common/interfaces/index.js';
+import { DefaultConfig, GoogleConfig, NaverConfig } from '@common/interfaces/index.js';
 import { RefreshTokenGuard } from '@common/jwt/guards/index.js';
 
 import { NaverOAuthStateGuard, GoogleOAuthStateGuard } from './guards/oauth-state.guard.js';
@@ -134,7 +134,9 @@ export class OAuthController {
       suggestion?: string;
     }
   ): string {
-    const authClientUrl = this.configService.get('authClientUrl') || 'http://localhost:3000';
+    const authClientUrl =
+      this.configService.get<DefaultConfig['authClientUrl']>('authClientUrl') ||
+      'http://localhost:3000';
     const basePath = mode === OauthStateMode.LINK ? '/settings/accounts' : '/login';
 
     // 기본 파라미터
