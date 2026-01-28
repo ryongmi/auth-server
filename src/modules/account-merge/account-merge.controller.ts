@@ -25,6 +25,7 @@ import {
   InitiateAccountMergeRequestDto,
   InitiateAccountMergeResponseDto,
   GetAccountMergeResponseDto,
+  VerifyTokenResponseDto,
 } from '@krgeobuk/account-merge/dtos';
 import { AccountMergeResponse } from '@krgeobuk/account-merge/response';
 import { AccountMergeError } from '@krgeobuk/account-merge/exception';
@@ -48,22 +49,23 @@ export class AccountMergeController {
    * 이메일 링크에서 token을 검증하고 requestId를 반환
    */
   @Get('verify-token')
-  @HttpCode(200)
+  @HttpCode(AccountMergeResponse.TOKEN_VERIFIED.statusCode)
   @SwaggerApiOperation({ summary: '병합 확인 토큰 검증' })
-  @SwaggerApiQuery({ name: 'token', required: true, description: '병합 확인 토큰 (UUID)' })
+  @SwaggerApiQuery({ name: 'token', type: String, description: '병합 확인 토큰 (UUID)' })
   @SwaggerApiOkResponse({
-    status: 200,
-    description: '토큰 검증 성공, requestId 반환',
+    status: AccountMergeResponse.TOKEN_VERIFIED.statusCode,
+    description: AccountMergeResponse.TOKEN_VERIFIED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 400,
-    description: '토큰이 유효하지 않거나 만료되었습니다.',
+    status: AccountMergeError.TOKEN_INVALID_OR_EXPIRED.statusCode,
+    description: AccountMergeError.TOKEN_INVALID_OR_EXPIRED.message,
   })
   @SwaggerApiErrorResponse({
-    status: 404,
-    description: '병합 요청을 찾을 수 없습니다.',
+    status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
+    description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
-  async verifyToken(@Query('token') token: string): Promise<{ requestId: number }> {
+  @Serialize({ dto: VerifyTokenResponseDto, ...AccountMergeResponse.TOKEN_VERIFIED })
+  async verifyToken(@Query('token') token: string): Promise<VerifyTokenResponseDto> {
     const requestId = await this.accountMergeService.verifyToken(token);
     return { requestId };
   }
