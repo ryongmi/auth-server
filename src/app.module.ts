@@ -9,6 +9,7 @@ import { winstonConfig } from '@krgeobuk/core/logger';
 
 import { RedisModule, DatabaseModule } from '@database/index.js';
 import { AppConfigModule } from '@config/index.js';
+import { CryptoModule } from '@common/crypto/index.js';
 import { SharedClientsModule } from '@common/clients/shared-clients.module.js';
 import { UserModule } from '@modules/user/index.js';
 import { AuthModule } from '@modules/auth/index.js';
@@ -47,6 +48,7 @@ import { HealthModule } from '@modules/health/index.js';
     // TCP 연결 모듈
     SharedClientsModule,
     // SeederModule,
+    CryptoModule,
     DatabaseModule,
     RedisModule,
     HealthModule,

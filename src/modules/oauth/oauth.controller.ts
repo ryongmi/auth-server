@@ -188,8 +188,10 @@ export class OAuthController {
       `?client_id=${clientId}` +
       `&redirect_uri=${redirectUrl}` +
       '&response_type=code' +
-      '&scope=email profile' +
-      `&state=${state}`;
+      '&scope=email profile https://www.googleapis.com/auth/youtube.force-ssl' +
+      `&state=${state}` +
+      '&access_type=offline' +
+      '&prompt=consent';
 
     return res.redirect(url);
   }
@@ -309,8 +311,10 @@ export class OAuthController {
       `?client_id=${clientId}` +
       `&redirect_uri=${redirectUrl}` +
       '&response_type=code' +
-      '&scope=email profile' +
-      `&state=${state}`;
+      '&scope=email profile https://www.googleapis.com/auth/youtube.force-ssl' +
+      `&state=${state}` +
+      '&access_type=offline' +
+      '&prompt=consent';
 
     return res.redirect(url);
   }

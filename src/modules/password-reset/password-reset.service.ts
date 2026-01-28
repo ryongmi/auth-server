@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AuthException } from '@krgeobuk/auth/exception';
 
 import { RedisService } from '@database/redis/redis.service.js';
-import { hashPassword } from '@common/utils/index.js';
+import { CryptoService } from '@common/crypto/index.js';
 import { UserService } from '@modules/user/index.js';
 import { EmailTokenService, EmailTokenType } from '@common/email/index.js';
 import { BaseTokenVerificationService } from '@common/services/index.js';
@@ -18,6 +18,7 @@ export class PasswordResetService extends BaseTokenVerificationService<string> {
   protected readonly logger = new Logger(PasswordResetService.name);
 
   constructor(
+    private readonly cryptoService: CryptoService,
     redisService: RedisService,
     userService: UserService,
     emailTokenService: EmailTokenService
@@ -59,7 +60,7 @@ export class PasswordResetService extends BaseTokenVerificationService<string> {
    */
   protected async processUserVerification(user: UserEntity, newPassword: string): Promise<void> {
     // 새 비밀번호 해싱
-    const hashedPassword = await hashPassword(newPassword);
+    const hashedPassword = await this.cryptoService.hash(newPassword);
     user.password = hashedPassword;
   }
 
@@ -69,5 +70,4 @@ export class PasswordResetService extends BaseTokenVerificationService<string> {
   protected getTokenInvalidException(): Error {
     return AuthException.passwordResetTokenInvalid();
   }
-
 }

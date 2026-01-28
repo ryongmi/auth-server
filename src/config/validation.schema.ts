@@ -62,7 +62,6 @@ const jwtConfigSchema = {
   JWT_SESSION_COOKIE_PATH: Joi.string().required(),
   JWT_REFRESH_MAX_AGE: Joi.number().required(),
   JWT_COOKIE_DOMAIN: Joi.string().allow('').optional(),
-  JWT_COOKIE_DOMAIN_DEV: Joi.string().allow('').optional(),
 };
 
 const emailConfigSchema = {
@@ -78,6 +77,14 @@ const emailConfigSchema = {
   EMAIL_PASSWORD_RESET_BASE_URL: Joi.string().default('http://localhost:3000'),
 };
 
+const encryptionConfigSchema = {
+  ENCRYPTION_KEY: Joi.string().min(32).required().messages({
+    'string.min': 'ENCRYPTION_KEY must be at least 32 characters',
+    'any.required': 'ENCRYPTION_KEY is required',
+  }),
+  ENCRYPTION_SALT: Joi.string().default('krgeobuk-auth-server'),
+};
+
 export const validationSchema = Joi.object({
   ...defaultConfigSchema,
   ...clientConfigSchema,
@@ -87,4 +94,5 @@ export const validationSchema = Joi.object({
   ...naverConfigSchema,
   ...jwtConfigSchema,
   ...emailConfigSchema,
+  ...encryptionConfigSchema,
 });
