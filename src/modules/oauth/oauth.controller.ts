@@ -27,6 +27,7 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
   SwaggerApiBearerAuth,
+  SwaggerApiQuery,
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
@@ -168,6 +169,7 @@ export class OAuthController {
     status: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode,
     description: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.message,
   })
+  @SwaggerApiQuery({ name: 'redirect_session', type: String, description: 'SSO 리다이렉트 세션 ID', required: false })
   async loginGoogle(
     @Res() res: Response,
     @Query('redirect_session') redirectSession: string
@@ -229,6 +231,7 @@ export class OAuthController {
     status: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.statusCode,
     description: OAuthResponse.OAUTH_LOGIN_START_REDIRECT.message,
   })
+  @SwaggerApiQuery({ name: 'redirect_session', type: String, description: 'SSO 리다이렉트 세션 ID', required: false })
   async loginNaver(
     @Res() res: Response,
     @Query('redirect_session') redirectSession: string

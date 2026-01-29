@@ -18,6 +18,7 @@ import {
   SwaggerApiErrorResponse,
   SwaggerApiBearerAuth,
   SwaggerApiQuery,
+  SwaggerApiParam,
 } from '@krgeobuk/swagger/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
@@ -122,6 +123,7 @@ export class AccountMergeController {
     status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
     description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
+  @SwaggerApiParam({ name: 'requestId', type: Number, description: '계정 병합 요청 ID' })
   @Serialize({ dto: GetAccountMergeResponseDto, ...AccountMergeResponse.FETCH_SUCCESS })
   async getAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number
@@ -174,6 +176,7 @@ export class AccountMergeController {
     status: AccountMergeError.EXECUTION_FAILED.statusCode,
     description: AccountMergeError.EXECUTION_FAILED.message,
   })
+  @SwaggerApiParam({ name: 'requestId', type: Number, description: '계정 병합 요청 ID' })
   @Serialize({ ...AccountMergeResponse.MERGE_COMPLETED })
   async confirmAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number,
@@ -206,6 +209,7 @@ export class AccountMergeController {
     status: AccountMergeError.REQUEST_NOT_FOUND.statusCode,
     description: AccountMergeError.REQUEST_NOT_FOUND.message,
   })
+  @SwaggerApiParam({ name: 'requestId', type: Number, description: '계정 병합 요청 ID' })
   @Serialize({ ...AccountMergeResponse.MERGE_REJECTED })
   async rejectAccountMerge(
     @Param('requestId', ParseIntPipe) requestId: number,

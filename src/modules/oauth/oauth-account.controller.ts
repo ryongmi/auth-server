@@ -10,6 +10,7 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
   SwaggerApiBearerAuth,
+  SwaggerApiParam,
 } from '@krgeobuk/swagger/decorators';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
@@ -61,6 +62,7 @@ export class OAuthAccountController {
     status: OAuthError.PROVIDER_NOT_LINKED.statusCode,
     description: OAuthError.PROVIDER_NOT_LINKED.message,
   })
+  @SwaggerApiParam({ name: 'provider', type: String, description: 'OAuth 제공자 (google, naver)' })
   @Serialize({ ...OAuthResponse.ACCOUNT_UNLINKED })
   async unlinkAccount(
     @CurrentJwt() { userId }: AuthenticatedJwt,

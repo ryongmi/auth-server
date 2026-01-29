@@ -33,6 +33,7 @@ import {
   SwaggerApiOperation,
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
+  SwaggerApiQuery,
 } from '@krgeobuk/swagger/decorators';
 import { JwtPayload, AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
@@ -58,6 +59,7 @@ export class AuthController {
     status: AuthError.INVALID_REDIRECT_URI.statusCode,
     description: AuthError.INVALID_REDIRECT_URI.message,
   })
+  @SwaggerApiQuery({ name: 'redirect_uri', type: String, description: 'SSO 로그인 후 리다이렉트할 URI' })
   async ssoLoginRedirect(
     @Query('redirect_uri') redirectUri: string,
     @Res() res: Response,
@@ -101,6 +103,7 @@ export class AuthController {
     status: AuthError.LOGIN_ERROR.statusCode,
     description: AuthError.LOGIN_ERROR.message,
   })
+  @SwaggerApiQuery({ name: 'redirect_session', type: String, description: 'SSO 리다이렉트 세션 ID', required: false })
   @Serialize({
     ...AuthResponse.SSO_LOGIN_REDIRECT,
     dto: AuthLoginResponseDto,
@@ -131,6 +134,7 @@ export class AuthController {
     status: AuthError.SIGNUP_ERROR.statusCode,
     description: AuthError.SIGNUP_ERROR.message,
   })
+  @SwaggerApiQuery({ name: 'redirect_session', type: String, description: 'SSO 리다이렉트 세션 ID', required: false })
   @Serialize({
     ...AuthResponse.SSO_SIGNUP_REDIRECT,
     dto: AuthSignupResponseDto,
