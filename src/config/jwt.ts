@@ -4,7 +4,7 @@ import { registerAs } from '@nestjs/config';
 
 import type { StringValue } from 'ms';
 
-import { JwtConfig } from '@/common/interfaces/config.interfaces.js';
+import { JwtConfig } from '@common/interfaces/config.interfaces.js';
 
 export const jwtConfig = registerAs(
   'jwt',

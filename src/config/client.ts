@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { ClientConfig } from '@/common/interfaces/config.interfaces.js';
+import { ClientConfig } from '@common/interfaces/config.interfaces.js';
 
 export const clientConfig = registerAs(
   'client',

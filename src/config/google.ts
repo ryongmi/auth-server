@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { GoogleConfig } from '@/common/interfaces/config.interfaces.js';
+import { GoogleConfig } from '@common/interfaces/config.interfaces.js';
 
 export const googleConfig = registerAs(
   'google',

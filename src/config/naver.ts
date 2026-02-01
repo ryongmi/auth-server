@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { NaverConfig } from '@/common/interfaces/config.interfaces.js';
+import { NaverConfig } from '@common/interfaces/config.interfaces.js';
 
 export const naverConfig = registerAs(
   'naver',

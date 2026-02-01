@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { MysqlConfig, RedisConfig } from '@/common/interfaces/config.interfaces.js';
+import { MysqlConfig, RedisConfig } from '@common/interfaces/config.interfaces.js';
 
 export const mysqlConfig = registerAs(
   'db-mysql',

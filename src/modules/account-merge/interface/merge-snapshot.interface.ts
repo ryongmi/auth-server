@@ -1,7 +1,7 @@
 import type { MyPickSnapshotData } from '@krgeobuk/account-merge/tcp/interfaces';
 
-import { OAuthAccountEntity } from '@/modules/oauth/index.js';
-import { UserEntity } from '@/modules/user/index.js';
+import { OAuthAccountEntity } from '@modules/oauth/index.js';
+import { UserEntity } from '@modules/user/index.js';
 
 /**
  * 계정 병합 스냅샷 인터페이스
