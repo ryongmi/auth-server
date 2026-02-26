@@ -66,7 +66,7 @@ npm run docker:local:up
 
 서버가 다음 포트에서 실행됩니다:
 - **HTTP API**: http://localhost:8000
-- **Swagger**: http://localhost:8000/api/docs
+- **Swagger**: http://localhost:8000/api-docs
 - **TCP Service**: localhost:8010
 
 ### 스크립트
@@ -135,9 +135,9 @@ src/
 
 ## API 엔드포인트
 
-> 전체 API 문서: http://localhost:8000/api/docs (Swagger)
+> 전체 API 문서: http://localhost:8000/api-docs (Swagger)
 
-### 인증 (`/api/auth`)
+### 인증 (`/auth/auth`)
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
@@ -152,7 +152,7 @@ src/
 | POST | `/auth/forgot-password` | 비밀번호 찾기 이메일 발송 (Throttle: 1분 3회) |
 | POST | `/auth/reset-password` | 비밀번호 재설정 |
 
-### OAuth (`/api/oauth`)
+### OAuth (`/auth/oauth`)
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
@@ -163,7 +163,7 @@ src/
 | GET | `/oauth/link-google` | Google 계정 연동 시작 (인증 필요) |
 | GET | `/oauth/link-naver` | Naver 계정 연동 시작 (인증 필요) |
 
-### 사용자 (`/api/users`)
+### 사용자 (`/auth/users`)
 
 | 메서드 | 경로 | 설명 | 권한 |
 |--------|------|------|------|
@@ -174,7 +174,7 @@ src/
 | DELETE | `/users/me` | 계정 삭제 | 인증 필요 |
 | GET | `/users/:userId` | 특정 유저 조회 | ADMIN/SUPER_ADMIN |
 
-### 계정 병합 (`/api/account-merge`)
+### 계정 병합 (`/auth/account-merge`)
 
 | 메서드 | 경로 | 설명 | 권한 |
 |--------|------|------|------|
@@ -241,7 +241,7 @@ NODE_ENV=development
 PORT=8000
 TCP_PORT=8010
 APP_NAME=auth-server
-AUTH_SERVER_URL=http://localhost:8000/api
+AUTH_SERVER_URL=http://localhost:8000/auth
 AUTH_CLIENT_URL=http://localhost:3000
 PORTAL_CLIENT_URL=http://localhost:3200
 CORS_ORIGINS=http://localhost:3000,http://localhost:3200
@@ -275,12 +275,12 @@ JWT_COOKIE_DOMAIN=.localhost
 # ===== Google OAuth =====
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URL=http://localhost:8000/api/oauth/login-google/callback
+GOOGLE_REDIRECT_URL=http://localhost:8000/auth/oauth/login-google/callback
 
 # ===== Naver OAuth =====
 NAVER_CLIENT_ID=your-naver-client-id
 NAVER_CLIENT_SECRET=your-naver-client-secret
-NAVER_REDIRECT_URL=http://localhost:8000/api/oauth/login-naver/callback
+NAVER_REDIRECT_URL=http://localhost:8000/auth/oauth/login-naver/callback
 
 # ===== 암호화 (OAuth 토큰 저장) =====
 ENCRYPTION_KEY=your-encryption-key-minimum-32-chars

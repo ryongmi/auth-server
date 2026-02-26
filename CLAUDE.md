@@ -218,12 +218,12 @@ JWT_REFRESH_EXPIRES_IN=7d
 # Google OAuth 2.0
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URL=http://localhost:8000/api/oauth/login-google/callback
+GOOGLE_REDIRECT_URL=http://localhost:8000/auth/oauth/login-google/callback
 
 # Naver OAuth 2.0
 NAVER_CLIENT_ID=your-naver-client-id
-NAVER_CLIENT_SECRET=your-naver-client-secret  
-NAVER_REDIRECT_URL=http://localhost:8000/api/oauth/login-naver/callback
+NAVER_CLIENT_SECRET=your-naver-client-secret
+NAVER_REDIRECT_URL=http://localhost:8000/auth/oauth/login-naver/callback
 ```
 
 ### Import 경로 별칭
@@ -377,30 +377,31 @@ export class AuthService {
 
 ### HTTP REST API (포트 8000)
 
-#### 인증 관련 (`/api/auth`)
+#### 인증 관련 (`/auth/auth`)
 ```bash
-POST /api/auth/login          # 로그인
-POST /api/auth/signup         # 회원가입  
-POST /api/auth/logout         # 로그아웃
-POST /api/auth/refresh        # 토큰 갱신
-POST /api/auth/forgot-password # 비밀번호 찾기
-POST /api/auth/reset-password  # 비밀번호 재설정
+POST /auth/auth/login          # 로그인
+POST /auth/auth/signup         # 회원가입
+POST /auth/auth/logout         # 로그아웃
+POST /auth/auth/refresh        # 토큰 갱신
+POST /auth/auth/forgot-password # 비밀번호 찾기
+POST /auth/auth/reset-password  # 비밀번호 재설정
 ```
 
-#### OAuth 관련 (`/api/oauth`)
+#### OAuth 관련 (`/auth/oauth`)
 ```bash
-GET  /api/oauth/login-google   # Google OAuth 시작
-GET  /api/oauth/callback/google # Google OAuth 콜백
-GET  /api/oauth/login-naver    # Naver OAuth 시작
-GET  /api/oauth/callback/naver  # Naver OAuth 콜백
+GET  /auth/oauth/login-google          # Google OAuth 시작
+GET  /auth/oauth/login-google/callback # Google OAuth 콜백
+GET  /auth/oauth/login-naver           # Naver OAuth 시작
+GET  /auth/oauth/login-naver/callback  # Naver OAuth 콜백
 ```
 
-#### 사용자 관리 (`/api/user`)
+#### 사용자 관리 (`/auth/users`)
 ```bash
-GET    /api/user/profile      # 사용자 프로필 조회
-PUT    /api/user/profile      # 사용자 프로필 수정
-DELETE /api/user/account      # 계정 삭제
-POST   /api/user/verify-email # 이메일 인증
+GET    /auth/users         # 유저 목록 조회
+GET    /auth/users/me      # 내 프로필 조회
+PATCH  /auth/users/me      # 프로필 수정
+PATCH  /auth/users/password # 비밀번호 변경
+DELETE /auth/users/me      # 계정 삭제
 ```
 
 ### TCP 마이크로서비스 (포트 8010)
