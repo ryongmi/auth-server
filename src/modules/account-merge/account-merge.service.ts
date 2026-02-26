@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import { v4 as uuid } from 'uuid';
 
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
@@ -376,7 +377,7 @@ export class AccountMergeService {
       });
     } catch (error) {
       // 이메일 발송 실패 시 토큰 삭제
-      await this.redisService.deleteAccountMergeToken(token);
+      await this.redisService.deleteAccountMergeToken(confirmToken);
       throw error;
     }
 
