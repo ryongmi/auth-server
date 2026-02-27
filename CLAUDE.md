@@ -111,14 +111,15 @@ app.connectMicroservice<MicroserviceOptions>({
 
 | 패턴 | 설명 | 요청 데이터 | 응답 타입 |
 |------|------|-------------|-----------|
-| `user.findById` | 사용자 ID로 조회 | `{ userId: string }` | `UserEntity \| null` |
-| `user.getDetailById` | 상세 정보 조회 | `{ userId: string }` | `UserDetail \| null` |
-| `user.findByEmail` | 이메일로 조회 | `{ email: string }` | `UserEntity \| null` |
-| `user.findByIds` | 여러 사용자 조회 | `{ userIds: string[] }` | `UserEntity[]` |
-| `user.findByFilter` | 필터로 조회 | `{ filter: UserFilter }` | `UserEntity[]` |
+| `user.search` | 사용자 검색 | `UserSearchQuery` | `TcpSearchResponse<UserSearchResult>` |
+| `user.find-by-id` | 사용자 ID로 조회 | `{ userId: string }` | `UserEntity \| null` |
+| `user.find-by-ids` | 여러 사용자 조회 | `{ userIds: string[] }` | `UserEntity[]` |
+| `user.get-detail-by-id` | 상세 정보 조회 | `{ userId: string }` | `UserDetail \| null` |
+| `user.is-email-verified` | 이메일 인증 확인 | `{ userId: string }` | `boolean` |
 | `user.exists` | 존재 여부 확인 | `{ userId: string }` | `boolean` |
-| `user.getStats` | 사용자 통계 | `{}` | `{ totalUsers: number, verifiedUsers: number }` |
-| `user.isEmailVerified` | 이메일 인증 확인 | `{ userId: string }` | `boolean` |
+| `user.create` | 사용자 생성 | `CreateUser` | `{ success: true }` |
+| `user.update` | 사용자 수정 | `{ userId, updateData }` | `{ success: true }` |
+| `user.delete` | 사용자 삭제 | `{ userId: string }` | `{ success: true }` |
 
 #### 다른 서비스에서 사용 예시
 
@@ -135,8 +136,8 @@ export class RoleService {
     const userIds = await this.getUserIdsByRole(roleId);
     
     // auth-server TCP로 사용자 정보 조회
-    const users = await this.authClient.send('user.findByIds', { userIds }).toPromise();
-    
+    const users = await this.authClient.send('user.find-by-ids', { userIds }).toPromise();
+
     return {
       role: await this.findById(roleId),
       users
@@ -144,15 +145,11 @@ export class RoleService {
   }
 
   async getUserDetail(userId: string): Promise<UserDetail | null> {
-    return this.authClient.send('user.getDetailById', { userId }).toPromise();
+    return this.authClient.send('user.get-detail-by-id', { userId }).toPromise();
   }
 
   async checkUserExists(userId: string): Promise<boolean> {
     return this.authClient.send('user.exists', { userId }).toPromise();
-  }
-
-  async refreshToken(refreshToken: string): Promise<TokenPair> {
-    return this.authClient.send('auth.refreshToken', { refreshToken }).toPromise();
   }
 }
 ```
@@ -333,17 +330,17 @@ export class AuthService {
 // TCP Controller for User Service
 @Controller()
 export class UserTcpController {
-  @MessagePattern('user.findById')
+  @MessagePattern(UserTcpPatterns.FIND_BY_ID)  // 'user.find-by-id'
   async findById(@Payload() data: { userId: string }): Promise<UserEntity | null> {
     return this.userService.findById(data.userId);
   }
 
-  @MessagePattern('user.findByEmail')  
-  async findByEmail(@Payload() data: { email: string }): Promise<UserEntity | null> {
-    return this.userService.findByEmail(data.email);
+  @MessagePattern(UserTcpPatterns.GET_DETAIL_BY_ID)  // 'user.get-detail-by-id'
+  async getDetailById(@Payload() data: { userId: string }): Promise<UserDetail | null> {
+    return this.userService.getDetailById(data.userId);
   }
 
-  @MessagePattern('user.exists')
+  @MessagePattern(UserTcpPatterns.EXISTS)  // 'user.exists'
   async exists(@Payload() data: { userId: string }): Promise<boolean> {
     return this.userService.exists(data.userId);
   }
@@ -408,8 +405,9 @@ DELETE /auth/users/me      # 계정 삭제
 #### 사용자 조회 패턴
 ```typescript
 // 다른 서비스에서 TCP 호출 예시
-const user = await client.send('user.findById', { userId }).toPromise();
-const users = await client.send('user.findByIds', { userIds }).toPromise();
+const user = await client.send('user.find-by-id', { userId }).toPromise();
+const users = await client.send('user.find-by-ids', { userIds }).toPromise();
+const detail = await client.send('user.get-detail-by-id', { userId }).toPromise();
 const exists = await client.send('user.exists', { userId }).toPromise();
 ```
 

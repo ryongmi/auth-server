@@ -201,14 +201,15 @@ src/
 
 | 메시지 패턴 | 요청 | 응답 |
 |------------|------|------|
-| `user.findById` | `{ userId: string }` | `UserEntity \| null` |
-| `user.getDetailById` | `{ userId: string }` | `UserDetail \| null` |
-| `user.findByEmail` | `{ email: string }` | `UserEntity \| null` |
-| `user.findByIds` | `{ userIds: string[] }` | `UserEntity[]` |
-| `user.findByFilter` | `{ filter: UserFilter }` | `UserEntity[]` |
+| `user.search` | `UserSearchQuery` | `TcpSearchResponse<UserSearchResult>` |
+| `user.find-by-id` | `{ userId: string }` | `UserEntity \| null` |
+| `user.find-by-ids` | `{ userIds: string[] }` | `UserEntity[]` |
+| `user.get-detail-by-id` | `{ userId: string }` | `UserDetail \| null` |
+| `user.is-email-verified` | `{ userId: string }` | `boolean` |
 | `user.exists` | `{ userId: string }` | `boolean` |
-| `user.isEmailVerified` | `{ userId: string }` | `boolean` |
-| `user.getStats` | `{}` | `{ totalUsers, verifiedUsers }` |
+| `user.create` | `CreateUser` | `{ success: true }` |
+| `user.update` | `{ userId, updateData }` | `{ success: true }` |
+| `user.delete` | `{ userId: string }` | `{ success: true }` |
 
 ### 다른 서비스에서 연결 설정
 
@@ -220,14 +221,14 @@ ClientsModule.register([
     transport: Transport.TCP,
     options: {
       host: 'auth-server',  // Docker 네트워크 내 호스트명
-      port: 8110,           // authz-server의 TCP 포트 예시
+      port: 8010,           // auth-server TCP 포트
     },
   },
 ])
 
 // 사용
 const user = await this.authClient
-  .send('user.findById', { userId })
+  .send('user.find-by-id', { userId })
   .toPromise();
 ```
 
