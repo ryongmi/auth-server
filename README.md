@@ -45,7 +45,7 @@ krgeobuk 마이크로서비스 생태계의 중앙 인증 서버로, JWT 기반 
 ### 환경 요구사항
 - Node.js 18+
 - Docker & Docker Compose
-- 외부 인프라 네트워크 구성 (`krgeobuk-network`, `msa-network`, `shared-network`)
+- 외부 인프라 네트워크 구성 (`krgeobuk-network`)
 
 ### 설치 및 실행
 
@@ -309,8 +309,6 @@ services:
       - 9229:9229    # Node.js 디버거
     networks:
       - krgeobuk-network   # 중앙 MySQL, Redis
-      - msa-network        # 마이크로서비스 간 통신
-      - shared-network     # 공유 리소스
 ```
 
 Dockerfile은 멀티 스테이지로 구성됩니다: `deps → build → local/development/production`

@@ -79,10 +79,9 @@ krgeobuk 생태계 표준화를 위한 `@krgeobuk/*` 패키지들:
 - Asia/Seoul 시간대를 사용하는 MySQL 데이터베이스
 - 세션 관리를 위한 Redis
 - 개발 시 핫 리로드를 지원하는 애플리케이션 서버
-- 서비스 통신을 위한 외부 MSA 네트워크
 
 ### API 구조
-- **HTTP REST API**: 글로벌 프리픽스 `/api`
+- **HTTP REST API**: 글로벌 프리픽스 `/auth`
 - **TCP 마이크로서비스**: 포트 8010에서 실행
 - 설정된 출처에 대해 CORS 활성화
 - 쿠키 기반 인증

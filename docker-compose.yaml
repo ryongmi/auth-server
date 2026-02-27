@@ -34,15 +34,9 @@ services:
       - /app/node_modules # 익명 볼륨
     networks:
       - krgeobuk-network # 중앙 인프라 접근 (MySQL, Redis)
-      - msa-network # 마이크로서비스 간 통신
-      - shared-network # 공유 리소스 접근
     restart: unless-stopped
 
 networks:
   krgeobuk-network:
     external: true
     name: krgeobuk-network
-  msa-network:
-    external: true
-  shared-network:
-    external: true
