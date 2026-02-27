@@ -263,7 +263,7 @@ npm run test:e2e    # 엔드투엔드 테스트
 
 # 🔥 NestJS 공통 개발 표준
 
-> **중요**: auth-server의 NestJS 개발 시 [authz-server/CLAUDE.md](../authz-server/CLAUDE.md)의 **"krgeobuk NestJS 서버 공통 개발 표준"** 섹션을 필수로 참조하세요.
+> **중요**: auth-server의 NestJS 개발 시 [docs/KRGEOBUK_NESTJS_SERVER_GUIDE.md](../docs/KRGEOBUK_NESTJS_SERVER_GUIDE.md)를 필수로 참조하세요.
 
 ## 공통 표준 적용 영역
 
