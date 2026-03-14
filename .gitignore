@@ -1,3 +1,6 @@
+# MacOS
+.DS_Store
+
 .idea
 
 # JWT 키값
