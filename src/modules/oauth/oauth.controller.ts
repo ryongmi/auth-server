@@ -184,13 +184,15 @@ export class OAuthController {
     );
     const clientId = this.configService.get<GoogleConfig['clientId']>('google.clientId');
     const redirectUrl = this.configService.get<GoogleConfig['redirectUrl']>('google.redirectUrl');
+    const mode = this.configService.get<DefaultConfig['mode']>('mode');
+    const scope = mode === 'local' ? 'email profile' : 'email profile https://www.googleapis.com/auth/youtube.force-ssl';
 
     const url =
       'https://accounts.google.com/o/oauth2/v2/auth' +
       `?client_id=${clientId}` +
       `&redirect_uri=${redirectUrl}` +
       '&response_type=code' +
-      '&scope=email profile https://www.googleapis.com/auth/youtube.force-ssl' +
+      `&scope=${scope}` +
       `&state=${state}` +
       '&access_type=offline' +
       '&prompt=consent';
