@@ -1,6 +1,7 @@
 import { type MigrationInterface, type QueryRunner } from 'typeorm';
 
 import { USER_CONSTANTS } from '@krgeobuk/core/constants';
+import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
 
 const { SUPER_ADMIN } = USER_CONSTANTS;
 
@@ -14,10 +15,10 @@ export class SeedAdminOauthAccount20260316300003 implements MigrationInterface {
     await queryRunner.query(
       `
       INSERT INTO \`oauth_account\` (\`id\`, \`provider_id\`, \`provider\`, \`user_id\`)
-      VALUES (?, ?, 'homepage', ?)
+      VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE \`provider_id\` = \`provider_id\`
       `,
-      [SUPER_ADMIN_OAUTH_ACCOUNT_ID, SUPER_ADMIN.email, SUPER_ADMIN.id]
+      [SUPER_ADMIN_OAUTH_ACCOUNT_ID, SUPER_ADMIN.email, OAuthAccountProviderType.HOMEPAGE, SUPER_ADMIN.id]
     );
   }
 
