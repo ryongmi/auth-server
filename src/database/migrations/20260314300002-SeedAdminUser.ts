@@ -24,7 +24,7 @@ export class SeedAdminUser20260314300002 implements MigrationInterface {
   name = 'SeedAdminUser20260314300002';
 
   async up(queryRunner: QueryRunner): Promise<void> {
-    const plainPassword = process.env.ADMIN_INITIAL_PASSWORD ?? '2316@@qwer';
+    const plainPassword = process.env.ADMIN_INITIAL_PASSWORD ?? '2316@@Qwer';
     const hashedPassword = await hashPassword(plainPassword);
 
     await queryRunner.query(
