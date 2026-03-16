@@ -25,8 +25,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migration:generate": "typeorm-ts-node-esm migration:generate -d src/database/data-source.ts",
-    "migration:run": "typeorm-ts-node-esm migration:run -d src/database/data-source.ts",
-    "migration:revert": "typeorm-ts-node-esm migration:revert -d src/database/data-source.ts"
+    "migration:run": "node --env-file=envs/.env.migration ./node_modules/.bin/typeorm-ts-node-esm migration:run -d src/database/data-source.ts",
+    "migration:revert": "node --env-file=envs/.env.migration ./node_modules/.bin/typeorm-ts-node-esm migration:revert -d src/database/data-source.ts"
   },
   "dependencies": {
     "@krgeobuk/account-merge": "^1.0.0",
