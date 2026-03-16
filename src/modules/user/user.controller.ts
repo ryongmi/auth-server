@@ -22,6 +22,7 @@ import {
 } from '@krgeobuk/user/dtos';
 import { UserResponse } from '@krgeobuk/user/response';
 import { UserError } from '@krgeobuk/user/exception';
+import { USER_PERMISSIONS } from '@krgeobuk/user/constants';
 import { UserIdParamsDto } from '@krgeobuk/shared/user/dtos';
 import {
   SwaggerApiTags,
@@ -38,7 +39,7 @@ import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard, OptionalAccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
 import { RequireAccess } from '@krgeobuk/authorization/decorators';
-import { GLOBAL_ROLES } from '@krgeobuk/core/constants';
+import { GLOBAL_ROLES, SERVICE_CONSTANTS } from '@krgeobuk/core/constants';
 
 import { UserService } from './user.service.js';
 
@@ -62,8 +63,10 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard, AuthorizationGuard)
   @RequireAccess({
-    roles: [GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN],
-    roleOperator: 'OR',
+    permissions: [USER_PERMISSIONS.USER_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, GLOBAL_ROLES.ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTH_SERVICE.id,
   })
   @Serialize({
     dto: UserPaginatedSearchResultDto,
@@ -100,6 +103,7 @@ export class UserController {
 
   @Patch('me')
   @HttpCode(UserResponse.PROFILE_UPDATE_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
   @SwaggerApiOperation({ summary: '본인 프로필 수정' })
   @SwaggerApiOkResponse({
     status: UserResponse.PROFILE_UPDATE_SUCCESS.statusCode,
@@ -126,6 +130,7 @@ export class UserController {
 
   @Patch('password')
   @HttpCode(UserResponse.PASSWORD_CHANGE_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
   @SwaggerApiOperation({ summary: '본인 비밀번호 수정' })
   @SwaggerApiBody({
     dto: ChangePasswordDto,
@@ -160,6 +165,7 @@ export class UserController {
 
   @Delete('me')
   @HttpCode(UserResponse.ACCOUNT_DELETE_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
   @SwaggerApiOperation({ summary: '본인 프로필 삭제' })
   @SwaggerApiOkResponse({
     status: UserResponse.ACCOUNT_DELETE_SUCCESS.statusCode,
@@ -179,6 +185,7 @@ export class UserController {
 
   @Get(':userId')
   @HttpCode(UserResponse.USER_FETCH_SUCCESS.statusCode)
+  @SwaggerApiBearerAuth()
   @SwaggerApiOperation({ summary: '유저 정보 조회' })
   @SwaggerApiParam({
     name: 'userId',
@@ -198,8 +205,10 @@ export class UserController {
   })
   @UseGuards(AccessTokenGuard, AuthorizationGuard)
   @RequireAccess({
-    roles: [GLOBAL_ROLES.ADMIN, GLOBAL_ROLES.SUPER_ADMIN],
-    roleOperator: 'OR',
+    permissions: [USER_PERMISSIONS.USER_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, GLOBAL_ROLES.ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTH_SERVICE.id,
   })
   @Serialize({
     dto: UserDetailDto,
