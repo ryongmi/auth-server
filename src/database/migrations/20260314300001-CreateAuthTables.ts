@@ -7,7 +7,7 @@ export class CreateAuthTables20260314300001 implements MigrationInterface {
     // user 테이블
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`user\` (
-        \`id\`                CHAR(36)      NOT NULL,
+        \`id\`                VARCHAR(36)      NOT NULL,
         \`email\`             VARCHAR(255)  NOT NULL,
         \`password\`          VARCHAR(255)  NULL,
         \`name\`              VARCHAR(30)   NOT NULL,
@@ -25,14 +25,14 @@ export class CreateAuthTables20260314300001 implements MigrationInterface {
     // oauth_account 테이블
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`oauth_account\` (
-        \`id\`              CHAR(36)     NOT NULL,
+        \`id\`              VARCHAR(36)     NOT NULL,
         \`provider_id\`     VARCHAR(255) NOT NULL,
         \`provider\`        ENUM('homepage','google','naver') NOT NULL,
         \`access_token\`    TEXT         NULL,
         \`refresh_token\`   TEXT         NULL,
         \`token_expires_at\` TIMESTAMP   NULL,
         \`scopes\`          VARCHAR(500) NULL,
-        \`user_id\`         CHAR(36)     NOT NULL,
+        \`user_id\`         VARCHAR(36)     NOT NULL,
         \`created_at\`      TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updated_at\`      TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         \`deleted_at\`      TIMESTAMP(6) NULL,
@@ -47,8 +47,8 @@ export class CreateAuthTables20260314300001 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`account_merge\` (
         \`id\`               BIGINT        NOT NULL AUTO_INCREMENT,
-        \`target_user_id\`   CHAR(36)      NOT NULL COMMENT 'User A (유지할 계정)',
-        \`source_user_id\`   CHAR(36)      NOT NULL COMMENT 'User B (삭제될 계정)',
+        \`target_user_id\`   VARCHAR(36)      NOT NULL COMMENT 'User A (유지할 계정)',
+        \`source_user_id\`   VARCHAR(36)      NOT NULL COMMENT 'User B (삭제될 계정)',
         \`provider\`         ENUM('homepage','google','naver') NOT NULL,
         \`provider_id\`      VARCHAR(255)  NOT NULL,
         \`status\`           ENUM(
