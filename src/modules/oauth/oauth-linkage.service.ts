@@ -106,15 +106,17 @@ export class OAuthLinkageService {
         // 자동으로 계정 병합 요청 생성
         const existingUserId = existingAccount.userId;
 
-        // 기존 사용자(User B)의 이메일 조회
-        const existingUser = await this.userService.findById(existingUserId);
-        if (existingUser) {
+        // 현재 로그인한 사용자(유지될 계정) 이메일 조회
+        const currentUser = await this.userService.findById(userId);
+        if (currentUser) {
           // 계정 병합 요청 생성 및 이메일 전송
+          // targetUserId = 로그인한 사람 (유지될 계정)
+          // sourceUserId = 기존 OAuth 소유자 (삭제될 계정)
           await this.accountMergeService.initiateAccountMerge(
             provider,
             userInfo.id,
-            existingUser.email,
-            userId // sourceUserId (OAuth 연동을 시도하는 사용자)
+            currentUser.email,  // 로그인한 사람 이메일 → targetUser (유지될 계정)
+            existingUserId      // sourceUserId = 기존 OAuth 소유자 (삭제될 계정)
           );
 
           this.logger.log(`${this.linkOAuthAccount.name} - 계정 병합 요청 생성 완료`);

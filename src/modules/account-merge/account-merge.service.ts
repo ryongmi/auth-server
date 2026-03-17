@@ -75,14 +75,15 @@ export class AccountMergeService {
     }
 
     // 3. User A가 이미 해당 OAuth 계정을 소유하고 있는지 확인
-    const existingOAuth = await this.oauthService.findByAnd({
-      userId: targetUser.id,
-      provider,
-      providerId,
-    });
-    if (existingOAuth.length > 0) {
-      throw OAuthException.providerAlreadyLinked(provider);
-    }
+    // TODO: 이 체크는 LINK 모드에서 항상 true가 되어 OAUTH_203 발생 - 삭제 예정
+    // const existingOAuth = await this.oauthService.findByAnd({
+    //   userId: targetUser.id,
+    //   provider,
+    //   providerId,
+    // });
+    // if (existingOAuth.length > 0) {
+    //   throw OAuthException.providerAlreadyLinked(provider);
+    // }
 
     // 4. 중복 병합 요청 확인 (24시간 이내)
     const recentRequest = await this.accountMergeRepo.findOne({
@@ -312,7 +313,20 @@ export class AccountMergeService {
       throw AccountMergeException.requestNotFound();
     }
 
-    this.logger.log('Merge token verified', { requestId });
+    // 이메일 인증 완료 처리: PENDING_EMAIL_VERIFICATION → EMAIL_VERIFIED
+    if (request.status === AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
+      await this.accountMergeRepo.update(
+        { id: requestId },
+        {
+          status: AccountMergeStatus.EMAIL_VERIFIED,
+          emailVerifiedAt: new Date(),
+        }
+      );
+      this.logger.log('Merge token verified, status updated to EMAIL_VERIFIED', { requestId });
+    } else {
+      this.logger.log('Merge token verified', { requestId, status: request.status });
+    }
+
     return requestId;
   }
 
@@ -364,7 +378,7 @@ export class AccountMergeService {
     // 만료 시간 계산
     const expiresAt = new Date(Date.now() + MERGE_REQUEST_EXPIRATION_MS).toLocaleString('ko-KR');
 
-    // 이메일 발송
+    // 이메일 발송 (sourceUser = 기존 OAuth 소유자, 삭제될 계정)
     try {
       await this.emailService.sendAccountMergeEmail({
         to: sourceUser.email,

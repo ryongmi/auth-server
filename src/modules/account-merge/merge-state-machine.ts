@@ -39,10 +39,10 @@ export class MergeStateMachine {
 
   /**
    * confirm/reject 전 공통 검증
-   * 상태가 PENDING_EMAIL_VERIFICATION인지 확인
+   * 상태가 EMAIL_VERIFIED인지 확인 (verifyToken 이후 전환된 상태)
    */
   static validatePendingState(request: AccountMergeEntity): void {
-    if (request.status !== AccountMergeStatus.PENDING_EMAIL_VERIFICATION) {
+    if (request.status !== AccountMergeStatus.EMAIL_VERIFIED) {
       throw AccountMergeException.invalidStatus();
     }
   }
