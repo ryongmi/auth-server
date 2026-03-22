@@ -121,12 +121,19 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
 
     const sourceOAuthAccounts = await this.oauthService.findByAnd({ userId: request.sourceUserId });
 
-    // authz-server에서 역할 ID 목록 조회
-    const sourceRoleIds = await firstValueFrom(
-      this.authzClient
-        .send<string[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.sourceUserId })
-        .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
-    );
+    // authz-server에서 역할 ID 목록 조회 (source, target 모두 저장 - 롤백 시 구분에 필요)
+    const [sourceRoleIds, targetRoleIds] = await Promise.all([
+      firstValueFrom(
+        this.authzClient
+          .send<string[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.sourceUserId })
+          .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
+      ),
+      firstValueFrom(
+        this.authzClient
+          .send<string[]>(UserRoleTcpPatterns.FIND_ROLES_BY_USER, { userId: request.targetUserId })
+          .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
+      ),
+    ]);
 
     // 스냅샷 생성 (my-pick 데이터는 STEP3에서 수집하여 업데이트)
     const snapshot: MergeSnapshot = {
@@ -134,6 +141,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       sourceUser,
       sourceOAuthAccounts,
       sourceRoleIds,
+      targetRoleIds,
       sourceMyPickData: { sourceCreatorIds: [], sourceContentIds: [] },
       backupTimestamp: new Date(),
     };
@@ -359,7 +367,8 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
     this.logger.log('Rolling back role merge', {
       sourceUserId: snapshot.sourceUser.id,
       targetUserId: snapshot.targetUserId,
-      roleCount: snapshot.sourceRoleIds.length,
+      sourceRoleCount: snapshot.sourceRoleIds.length,
+      targetRoleCount: snapshot.targetRoleIds.length,
     });
 
     await firstValueFrom(
@@ -368,6 +377,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
           sourceUserId: snapshot.sourceUser.id,
           targetUserId: snapshot.targetUserId,
           sourceRoleIds: snapshot.sourceRoleIds,
+          targetRoleIds: snapshot.targetRoleIds,
         })
         .pipe(timeout(DEFAULT_TCP_TIMEOUT_MS))
     );

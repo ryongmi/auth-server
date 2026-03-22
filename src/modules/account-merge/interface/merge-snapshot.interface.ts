@@ -18,8 +18,10 @@ export interface MergeSnapshot {
   sourceUser: UserEntity;
   /** User B의 OAuth 계정 정보 */
   sourceOAuthAccounts: OAuthAccountEntity[];
-  /** User B의 역할 ID 목록 (authz-server에서 조회) */
+  /** User B의 역할 ID 목록 (병합 전, authz-server에서 조회) */
   sourceRoleIds: string[];
+  /** User A의 역할 ID 목록 (병합 전, authz-server에서 조회) */
+  targetRoleIds: string[];
   /** User B의 my-pick 데이터 (my-pick-server에서 조회) */
   sourceMyPickData: MyPickSnapshotData;
   /** 백업 생성 시각 */
