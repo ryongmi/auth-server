@@ -30,7 +30,7 @@ import type { MergeSnapshot } from './interface/merge-snapshot.interface.js';
  * Saga 패턴을 사용하여 다음 5단계를 순차 실행:
  * 1. STEP1_AUTH_BACKUP: OAuth 계정 이전
  * 2. STEP2_AUTHZ_MERGE: 역할/권한 병합 (authz-server TCP)
- * 3. STEP3_MYPICK_MERGE: my-pick 데이터 병합 (my-pick-server TCP)
+ * 3. STEP3_MYPICK_MERGE: mypick 데이터 병합 (mypick-server TCP)
  * 4. STEP4_USER_DELETE: User B 소프트 삭제
  * 5. STEP5_CACHE_INVALIDATE: 캐시 무효화
  *
@@ -135,7 +135,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       ),
     ]);
 
-    // 스냅샷 생성 (my-pick 데이터는 STEP3에서 수집하여 업데이트)
+    // 스냅샷 생성 (mypick 데이터는 STEP3에서 수집하여 업데이트)
     const snapshot: MergeSnapshot = {
       targetUserId: request.targetUserId,
       sourceUser,
@@ -255,17 +255,17 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
   }
 
   /**
-   * STEP3: my-pick 데이터 병합
-   * my-pick-server TCP를 통해 데이터 병합 요청
+   * STEP3: mypick 데이터 병합
+   * mypick-server TCP를 통해 데이터 병합 요청
    * 스냅샷 데이터를 받아서 Redis에 업데이트
    */
   private async mergeMyPickData(request: AccountMergeEntity): Promise<void> {
-    this.logger.log('Executing STEP3: my-pick data merge', {
+    this.logger.log('Executing STEP3: mypick data merge', {
       sourceUserId: request.sourceUserId,
       targetUserId: request.targetUserId,
     });
 
-    // my-pick-server에서 병합 실행 및 스냅샷 수신
+    // mypick-server에서 병합 실행 및 스냅샷 수신
     const myPickSnapshot = await firstValueFrom(
       this.myPickClient
         .send<MyPickSnapshotData>(AccountMergeTcpPatterns.MERGE_USER_DATA, {
@@ -275,7 +275,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         .pipe(timeout(MYPICK_TCP_TIMEOUT_MS))
     );
 
-    // Redis에 저장된 스냅샷 업데이트 (my-pick 데이터 추가)
+    // Redis에 저장된 스냅샷 업데이트 (mypick 데이터 추가)
     const existingSnapshot = await this.redisService.getMergeSnapshot(request.id);
     if (existingSnapshot) {
       existingSnapshot.sourceMyPickData = myPickSnapshot;
@@ -286,7 +286,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
       );
     }
 
-    this.logger.log('STEP3 completed: my-pick data merged', {
+    this.logger.log('STEP3 completed: mypick data merged', {
       sourceCreatorIds: myPickSnapshot.sourceCreatorIds.length,
       sourceContentIds: myPickSnapshot.sourceContentIds.length,
     });
@@ -337,11 +337,11 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
   }
 
   /**
-   * my-pick 데이터 롤백
-   * my-pick-server TCP를 통해 롤백 요청
+   * mypick 데이터 롤백
+   * mypick-server TCP를 통해 롤백 요청
    */
   private async rollbackMyPickMerge(snapshot: MergeSnapshot): Promise<void> {
-    this.logger.log('Rolling back my-pick merge', {
+    this.logger.log('Rolling back mypick merge', {
       sourceUserId: snapshot.sourceUser.id,
       targetUserId: snapshot.targetUserId,
     });
@@ -356,7 +356,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         .pipe(timeout(MYPICK_TCP_TIMEOUT_MS))
     );
 
-    this.logger.log('my-pick merge rollback completed');
+    this.logger.log('mypick merge rollback completed');
   }
 
   /**

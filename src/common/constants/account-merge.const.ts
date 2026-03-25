@@ -47,7 +47,7 @@ export const SNAPSHOT_RETENTION_SECONDS = SNAPSHOT_RETENTION_DAYS * HOURS_PER_DA
 /** 기본 TCP 타임아웃 (밀리초) */
 export const DEFAULT_TCP_TIMEOUT_MS = 5000;
 
-/** my-pick 서비스 TCP 타임아웃 (밀리초) - 여러 테이블 처리로 더 긴 시간 필요 */
+/** mypick 서비스 TCP 타임아웃 (밀리초) - 여러 테이블 처리로 더 긴 시간 필요 */
 export const MYPICK_TCP_TIMEOUT_MS = 10000;
 
 // ============================================================================
