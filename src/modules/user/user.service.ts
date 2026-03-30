@@ -19,6 +19,7 @@ import type {
 } from '@krgeobuk/user/interfaces';
 import type { Service } from '@krgeobuk/shared/service';
 import { OAuthAccountProviderType } from '@krgeobuk/shared/oauth';
+import type { OAuthAccount } from '@krgeobuk/shared/oauth';
 
 import { CryptoService } from '@common/crypto/index.js';
 import { ImageProxyService } from '@modules/image/image-proxy.service.js';
@@ -176,8 +177,10 @@ export class UserService {
 
     this.logger.log('통합 사용자 프로필 조회 성공', {
       userId,
-      provider: baseUser.oauthAccount.provider,
-      hasGoogleAccount: baseUser.oauthAccount.provider === OAuthAccountProviderType.GOOGLE,
+      providers: baseUser.oauthAccounts.map((a: OAuthAccount) => a.provider),
+      hasGoogleAccount: baseUser.oauthAccounts.some(
+        (a: OAuthAccount) => a.provider === OAuthAccountProviderType.GOOGLE
+      ),
       roleCount: roles.length,
       permissionCount: permissions.length,
       serviceCount: availableServices?.length || 0,
@@ -469,11 +472,13 @@ export class UserService {
         updatedAt: new Date(),
 
         // OAuth 정보 - 기본값
-        oauthAccount: {
-          id: '',
-          provider: OAuthAccountProviderType.HOMEPAGE,
-          providerId: '',
-        },
+        oauthAccounts: [
+          {
+            id: '',
+            provider: OAuthAccountProviderType.HOMEPAGE,
+            providerId: '',
+          },
+        ],
 
         // 권한 정보 - 빈 배열
         authorization: {
@@ -509,11 +514,13 @@ export class UserService {
         isEmailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date(),
-        oauthAccount: {
-          id: '',
-          provider: OAuthAccountProviderType.HOMEPAGE,
-          providerId: '',
-        },
+        oauthAccounts: [
+          {
+            id: '',
+            provider: OAuthAccountProviderType.HOMEPAGE,
+            providerId: '',
+          },
+        ],
         authorization: {
           roles: [],
           permissions: [],

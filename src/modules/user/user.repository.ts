@@ -44,25 +44,24 @@ export class UserRepository extends BaseRepository<UserEntity> {
       .addSelect(`${oauthAccountAlias}.provider AS provider`)
       .andWhere(`${userAlias}.id = :id`, { id });
 
-    // const qb = this.createQueryBuilder('user')
-    //   .leftJoin(OAuthAccount, 'oauthAccount', 'oauthAccount.userId = user.id')
-    //   .addSelect(['user.id', 'user.email', 'user.name', 'oauthAccount.provider']);
+    const rows = await qb.getRawMany();
 
-    // const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
-    const row = await qb.getRawOne();
+    const first = rows[0];
 
     const data = {
-      id: row[`${userAlias}_id`],
-      email: row[`email`],
-      name: row[`name`],
-      nickname: row[`nickname`],
-      profileImageUrl: row[`profileImageUrl`],
-      isEmailVerified: row[`isEmailVerified`],
-      createdAt: row[`createdAt`],
-      oauthAccount: {
-        id: row[`${oauthAccountAlias}_id`],
-        provider: row[`provider`],
-      },
+      id: first[`${userAlias}_id`],
+      email: first[`email`],
+      name: first[`name`],
+      nickname: first[`nickname`],
+      profileImageUrl: first[`profileImageUrl`],
+      isEmailVerified: first[`isEmailVerified`],
+      createdAt: first[`createdAt`],
+      oauthAccounts: rows
+        .filter((row) => row[`${oauthAccountAlias}_id`] !== null)
+        .map((row) => ({
+          id: row[`${oauthAccountAlias}_id`],
+          provider: row[`provider`],
+        })),
     };
 
     return data;
