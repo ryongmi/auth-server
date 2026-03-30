@@ -98,6 +98,11 @@ export class OAuthController {
               attemptedProvider: provider.toLowerCase(),
             };
           }
+
+          // OAUTH_202 에러 - provider 정보 추가
+          if (errorCode === 'OAUTH_202') {
+            errorDetails = { attemptedProvider: provider.toLowerCase() };
+          }
         }
       }
 
@@ -142,6 +147,11 @@ export class OAuthController {
 
     // 기본 파라미터
     const params = new URLSearchParams({ error: errorCode });
+
+    // OAUTH_202 (이미 다른 계정에 연동된 경우) - provider 추가
+    if (errorCode === 'OAUTH_202' && errorDetails?.attemptedProvider) {
+      params.append('provider', errorDetails.attemptedProvider);
+    }
 
     // OAUTH_205 (이메일 중복) 에러는 상세 정보 추가
     if (errorCode === 'OAUTH_205' && errorDetails) {
