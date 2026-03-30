@@ -2,11 +2,11 @@
 
 ## 📌 개요
 
-auth-server를 **인증 + OAuth 토큰 저장소**로 확장하여, my-pick-server가 사용자별 YouTube API를 호출할 수 있도록 구현합니다.
+auth-server를 **인증 + OAuth 토큰 저장소**로 확장하여, mypick-server가 사용자별 YouTube API를 호출할 수 있도록 구현합니다.
 
 ### 핵심 원칙
 - ✅ **auth-server**: 인증 + OAuth 토큰 저장소 역할 (YouTube API 프록시는 하지 않음)
-- ✅ **my-pick-server**: YouTube 비즈니스 로직 소유, auth-server에서 토큰만 조회
+- ✅ **mypick-server**: YouTube 비즈니스 로직 소유, auth-server에서 토큰만 조회
 - ✅ **Kubernetes 환경**: 내부 네트워크(ClusterIP)로 안전한 토큰 전달
 - ✅ **확장성**: 향후 Twitter, Instagram API도 동일 패턴 적용 가능
 
@@ -21,8 +21,8 @@ External (인터넷)
   ↓
 Internal Cluster Network (private, encrypted)
   ├─ auth-server:8000 (HTTP API)
-  ├─ auth-server:8010 (TCP) ← my-pick-server가 토큰 조회
-  ├─ my-pick-server:4000 (HTTP API)
+  ├─ auth-server:8010 (TCP) ← mypick-server가 토큰 조회
+  ├─ mypick-server:4000 (HTTP API)
   └─ YouTube API (외부)
 ```
 
@@ -34,13 +34,13 @@ Internal Cluster Network (private, encrypted)
    ↓
 3. auth-server: 토큰 암호화하여 DB 저장
    ↓
-4. my-pick-server: 사용자가 댓글 작성 요청
+4. mypick-server: 사용자가 댓글 작성 요청
    ↓
-5. my-pick-server → auth-server (TCP): "userId의 YouTube 토큰 줘"
+5. mypick-server → auth-server (TCP): "userId의 YouTube 토큰 줘"
    ↓
 6. auth-server: 토큰 복호화 후 반환 (만료 시 자동 갱신)
    ↓
-7. my-pick-server: YouTube API 직접 호출 (댓글 작성)
+7. mypick-server: YouTube API 직접 호출 (댓글 작성)
    ↓
 8. YouTube API: 실제 댓글 작성
 ```
@@ -54,7 +54,7 @@ Internal Cluster Network (private, encrypted)
 | Phase 1 | auth-server - OAuth 토큰 저장 기능 | ✅ 완료 |
 | Phase 2 | auth-server - TCP 토큰 조회 API | ✅ 완료 |
 | Phase 3 | 환경 변수 설정 | ✅ 완료 |
-| Phase 4 | my-pick-server 연동 | ⏳ 미진행 |
+| Phase 4 | mypick-server 연동 | ⏳ 미진행 |
 | Phase 5 | Kubernetes 배포 | ⏳ 미진행 |
 
 ---
@@ -263,16 +263,16 @@ ENCRYPTION_SALT=<16자 이상 랜덤 문자열>
 
 ---
 
-## ⏳ Phase 4: my-pick-server 연동 (미진행)
+## ⏳ Phase 4: mypick-server 연동 (미진행)
 
 > 이 Phase부터 추후 진행 예정입니다.
 
 ### 4.1 사전 준비
 
-1. **auth-server TCP 연결 설정** - my-pick-server에서 AUTH_SERVICE ClientProxy 등록
+1. **auth-server TCP 연결 설정** - mypick-server에서 AUTH_SERVICE ClientProxy 등록
 2. **공통 패키지 설치** - `@krgeobuk/oauth` 패키지 최신 버전 설치 (TCP 패턴/인터페이스 포함)
 
-### 4.2 my-pick-server 모듈 설정
+### 4.2 mypick-server 모듈 설정
 
 ```typescript
 // app.module.ts 또는 해당 feature module
@@ -320,7 +320,7 @@ const hasAccess = await lastValueFrom(
 
 ### 4.4 YouTubeApiService 확장
 
-**파일:** `my-pick-server/src/modules/external-api/services/youtube-api.service.ts`
+**파일:** `mypick-server/src/modules/external-api/services/youtube-api.service.ts`
 
 기존 읽기 전용 API (공유 API 키 사용)에 쓰기 작업 추가:
 
@@ -367,7 +367,7 @@ spec:
       port: 8000
       targetPort: 8000
     - name: tcp
-      port: 8010           # my-pick-server가 OAuth 토큰 조회에 사용
+      port: 8010           # mypick-server가 OAuth 토큰 조회에 사용
       targetPort: 8010
   type: ClusterIP            # 클러스터 내부 전용
 ```
@@ -407,7 +407,7 @@ spec:
     - from:
       - podSelector:
           matchLabels:
-            app: my-pick-server
+            app: mypick-server
       ports:
         - protocol: TCP
           port: 8010
@@ -432,7 +432,7 @@ spec:
 
 ### 2. 네트워크 보안
 - ✅ ClusterIP로 내부 통신만 허용
-- ✅ NetworkPolicy로 접근 제어 (my-pick-server만 TCP 접근)
+- ✅ NetworkPolicy로 접근 제어 (mypick-server만 TCP 접근)
 
 ### 3. 토큰 관리
 - ✅ 만료 5분 전 자동 갱신

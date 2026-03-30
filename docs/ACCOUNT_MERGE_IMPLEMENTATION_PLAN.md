@@ -10,7 +10,7 @@
 | 항목 | 결정 | 근거 |
 |------|------|------|
 | **reports/report_review 처리** | 병합 대상 제외 | modules_backup 디렉토리, 현재 미사용 |
-| **my-pick-server TCP 포트** | **8310** | 일관된 패턴 유지 (auth: 8010, authz: 8110) |
+| **mypick-server TCP 포트** | **8310** | 일관된 패턴 유지 (auth: 8010, authz: 8110) |
 | **구현 방식** | **단계별 순차 구현** | 리스크 분산, 조기 피드백 |
 
 **병합 대상 테이블**: 5개 (creators, user_subscriptions, user_interactions, creator_registrations, content_moderation)
@@ -70,7 +70,7 @@
   - `@krgeobuk/msa-commons/strategies/TcpFallbackStrategy` - 보상 패턴
 - **필요 작업**: 병합 전용 TCP 엔드포인트 추가
 
-#### 1.5 my-pick-server 데이터베이스
+#### 1.5 mypick-server 데이터베이스
 - **상태**: ✅ 5개 테이블 병합 대상 (reports/report_review 제외)
 
 | 테이블 | 상태 | 위치 | 복잡도 | 병합 여부 |
@@ -109,7 +109,7 @@
 - ❌ `user-role.rollbackMerge` 메시지 패턴
 - **수정 필요**: `UserRoleTcpController`, `UserRoleService`
 
-#### 1.4 my-pick-server 구성요소
+#### 1.4 mypick-server 구성요소
 - ❌ TCP 서버 활성화 (현재 주석 처리됨)
 - ❌ `UserMergeService` 클래스
 - ❌ `UserMergeTcpController` 클래스
@@ -120,9 +120,9 @@
 
 ### ⚠️ 중요 적응 사항
 
-#### 1. my-pick-server TCP 서버 활성화 필요
+#### 1. mypick-server TCP 서버 활성화 필요
 
-**현재 상태** (`my-pick-server/src/main.ts`):
+**현재 상태** (`mypick-server/src/main.ts`):
 ```typescript
 // TCP 마이크로서비스 설정 (주석 처리됨)
 // app.connectMicroservice<MicroserviceOptions>({
@@ -176,7 +176,7 @@ WHERE userId = @sourceUserId;
 #### 3. 백업 모듈 테이블 처리
 
 **상황**: `reports`와 `report_review` 테이블이 `modules_backup`에 위치
-- my-pick-server에서 modules_backup은 현재 사용하지 않음
+- mypick-server에서 modules_backup은 현재 사용하지 않음
 - 데이터베이스에는 존재하지만 코드는 백업 상태
 
 **✅ 결정 완료**: 병합 대상 제외
@@ -215,7 +215,7 @@ WHERE userId = @sourceUserId;
    └─ User B 역할을 User A로 이전
 
 3. STEP3_MYPICK_MERGE
-   ├─ TCP 호출: my-pick-server.user.mergeAccounts
+   ├─ TCP 호출: mypick-server.user.mergeAccounts
    ├─ CRITICAL: user_subscriptions, user_interactions 중복 처리
    └─ 나머지 테이블 단순 FK 업데이트
 
@@ -751,12 +751,12 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
         .pipe(timeout(5000))
     );
 
-    // my-pick-server 스냅샷은 서버에서 생성
+    // mypick-server 스냅샷은 서버에서 생성
     const snapshot: MergeSnapshot = {
       sourceUser,
       sourceOAuthAccounts,
       sourceRoles,
-      sourceMyPickData: {}, // my-pick-server에서 자체 스냅샷 생성
+      sourceMyPickData: {}, // mypick-server에서 자체 스냅샷 생성
       backupTimestamp: new Date(),
     };
 
@@ -845,7 +845,7 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
   }
 
   private async mergeMyPickData(request: AccountMergeRequestEntity): Promise<void> {
-    this.logger.log('Executing STEP3: my-pick data merge');
+    this.logger.log('Executing STEP3: mypick data merge');
 
     const result = await firstValueFrom(
       this.myPickClient
@@ -853,14 +853,14 @@ export class AccountMergeOrchestrator extends BaseSagaOrchestrator<
           targetUserId: request.targetUserId,
           sourceUserId: request.sourceUserId,
         })
-        .pipe(timeout(10000)) // my-pick은 10초 타임아웃 (여러 테이블 처리)
+        .pipe(timeout(10000)) // mypick은 10초 타임아웃 (여러 테이블 처리)
     );
 
     if (!result.success) {
-      throw new Error(`my-pick merge failed: ${result.message}`);
+      throw new Error(`mypick merge failed: ${result.message}`);
     }
 
-    this.logger.log('STEP3 completed: my-pick data merged', result.data.stats);
+    this.logger.log('STEP3 completed: mypick data merged', result.data.stats);
   }
 
   private async softDeleteUser(request: AccountMergeRequestEntity): Promise<void> {
@@ -1220,11 +1220,11 @@ export class UserRoleTcpController {
 }
 ```
 
-#### 3-2. my-pick-server TCP 서버 및 병합 로직
+#### 3-2. mypick-server TCP 서버 및 병합 로직
 
 **Step 1: TCP 서버 활성화**
 
-파일: `my-pick-server/src/main.ts`
+파일: `mypick-server/src/main.ts`
 ```typescript
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -1251,7 +1251,7 @@ async function bootstrap() {
 }
 ```
 
-**환경 변수 추가** (`my-pick-server/envs/local.env`):
+**환경 변수 추가** (`mypick-server/envs/local.env`):
 ```bash
 # TCP Server Configuration
 TCP_PORT=8310
@@ -1273,7 +1273,7 @@ export const UserTcpPatterns = {
 
 **Step 3: UserMergeService 생성**
 
-파일: `my-pick-server/src/modules/user/user-merge.service.ts`
+파일: `mypick-server/src/modules/user/user-merge.service.ts`
 ```typescript
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -1448,7 +1448,7 @@ export class UserMergeService {
 
 **Step 4: UserMergeTcpController 생성**
 
-파일: `my-pick-server/src/modules/user/user-merge-tcp.controller.ts`
+파일: `mypick-server/src/modules/user/user-merge-tcp.controller.ts`
 ```typescript
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
@@ -1510,7 +1510,7 @@ export class UserMergeTcpController {
 
 **Step 5: UserModule에 등록**
 
-파일: `my-pick-server/src/modules/user/user.module.ts`
+파일: `mypick-server/src/modules/user/user.module.ts`
 ```typescript
 @Module({
   imports: [TypeOrmModule.forFeature([/* entities */])],
@@ -1523,8 +1523,8 @@ export class UserModule {}
 
 **완료 기준**:
 - ✅ authz-server TCP 엔드포인트 구현 완료
-- ✅ my-pick-server TCP 서버 활성화
-- ✅ my-pick-server 병합 로직 구현 완료
+- ✅ mypick-server TCP 서버 활성화
+- ✅ mypick-server 병합 로직 구현 완료
 - ✅ TCP 통신 테스트 통과
 
 ---
@@ -1569,11 +1569,11 @@ async restore(userId: string): Promise<void> {
 2. Source user 역할이 정확히 복원되는지 확인
 3. Target user 역할이 변경되지 않았는지 확인
 
-#### 4-3. my-pick-server 보상 트랜잭션
+#### 4-3. mypick-server 보상 트랜잭션
 
 **UserMergeService.rollbackMerge() 상세 구현**:
 
-파일: `my-pick-server/src/modules/user/user-merge.service.ts`
+파일: `mypick-server/src/modules/user/user-merge.service.ts`
 ```typescript
 async rollbackMerge(snapshotData: {
   sourceUserId: string;
@@ -1675,7 +1675,7 @@ async rollbackMerge(snapshotData: {
 **스냅샷 생성 로직 개선 필요**:
 - `mergeAccounts()` 실행 전에 스냅샷 생성
 - 삭제된 레코드(`wasDeleted: true`)도 스냅샷에 포함
-- auth-server orchestrator에서 my-pick-server에 스냅샷 생성 요청 추가
+- auth-server orchestrator에서 mypick-server에 스냅샷 생성 요청 추가
 
 #### 4-4. 관리자 복구 기능
 
@@ -2178,7 +2178,7 @@ describe('Account Merge E2E', () => {
 **결정**: **옵션 B - 병합 대상 제외**
 
 **근거**:
-- my-pick-server의 modules_backup은 현재 사용하지 않음으로 확인됨
+- mypick-server의 modules_backup은 현재 사용하지 않음으로 확인됨
 - 핵심 기능(5개 테이블)에 집중하여 개발 기간 단축
 - 필요 시 향후 수동 병합 가능
 
@@ -2189,7 +2189,7 @@ describe('Account Merge E2E', () => {
 
 ---
 
-### ✅ 결정 2: my-pick-server TCP 포트 번호
+### ✅ 결정 2: mypick-server TCP 포트 번호
 
 **결정**: **8310 사용**
 
@@ -2199,12 +2199,12 @@ describe('Account Merge E2E', () => {
 
 **적용 위치**:
 ```bash
-# my-pick-server/envs/local.env
+# mypick-server/envs/local.env
 TCP_PORT=8310
 ```
 
 **영향**:
-- my-pick-server main.ts 수정 필요
+- mypick-server main.ts 수정 필요
 - Docker Compose 설정 업데이트 필요
 - 다른 서비스의 클라이언트 설정 업데이트
 
@@ -2240,7 +2240,7 @@ TCP_PORT=8310
 |-----|------|----------|--------|----------|
 | **1단계** | 1주 | @krgeobuk/saga 패키지, 엔티티, 템플릿 | saga 패키지, account_merge_request, email 템플릿 | 패키지 빌드 성공, 엔티티 생성 |
 | **2단계** | 2주 | Orchestrator 구현, OAuth service 수정 | AccountMergeOrchestrator, 수정된 linkOAuthAccount | 단위 테스트 통과 |
-| **3단계** | 3주 | TCP 엔드포인트 (authz, my-pick), 병합 로직 | 4개 TCP 엔드포인트, UserMergeService | TCP 통신 테스트 통과 |
+| **3단계** | 3주 | TCP 엔드포인트 (authz, mypick), 병합 로직 | 4개 TCP 엔드포인트, UserMergeService | TCP 통신 테스트 통과 |
 | **4단계** | 1주 | 보상 트랜잭션, 롤백 로직, 관리자 기능 | 완전한 보상 로직, 관리자 복구 API | 롤백 시나리오 테스트 통과 |
 | **5단계** | 1주 | HTTP API, E2E 테스트, 문서화 | 4개 HTTP 엔드포인트, E2E 테스트, Swagger | E2E 테스트 통과, 성능 검증 |
 | **통합** | 1주 | 통합 테스트, 성능 테스트, 보안 검토 | 통합 테스트 스위트, 성능 리포트 | 전체 시나리오 통과 |
@@ -2272,7 +2272,7 @@ TCP_PORT=8310
 | **UNIQUE 제약조건 충돌** | 높음 | 높음 | • "User A 우선" 전략 명확화<br>• 트랜잭션 보장<br>• 충분한 단위 테스트 |
 | **TCP 타임아웃** | 중간 | 중간 | • 스마트 재시도 (3회)<br>• Exponential backoff<br>• 타임아웃 모니터링 |
 | **보상 트랜잭션 실패** | 낮음 | 높음 | • Redis 스냅샷 7일 보관<br>• 관리자 복구 기능<br>• 실패 시 즉시 알림 |
-| **my-pick-server TCP 활성화 영향** | 낮음 | 중간 | • 별도 포트 사용 (8310)<br>• 점진적 배포<br>• 모니터링 강화 |
+| **mypick-server TCP 활성화 영향** | 낮음 | 중간 | • 별도 포트 사용 (8310)<br>• 점진적 배포<br>• 모니터링 강화 |
 | **이메일 발송 실패** | 중간 | 중간 | • SMTP 재시도 로직<br>• 실패 시 사용자 알림<br>• 수동 재발송 기능 |
 | **데이터 손실** | 낮음 | 높음 | • 7일 스냅샷 백업<br>• 소프트 삭제 사용<br>• 감사 로그 |
 
@@ -2300,9 +2300,9 @@ TCP_PORT=8310
 2. **❓ reports/report_review 처리 방향**
    - 옵션 A: 병합 대상 포함
    - 옵션 B: 병합 대상 제외 (권장)
-   - 결정 방법: `my-pick-server` 데이터베이스 확인
+   - 결정 방법: `mypick-server` 데이터베이스 확인
 
-3. **❓ my-pick-server TCP 포트 번호**
+3. **❓ mypick-server TCP 포트 번호**
    - 권장: 8310
    - 대안: 다른 포트 지정
 
@@ -2314,7 +2314,7 @@ TCP_PORT=8310
 
 **승인 즉시**:
 1. @krgeobuk/saga 패키지 생성 시작
-2. my-pick-server TCP 포트 환경 변수 설정
+2. mypick-server TCP 포트 환경 변수 설정
 3. reports/report_review 결정 반영
 
 **1주차 목표**:
@@ -2345,7 +2345,7 @@ TCP_PORT=8310
 
 **승인 대기 중**:
 - reports/report_review 처리 방향
-- my-pick-server TCP 포트 번호
+- mypick-server TCP 포트 번호
 - 구현 방식 (전체 vs 단계별)
 
 승인 후 즉시 1단계 구현을 시작할 수 있습니다.
