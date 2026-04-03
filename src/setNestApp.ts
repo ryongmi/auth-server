@@ -8,7 +8,6 @@ import { HttpExceptionFilter } from '@krgeobuk/core/filters';
 import { LoggingInterceptor } from '@krgeobuk/core/interceptors';
 
 import { DefaultConfig } from '@common/interfaces/index.js';
-// import { SeederService } from './seeder/seeder.service';
 
 export function setNestApp(
   app: INestApplication,
@@ -74,8 +73,4 @@ export function setNestApp(
 
   // 글로벌 예외 Log 설정
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  // 테이블 초기 데이터 세팅
-  // const seederService = app.get(SeederService);
-  // await seederService.seed();
 }

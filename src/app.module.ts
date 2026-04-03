@@ -20,8 +20,6 @@ import { AccountMergeModule } from '@modules/account-merge/account-merge.module.
 import { ImageModule } from '@modules/image/image.module.js';
 import { HealthModule } from '@modules/health/index.js';
 
-// import { SeederModule } from './seeder/seeder.module';
-
 @Module({
   imports: [
     WinstonModule.forRoot(winstonConfig),
@@ -47,7 +45,6 @@ import { HealthModule } from '@modules/health/index.js';
     }),
     // TCP 연결 모듈
     SharedClientsModule,
-    // SeederModule,
     CryptoModule,
     DatabaseModule,
     RedisModule,
